@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sheets Builder — Step 2</title>
+  <title>Sheets Builder — Step 1</title>
   <style>
+ 
     body {
       font-family: Arial, sans-serif;
       max-width: 1100px;
@@ -101,10 +102,10 @@
 </head>
 <body>
 
-  <h1>Sheets Builder <span class="badge">Step 2</span></h1>
+  <h1>Sheets Builder <span class="badge">Step 1</span></h1>
   <p class="muted">
-    In questo step costruiamo il cuore logico del builder:
-    nome progetto → naming coerente → baseline fields → schema normalizzato → export JSON.
+    In questo primo step costruiamo il cuore logico del builder:
+    nome progetto → naming coerente → baseline fields → schema normalizzato.
   </p>
 
   <div class="card">
@@ -182,19 +183,19 @@
   </div>
 
   <div class="card">
-    <h2>6. Generate project (JSON only)</h2>
+  <h2>6. Generate project (JSON only)</h2>
 
-    <button id="generateBtn" type="button">Generate JSON files</button>
+  <button id="generateBtn">Generate JSON files</button>
 
-    <p class="muted">
-      Questo step genera i primi artefatti del builder:
-      project.config.json e fields.schema.json
-    </p>
-  </div>
+  <p class="muted">
+    Questo step genera i primi artefatti del builder:
+    project.config.json e fields.schema.json
+  </p>
+</div>
 
 <script>
   // ============================================================
-  // STEP 2 — FOUNDATION + JSON EXPORT
+  // STEP 1 — FOUNDATION
   // ============================================================
 
   function slugify(value) {
@@ -414,53 +415,56 @@
   }
 
   function downloadFile(filename, content) {
-    const blob = new Blob([content], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
 
-    URL.revokeObjectURL(url);
-  }
+  URL.revokeObjectURL(url);
+}
 
-  function generateProjectFiles() {
-    const state = getBuilderState();
-    const schema = normalizeSchema(state.fields);
+function generateProjectFiles() {
+  const state = getBuilderState();
+  const schema = normalizeSchema(state.fields);
 
-    const projectConfig = {
-      projectName: state.projectName,
-      projectSlug: state.projectSlug,
-      backendName: state.backendName,
-      entityName: state.entityName,
-      entityLabelLower: state.entityLabelLower,
-      sheetName: state.sheetName,
-      outputDirectory: state.outputDirectory,
-      buildMarker: state.buildMarker,
-      apiKey: state.apiKey,
-      generatedAt: new Date().toISOString()
-    };
+  // File 1 — project config
+  const projectConfig = {
+    projectName: state.projectName,
+    projectSlug: state.projectSlug,
+    backendName: state.backendName,
+    entityName: state.entityName,
+    entityLabelLower: state.entityLabelLower,
+    sheetName: state.sheetName,
+    outputDirectory: state.outputDirectory,
+    buildMarker: state.buildMarker,
+    apiKey: state.apiKey,
+    generatedAt: new Date().toISOString()
+  };
 
-    const fieldSchema = {
-      headers: schema.headers,
-      requiredOnInsert: schema.requiredOnInsert,
-      optionalOnInsert: schema.optionalOnInsert,
-      computed: schema.computed,
-      visibleInForm: schema.visibleInForm,
-      visibleInViewer: schema.visibleInViewer,
-      enums: schema.enums
-    };
+  // File 2 — schema
+  const fieldSchema = {
+    headers: schema.headers,
+    requiredOnInsert: schema.requiredOnInsert,
+    optionalOnInsert: schema.optionalOnInsert,
+    computed: schema.computed,
+    visibleInForm: schema.visibleInForm,
+    visibleInViewer: schema.visibleInViewer,
+    enums: schema.enums
+  };
 
-    downloadFile("project.config.json", JSON.stringify(projectConfig, null, 2));
-    downloadFile("fields.schema.json", JSON.stringify(fieldSchema, null, 2));
-  }
+  // Download
+  downloadFile("project.config.json", JSON.stringify(projectConfig, null, 2));
+  downloadFile("fields.schema.json", JSON.stringify(fieldSchema, null, 2));
+}
 
   document.getElementById("deriveBtn").addEventListener("click", deriveNames);
   document.getElementById("projectName").addEventListener("input", deriveNames);
-  document.getElementById("generateBtn").addEventListener("click", generateProjectFiles);
+  document
+  .getElementById("generateBtn")
+  .addEventListener("click", generateProjectFiles);
 
   deriveNames();
 </script>

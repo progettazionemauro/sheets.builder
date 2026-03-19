@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sheets Builder — Step 2</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+      background: #f7f7f7;
+      color: #111;
+    }
+
+    h1, h2 {
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      color: #666;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #111;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    pre {
+      background: #111;
+      color: #d8ffd8;
+      padding: 14px;
+      border-radius: 10px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+
+    th {
+      background: #efefef;
+    }
+
+    .badge {
+      background: #eee;
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Sheets Builder <span class="badge">Step 2</span></h1>
+
+<div class="card">
+  <h2>1. Project identity</h2>
+
+  <label>Project name</label>
+  <input id="projectName" value="HorrorAtlas" />
+
+  <button id="deriveBtn">Derive names</button>
+</div>
+
+<div class="card">
+  <h2>2. Derived config</h2>
+
+  <div class="grid">
+    <div>
+      <label>Slug</label>
+      <input id="projectSlug" />
+
+      <label>Backend</label>
+      <input id="backendName" />
+
+      <label>Entity</label>
+      <input id="entityName" />
+    </div>
+
+    <div>
+      <label>Sheet</label>
+      <input id="sheetName" />
+
+      <label>Output dir</label>
+      <input id="outputDirectory" />
+
+      <label>API key</label>
+      <input id="apiKey" value="CHANGE_ME" />
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. Schema preview</h2>
+  <pre id="schemaOut"></pre>
+</div>
+
+<div class="card">
+  <h2>4. Generate JSON</h2>
+  <button id="generateBtn">Generate JSON files</button>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  function slugify(v) {
+    return v.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  }
+
+  function derive() {
+    const name = document.getElementById("projectName").value;
+
+    document.getElementById("projectSlug").value = slugify(name);
+    document.getElementById("backendName").value = slugify(name) + "-backend";
+    document.getElementById("entityName").value = name + "Item";
+    document.getElementById("sheetName").value = name + "Data";
+    document.getElementById("outputDirectory").value = "build/" + slugify(name);
+
+    render();
+  }
+
+  const fields = [
+    { name: "id", computed: true },
+    { name: "year", required: true },
+    { name: "title", required: true }
+  ];
+
+  function normalize() {
+    return {
+      headers: fields.map(f => f.name),
+      required: fields.filter(f => f.required).map(f => f.name),
+      computed: fields.filter(f => f.computed).map(f => f.name)
+    };
+  }
+
+  function render() {
+    document.getElementById("schemaOut").textContent =
+      JSON.stringify(normalize(), null, 2);
+  }
+
+  function download(name, content) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content]));
+    a.download = name;
+    a.click();
+  }
+
+  function generate() {
+    const config = {
+      projectName: document.getElementById("projectName").value,
+      slug: document.getElementById("projectSlug").value
+    };
+
+    download("project.json", JSON.stringify(config, null, 2));
+    download("schema.json", JSON.stringify(normalize(), null, 2));
+  }
+
+  document.getElementById("deriveBtn").onclick = derive;
+  document.getElementById("generateBtn").onclick = generate;
+
+  derive();
+});
+</script>
+
+</body>
+</html>
