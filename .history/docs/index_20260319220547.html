@@ -424,45 +424,8 @@
   URL.revokeObjectURL(url);
 }
 
-function generateProjectFiles() {
-  const state = getBuilderState();
-  const schema = normalizeSchema(state.fields);
-
-  // File 1 — project config
-  const projectConfig = {
-    projectName: state.projectName,
-    projectSlug: state.projectSlug,
-    backendName: state.backendName,
-    entityName: state.entityName,
-    entityLabelLower: state.entityLabelLower,
-    sheetName: state.sheetName,
-    outputDirectory: state.outputDirectory,
-    buildMarker: state.buildMarker,
-    apiKey: state.apiKey,
-    generatedAt: new Date().toISOString()
-  };
-
-  // File 2 — schema
-  const fieldSchema = {
-    headers: schema.headers,
-    requiredOnInsert: schema.requiredOnInsert,
-    optionalOnInsert: schema.optionalOnInsert,
-    computed: schema.computed,
-    visibleInForm: schema.visibleInForm,
-    visibleInViewer: schema.visibleInViewer,
-    enums: schema.enums
-  };
-
-  // Download
-  downloadFile("project.config.json", JSON.stringify(projectConfig, null, 2));
-  downloadFile("fields.schema.json", JSON.stringify(fieldSchema, null, 2));
-}
-
   document.getElementById("deriveBtn").addEventListener("click", deriveNames);
   document.getElementById("projectName").addEventListener("input", deriveNames);
-  document
-  .getElementById("generateBtn")
-  .addEventListener("click", generateProjectFiles);
 
   deriveNames();
 </script>
