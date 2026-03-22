@@ -1,12 +1,12 @@
 {
-  "projectName": "HorrorAtlas",
-  "projectSlug": "horroratlas",
-  "backendName": "horroratlas-backend",
-  "entityName": "HorroratlasItem",
+  "projectName": "Prova_film",
+  "projectSlug": "prova-film",
+  "backendName": "prova-film-backend",
+  "entityName": "ProvaFilmItem",
   "entityLabelLower": "item",
-  "sheetName": "HorroratlasData",
-  "outputDirectory": "build/horroratlas",
-  "buildMarker": "HORRORATLAS_BACKEND_V1",
-  "adminPassword": "f2-kC@6bbqKSenEkjU",
-  "generatedAt": "2026-03-22T13:36:20.301Z"
+  "sheetName": "ProvaFilmData",
+  "outputDirectory": "build/prova-film",
+  "buildMarker": "PROVA_FILM_BACKEND_V1",
+  "adminPassword": "UVZi4cpCddok7swLSf",
+  "generatedAt": "2026-03-22T18:43:14.667Z"
 }

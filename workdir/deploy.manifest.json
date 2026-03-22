@@ -1,9 +1,9 @@
 {
-  "projectSlug": "horroratlas",
-  "projectName": "HorrorAtlas",
+  "projectSlug": "prova-film",
+  "projectName": "Prova_film",
   "frontend": {
     "provider": "github-pages",
-    "repoNameSuggested": "horroratlas",
+    "repoNameSuggested": "prova-film",
     "branch": "main",
     "publishDir": "docs",
     "entryFile": "docs/index.html",
@@ -12,8 +12,8 @@
   "backend": {
     "provider": "google-apps-script",
     "entryFile": "codice.gs",
-    "sheetName": "HorroratlasData",
-    "backendName": "horroratlas-backend"
+    "sheetName": "ProvaFilmData",
+    "backendName": "prova-film-backend"
   },
   "files": [
     "codice.gs",
@@ -25,14 +25,20 @@
   ],
   "schemaSummary": {
     "headers": [
-      "id"
+      "id",
+      "Titolo",
+      "Data Produzione"
     ],
     "computed": [
       "id"
     ],
-    "visibleInForm": [],
+    "visibleInForm": [
+      "Data Produzione"
+    ],
     "visibleInViewer": [
-      "id"
+      "id",
+      "Titolo",
+      "Data Produzione"
     ]
   }
 }

@@ -1,15 +1,24 @@
 {
   "headers": [
-    "id"
+    "id",
+    "Titolo",
+    "Data Produzione"
   ],
   "requiredOnInsert": [],
-  "optionalOnInsert": [],
+  "optionalOnInsert": [
+    "Titolo",
+    "Data Produzione"
+  ],
   "computed": [
     "id"
   ],
-  "visibleInForm": [],
+  "visibleInForm": [
+    "Data Produzione"
+  ],
   "visibleInViewer": [
-    "id"
+    "id",
+    "Titolo",
+    "Data Produzione"
   ],
   "enums": {},
   "constraints": {
@@ -17,6 +26,16 @@
       "type": "int",
       "required": false,
       "min": 0
+    },
+    "Titolo": {
+      "type": "string",
+      "required": false,
+      "maxLen": 255
+    },
+    "Data Produzione": {
+      "type": "date",
+      "required": false,
+      "format": "dd/mm/yyyy"
     }
   },
   "fields": [
@@ -29,6 +48,26 @@
       "visibleInViewer": true,
       "enumValues": [],
       "locked": true
+    },
+    {
+      "name": "Titolo",
+      "type": "string",
+      "required": false,
+      "computed": false,
+      "visibleInForm": false,
+      "visibleInViewer": true,
+      "enumValues": [],
+      "locked": false
+    },
+    {
+      "name": "Data Produzione",
+      "type": "date",
+      "required": false,
+      "computed": false,
+      "visibleInForm": true,
+      "visibleInViewer": true,
+      "enumValues": [],
+      "locked": false
     }
   ]
 }
