@@ -1,0 +1,38 @@
+{
+  "projectSlug": "horroratlas",
+  "projectName": "HorrorAtlas",
+  "frontend": {
+    "provider": "github-pages",
+    "repoNameSuggested": "horroratlas",
+    "branch": "main",
+    "publishDir": "docs",
+    "entryFile": "docs/index.html",
+    "viewerFile": "docs/viewer.html"
+  },
+  "backend": {
+    "provider": "google-apps-script",
+    "entryFile": "codice.gs",
+    "sheetName": "HorroratlasData",
+    "backendName": "horroratlas-backend"
+  },
+  "files": [
+    "codice.gs",
+    "docs/index.html",
+    "docs/viewer.html",
+    "project.config.json",
+    "fields.schema.json",
+    "deploy.manifest.json"
+  ],
+  "schemaSummary": {
+    "headers": [
+      "id"
+    ],
+    "computed": [
+      "id"
+    ],
+    "visibleInForm": [],
+    "visibleInViewer": [
+      "id"
+    ]
+  }
+}

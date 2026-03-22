@@ -1,0 +1,34 @@
+{
+  "headers": [
+    "id"
+  ],
+  "requiredOnInsert": [],
+  "optionalOnInsert": [],
+  "computed": [
+    "id"
+  ],
+  "visibleInForm": [],
+  "visibleInViewer": [
+    "id"
+  ],
+  "enums": {},
+  "constraints": {
+    "id": {
+      "type": "int",
+      "required": false,
+      "min": 0
+    }
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "int",
+      "required": false,
+      "computed": true,
+      "visibleInForm": false,
+      "visibleInViewer": true,
+      "enumValues": [],
+      "locked": true
+    }
+  ]
+}
