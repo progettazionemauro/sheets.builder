@@ -111,7 +111,10 @@ def ensure_dir(path: Path) -> None:
 
 def extract_zip(zip_path: Path, extract_dir: Path, clean: bool = False) -> None:
     if not zip_path.exists():
-        raise FileNotFoundError(f"ZIP non trovato: {zip_path}")
+        raise FileNotFoundError(
+            f"ZIP non trovato: {zip_path}\n"
+            f"Controlla il nome file e il percorso. Esempio corretto: examples/prova-film.zip"
+        )
 
     if clean and extract_dir.exists():
         shutil.rmtree(extract_dir)
@@ -148,12 +151,43 @@ def run_cmd(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=str(cwd), check=True)
 
 
+def run_cmd_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
+    print(f"\n$ {' '.join(cmd)}")
+    return subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+
+def tool_exists(name: str) -> bool:
+    return shutil.which(name) is not None
+
+
 def repo_has_git(path: Path) -> bool:
     return (path / ".git").exists()
 
 
+def remote_exists(repo_dir: Path, remote_name: str = "origin") -> bool:
+    result = subprocess.run(
+        ["git", "remote"],
+        cwd=str(repo_dir),
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    remotes = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return remote_name in remotes
+
+
+def build_pages_url(github_username: str, repo_name: str) -> str:
+    return f"https://{github_username}.github.io/{repo_name}/"
+
+
 # ============================================================
-# CORE
+# PACKAGE INSPECTION
 # ============================================================
 
 def inspect_package(extract_dir: Path) -> tuple[ProjectConfig, DeployManifest, dict[str, Any]]:
@@ -232,33 +266,178 @@ def print_summary(
         print("OK: tutti i file dichiarati nel manifest sono presenti.")
 
 
-def deploy_frontend(
-    extract_dir: Path,
-    repo_dir: Path,
-    commit_message: str,
-) -> None:
+# ============================================================
+# FRONTEND PREP / DEPLOY
+# ============================================================
+
+def enforce_target_mode(repo_dir: Path, target_mode: str) -> None:
+    if target_mode == "new":
+        if repo_dir.exists():
+            raise RuntimeError(
+                f"La cartella target esiste già ma hai scelto --frontend-target-mode new:\n{repo_dir}\n"
+                f"Scegli un nuovo path oppure usa --frontend-target-mode overwrite"
+            )
+    elif target_mode == "overwrite":
+        return
+    else:
+        raise ValueError(f"Modalità target non supportata: {target_mode}")
+
+
+def copy_docs_from_package(extract_dir: Path, repo_dir: Path) -> None:
     docs_src = extract_dir / "docs"
     docs_dst = repo_dir / "docs"
 
     ensure_dir(docs_src)
-
-    if not repo_has_git(repo_dir):
-        raise RuntimeError(
-            f"La cartella target non sembra un repository git valido: {repo_dir}"
-        )
+    repo_dir.mkdir(parents=True, exist_ok=True)
 
     if docs_dst.exists():
         shutil.rmtree(docs_dst)
 
     shutil.copytree(docs_src, docs_dst)
 
+
+def init_git_repo_if_needed(repo_dir: Path) -> None:
+    repo_dir.mkdir(parents=True, exist_ok=True)
+    if not repo_has_git(repo_dir):
+        run_cmd(["git", "init"], cwd=repo_dir)
+
+
+def prepare_frontend_repo(
+    extract_dir: Path,
+    repo_dir: Path,
+    commit_message: str,
+    target_mode: str,
+) -> None:
+    enforce_target_mode(repo_dir, target_mode)
+
+    init_git_repo_if_needed(repo_dir)
+    copy_docs_from_package(extract_dir, repo_dir)
+
     run_cmd(["git", "add", "."], cwd=repo_dir)
-    run_cmd(["git", "commit", "-m", commit_message], cwd=repo_dir)
-    run_cmd(["git", "push"], cwd=repo_dir)
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=str(repo_dir),
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    if status.stdout.strip():
+        run_cmd(["git", "commit", "-m", commit_message], cwd=repo_dir)
+    else:
+        print("\nNessuna modifica da committare nel repo frontend.")
 
 
-def build_pages_url(github_username: str, repo_name: str) -> str:
-    return f"https://{github_username}.github.io/{repo_name}/"
+def configure_remote_and_push(
+    repo_dir: Path,
+    github_username: str,
+    repo_name: str,
+    branch: str = "main",
+) -> None:
+    remote_url = f"https://github.com/{github_username}/{repo_name}.git"
+
+    if remote_exists(repo_dir, "origin"):
+        run_cmd(["git", "remote", "set-url", "origin", remote_url], cwd=repo_dir)
+    else:
+        run_cmd(["git", "remote", "add", "origin", remote_url], cwd=repo_dir)
+
+    run_cmd(["git", "branch", "-M", branch], cwd=repo_dir)
+    run_cmd(["git", "push", "-u", "origin", branch], cwd=repo_dir)
+
+
+def create_github_repo_with_gh(repo_dir: Path, repo_name: str, public: bool = True) -> None:
+    if not tool_exists("gh"):
+        raise RuntimeError("GitHub CLI 'gh' non trovato nel PATH.")
+
+    visibility_flag = "--public" if public else "--private"
+    run_cmd(
+        ["gh", "repo", "create", repo_name, visibility_flag, "--source", ".", "--remote", "origin", "--push"],
+        cwd=repo_dir,
+    )
+
+
+def manual_pause_for_repo_creation(github_username: str, repo_name: str) -> None:
+    print_header("AZIONE MANUALE RICHIESTA")
+    print("Crea ora una nuova repository su GitHub con questi dati:")
+    print_kv("Owner", github_username)
+    print_kv("Repository", repo_name)
+    print("\nQuando hai terminato la creazione della repo remota, premi INVIO per continuare...")
+    input()
+
+
+# ============================================================
+# GITHUB PAGES AUTOMATION
+# ============================================================
+
+def gh_pages_get(owner: str, repo: str) -> subprocess.CompletedProcess:
+    return run_cmd_capture(
+        [
+            "gh", "api",
+            "-X", "GET",
+            f"repos/{owner}/{repo}/pages",
+            "-H", "Accept: application/vnd.github+json",
+            "-H", "X-GitHub-Api-Version: 2022-11-28",
+        ]
+    )
+
+
+def gh_pages_create(owner: str, repo: str, branch: str, path: str) -> None:
+    run_cmd(
+        [
+            "gh", "api",
+            "-X", "POST",
+            f"repos/{owner}/{repo}/pages",
+            "-H", "Accept: application/vnd.github+json",
+            "-H", "X-GitHub-Api-Version: 2022-11-28",
+            "-f", "build_type=legacy",
+            "-f", f"source[branch]={branch}",
+            "-f", f"source[path]={path}",
+        ],
+        cwd=Path.cwd(),
+    )
+
+
+def gh_pages_update(owner: str, repo: str, branch: str, path: str) -> None:
+    run_cmd(
+        [
+            "gh", "api",
+            "-X", "PUT",
+            f"repos/{owner}/{repo}/pages",
+            "-H", "Accept: application/vnd.github+json",
+            "-H", "X-GitHub-Api-Version: 2022-11-28",
+            "-f", "build_type=legacy",
+            "-f", f"source[branch]={branch}",
+            "-f", f"source[path]={path}",
+        ],
+        cwd=Path.cwd(),
+    )
+
+
+def configure_pages_with_gh(owner: str, repo: str, branch: str, path: str) -> None:
+    if not tool_exists("gh"):
+        raise RuntimeError("GitHub CLI 'gh' non trovato nel PATH.")
+
+    result = gh_pages_get(owner, repo)
+
+    if result.returncode == 0:
+        print("\nGitHub Pages esiste già: aggiorno la configurazione.")
+        gh_pages_update(owner, repo, branch, path)
+        return
+
+    stderr = (result.stderr or "").lower()
+    stdout = (result.stdout or "").lower()
+
+    if "not found" in stderr or "not found" in stdout or result.returncode != 0:
+        print("\nGitHub Pages non ancora configurato: creo la configurazione.")
+        gh_pages_create(owner, repo, branch, path)
+        return
+
+    raise RuntimeError(
+        "Impossibile determinare lo stato di GitHub Pages tramite gh api.\n"
+        f"stdout: {result.stdout}\n"
+        f"stderr: {result.stderr}"
+    )
 
 
 # ============================================================
@@ -293,12 +472,33 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--github-username",
         type=str,
-        help="Username GitHub, usato per costruire l'URL finale Pages.",
+        help="Username GitHub, usato per creare URL e remote.",
     )
     parser.add_argument(
-        "--run-frontend-deploy",
+        "--prepare-frontend-repo",
         action="store_true",
-        help="Se presente, copia docs/ nel repo target ed esegue git add/commit/push.",
+        help="Prepara il repo locale frontend copiando docs/ e facendo commit locale.",
+    )
+    parser.add_argument(
+        "--frontend-mode",
+        choices=["manual", "gh"],
+        help="Modalità deploy frontend: manual = pausa guidata, gh = usa GitHub CLI.",
+    )
+    parser.add_argument(
+        "--frontend-target-mode",
+        choices=["new", "overwrite"],
+        default="overwrite",
+        help="new = crea un target nuovo; overwrite = usa/sovrascrive un target esistente.",
+    )
+    parser.add_argument(
+        "--private-repo",
+        action="store_true",
+        help="Se usi --frontend-mode gh, crea la repo come privata invece che pubblica.",
+    )
+    parser.add_argument(
+        "--configure-pages",
+        action="store_true",
+        help="Configura automaticamente GitHub Pages su main + /docs usando gh api.",
     )
     return parser.parse_args()
 
@@ -323,9 +523,9 @@ def main() -> int:
             missing_files=missing_files,
         )
 
-        if args.run_frontend_deploy:
+        if args.prepare_frontend_repo:
             if missing_files:
-                raise RuntimeError("Impossibile fare deploy frontend: package non valido.")
+                raise RuntimeError("Impossibile procedere: package non valido.")
 
             if not args.frontend_repo_dir:
                 raise RuntimeError("Manca --frontend-repo-dir")
@@ -333,28 +533,64 @@ def main() -> int:
             repo_dir = args.frontend_repo_dir.expanduser().resolve()
             commit_message = f"Deploy frontend from zip: {project_config.project_slug}"
 
-            print_header("FRONTEND DEPLOY START")
-            deploy_frontend(
+            print_header("PREPARE FRONTEND REPO")
+            prepare_frontend_repo(
                 extract_dir=workdir,
                 repo_dir=repo_dir,
                 commit_message=commit_message,
+                target_mode=args.frontend_target_mode,
             )
+            print_kv("Repo locale frontend", repo_dir)
+            print_kv("Target mode", args.frontend_target_mode)
 
-            print_header("FRONTEND DEPLOY DONE")
-            print_kv("Repo locale", repo_dir)
+            repo_name = deploy_manifest.frontend_repo_name_suggested
 
-            if args.github_username:
+            if args.frontend_mode:
+                if not args.github_username:
+                    raise RuntimeError("Manca --github-username")
+
+                print_header("FRONTEND REMOTE FLOW")
+
+                if args.frontend_mode == "manual":
+                    manual_pause_for_repo_creation(args.github_username, repo_name)
+                    configure_remote_and_push(
+                        repo_dir=repo_dir,
+                        github_username=args.github_username,
+                        repo_name=repo_name,
+                        branch=deploy_manifest.frontend_branch,
+                    )
+
+                elif args.frontend_mode == "gh":
+                    create_github_repo_with_gh(
+                        repo_dir=repo_dir,
+                        repo_name=repo_name,
+                        public=not args.private_repo,
+                    )
+
+                if args.configure_pages:
+                    print_header("CONFIGURE GITHUB PAGES")
+                    configure_pages_with_gh(
+                        owner=args.github_username,
+                        repo=repo_name,
+                        branch=deploy_manifest.frontend_branch,
+                        path=f"/{deploy_manifest.frontend_publish_dir}",
+                    )
+
                 pages_url = build_pages_url(
                     github_username=args.github_username,
-                    repo_name=deploy_manifest.frontend_repo_name_suggested,
+                    repo_name=repo_name,
                 )
+
+                print_header("FRONTEND FLOW DONE")
                 print_kv("Pages URL atteso", pages_url)
 
         else:
             print_header("NEXT STEPS")
-            print("1. Flusso GitHub Pages: puoi eseguirlo con --run-frontend-deploy")
-            print("2. Flusso GAS/clasp: sarà il passo successivo")
-            print("3. Questo script è il punto di partenza dell'orchestratore locale.")
+            print("1. Usa --prepare-frontend-repo per copiare docs/ in un repo locale.")
+            print("2. Aggiungi --frontend-target-mode new oppure overwrite.")
+            print("3. Aggiungi --frontend-mode manual oppure gh per spingere verso GitHub.")
+            print("4. Aggiungi --configure-pages per impostare automaticamente main + /docs.")
+            print("5. Il flusso GAS/clasp sarà il passo successivo.")
 
         return 0
 
