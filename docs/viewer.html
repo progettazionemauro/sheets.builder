@@ -93,6 +93,15 @@
     "Pessimo"
   ]
 };
+  const LABELS = {
+  "id": "Id",
+  "year": "Year",
+  "title": "Title",
+  "url": "Url",
+  "link": "Link",
+  "nation": "Nation",
+  "rating": "Rating"
+};
   const ENUM_STYLES = {
   "rating": {
     "Capolavoro": {
@@ -163,6 +172,22 @@
     ));
   }
 
+  function styleAttrForEnum(headerName, value) {
+    const fieldStyles = ENUM_STYLES[headerName];
+    if (!fieldStyles) return "";
+    const styleDef = fieldStyles[String(value ?? "").trim()];
+    if (!styleDef) return "";
+
+    const parts = [];
+    if (styleDef.bg) parts.push(`background:${styleDef.bg}`);
+    if (styleDef.fg) parts.push(`color:${styleDef.fg}`);
+    if (!parts.length) return "";
+
+    parts.push("font-weight:700");
+    parts.push("text-align:center");
+    return parts.join("; ");
+  }
+
   let LAST_HEADERS = [];
   let LAST_ROWS = [];
 
@@ -191,7 +216,9 @@
 
     let html = "<table><thead><tr>";
     for (const i of visibleIndexes) {
-      html += `<th>${esc(LAST_HEADERS[i])}</th>`;
+      const rawHeader = LAST_HEADERS[i];
+      const shownHeader = LABELS[rawHeader] || rawHeader;
+      html += `<th>${esc(shownHeader)}</th>`;
     }
     html += "</tr></thead><tbody>";
 
@@ -201,20 +228,11 @@
       html += `<tr class="${trClass}">`;
 
       for (const i of visibleIndexes) {
-        const header = LAST_HEADERS[i];
+        const rawHeader = LAST_HEADERS[i];
         const cellVal = r[i];
-
-        let style = "";
-        const stylesForField = ENUM_STYLES[header] || {};
-        const styleDef = stylesForField[String(cellVal ?? "").trim()] || null;
-
-        if (styleDef) {
-          const bg = styleDef.bg ? `background:${styleDef.bg};` : "";
-          const fg = styleDef.fg ? `color:${styleDef.fg};` : "";
-          style = `${bg}${fg}font-weight:700;text-align:center;`;
-        }
-
-        html += `<td style="${style}">${esc(cellVal)}</td>`;
+        const styleAttr = styleAttrForEnum(rawHeader, cellVal);
+        const styleHtml = styleAttr ? ` style="${esc(styleAttr)}"` : "";
+        html += `<td${styleHtml}>${esc(cellVal)}</td>`;
       }
 
       html += "</tr>";

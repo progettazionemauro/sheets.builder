@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 @dataclass
 class FieldDef:
     name: str
+    label: str
     type: str
     required: bool
     computed: bool
@@ -60,6 +61,7 @@ def field_map_from_schema(fields_schema: Dict[str, Any]) -> List[FieldDef]:
         out.append(
             FieldDef(
                 name=raw["name"],
+                label=raw.get("label", raw["name"]),
                 type=raw.get("type", "string"),
                 required=bool(raw.get("required", False)),
                 computed=bool(raw.get("computed", False)),
@@ -585,7 +587,7 @@ function jsonp_(cb, obj) {{
 def _html_input_for_field(field: FieldDef, constraints: Dict[str, Any]) -> str:
     dom_id = slugify_for_dom(field.name)
     required_label = "required" if field.required else "optional"
-    label = escape_html(field.name)
+    label = escape_html(field.label or field.name)
 
     if field.type == "enum":
         options = ['<option value="" selected>—</option>']
@@ -993,8 +995,6 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 </body>
 </html>
 '''
-
-
 # ============================================================
 # VIEWER.HTML GENERATOR
 # ============================================================
@@ -1007,6 +1007,10 @@ def _generate_viewer_enum_map_js(fields: List[FieldDef]) -> str:
     return js_pretty(enum_map(fields))
 
 
+def _generate_viewer_label_map_js(fields: List[FieldDef]) -> str:
+    return js_pretty({f.name: (f.label or f.name) for f in viewer_fields(fields)})
+
+
 def _generate_viewer_enum_styles_js(fields: List[FieldDef]) -> str:
     return js_pretty(enum_styles_map(fields))
 
@@ -1015,6 +1019,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     fields = field_map_from_schema(fields_schema)
     visible_cols_js = _generate_viewer_visible_columns_js(fields)
     enum_map_js = _generate_viewer_enum_map_js(fields)
+    label_map_js = _generate_viewer_label_map_js(fields)
     enum_styles_js = _generate_viewer_enum_styles_js(fields)
 
     entity_name = project_config["entityName"]
@@ -1098,6 +1103,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
   const VISIBLE_HEADERS = {visible_cols_js};
   const ENUMS = {enum_map_js};
+  const LABELS = {label_map_js};
   const ENUM_STYLES = {enum_styles_js};
 
   function jsonp(url) {{
@@ -1141,6 +1147,22 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     ));
   }}
 
+  function styleAttrForEnum(headerName, value) {{
+    const fieldStyles = ENUM_STYLES[headerName];
+    if (!fieldStyles) return "";
+    const styleDef = fieldStyles[String(value ?? "").trim()];
+    if (!styleDef) return "";
+
+    const parts = [];
+    if (styleDef.bg) parts.push(`background:${{styleDef.bg}}`);
+    if (styleDef.fg) parts.push(`color:${{styleDef.fg}}`);
+    if (!parts.length) return "";
+
+    parts.push("font-weight:700");
+    parts.push("text-align:center");
+    return parts.join("; ");
+  }}
+
   let LAST_HEADERS = [];
   let LAST_ROWS = [];
 
@@ -1169,7 +1191,9 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
     let html = "<table><thead><tr>";
     for (const i of visibleIndexes) {{
-      html += `<th>${{esc(LAST_HEADERS[i])}}</th>`;
+      const rawHeader = LAST_HEADERS[i];
+      const shownHeader = LABELS[rawHeader] || rawHeader;
+      html += `<th>${{esc(shownHeader)}}</th>`;
     }}
     html += "</tr></thead><tbody>";
 
@@ -1179,20 +1203,11 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       html += `<tr class="${{trClass}}">`;
 
       for (const i of visibleIndexes) {{
-        const header = LAST_HEADERS[i];
+        const rawHeader = LAST_HEADERS[i];
         const cellVal = r[i];
-
-        let style = "";
-        const stylesForField = ENUM_STYLES[header] || {{}};
-        const styleDef = stylesForField[String(cellVal ?? "").trim()] || null;
-
-        if (styleDef) {{
-          const bg = styleDef.bg ? `background:${{styleDef.bg}};` : "";
-          const fg = styleDef.fg ? `color:${{styleDef.fg}};` : "";
-          style = `${{bg}}${{fg}}font-weight:700;text-align:center;`;
-        }}
-
-        html += `<td style="${{style}}">${{esc(cellVal)}}</td>`;
+        const styleAttr = styleAttrForEnum(rawHeader, cellVal);
+        const styleHtml = styleAttr ? ` style="${{esc(styleAttr)}}"` : "";
+        html += `<td${{styleHtml}}>${{esc(cellVal)}}</td>`;
       }}
 
       html += "</tr>";
@@ -1243,7 +1258,6 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 </body>
 </html>
 '''
-
 
 # ============================================================
 # PUBLIC API

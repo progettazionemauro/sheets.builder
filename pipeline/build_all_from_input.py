@@ -9,18 +9,18 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-OUTPUT_PROJECT_DIR = ROOT / "output_project"
+OUTPUT_CURRENT_DIR = ROOT / "output" / "current"
 EXAMPLES_DIR = ROOT / "examples"
-PROJECT_CONFIG_PATH = OUTPUT_PROJECT_DIR / "project.config.json"
-FIELDS_SCHEMA_PATH = OUTPUT_PROJECT_DIR / "fields.schema.json"
+PROJECT_CONFIG_PATH = OUTPUT_CURRENT_DIR / "project.config.json"
+FIELDS_SCHEMA_PATH = OUTPUT_CURRENT_DIR / "fields.schema.json"
 
 
 def ensure_default_project_config() -> dict:
     """
-    Se project.config.json non esiste in output_project, ne crea uno minimale.
+    Se project.config.json non esiste in output/current, ne crea uno minimale.
     Se esiste già, lo lascia invariato.
     """
-    OUTPUT_PROJECT_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_CURRENT_DIR.mkdir(parents=True, exist_ok=True)
 
     if PROJECT_CONFIG_PATH.exists():
         return json.loads(PROJECT_CONFIG_PATH.read_text(encoding="utf-8"))
@@ -32,7 +32,7 @@ def ensure_default_project_config() -> dict:
         "entityName": "ImportedItem",
         "entityLabelLower": "item",
         "sheetName": "Sheet1",
-        "outputDirectory": str(OUTPUT_PROJECT_DIR),
+        "outputDirectory": str(OUTPUT_CURRENT_DIR),
         "buildMarker": "IMPORTED_SHEET_BACKEND_V1",
         "adminPassword": "CHANGE_ME_WRITE_KEY_2026",
     }
@@ -95,10 +95,10 @@ def main() -> None:
     print("\nBuild completed successfully.")
     print(f"Schema:   {FIELDS_SCHEMA_PATH}")
     print(f"Config:   {PROJECT_CONFIG_PATH}")
-    print(f"Output:   {OUTPUT_PROJECT_DIR}")
-    print(f"Frontend: {OUTPUT_PROJECT_DIR / 'docs' / 'index.html'}")
-    print(f"Viewer:   {OUTPUT_PROJECT_DIR / 'docs' / 'viewer.html'}")
-    print(f"Backend:  {OUTPUT_PROJECT_DIR / 'codice.gs'}")
+    print(f"Output:   {OUTPUT_CURRENT_DIR}")
+    print(f"Frontend: {OUTPUT_CURRENT_DIR / 'docs' / 'index.html'}")
+    print(f"Viewer:   {OUTPUT_CURRENT_DIR / 'docs' / 'viewer.html'}")
+    print(f"Backend:  {OUTPUT_CURRENT_DIR / 'codice.gs'}")
 
 
 if __name__ == "__main__":

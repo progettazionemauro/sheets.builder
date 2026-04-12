@@ -13,9 +13,10 @@ from typing import Dict, Optional
 from generators.import_from_html import import_visuals_from_html
 from generators.import_from_sheet import save_schema_from_xlsx
 from generators.merge_schema import merge_schema_with_visuals
+from app.builder_state import build_builder_state
 
 
-OUTPUT_PROJECT_DIR = ROOT / "output_project"
+OUTPUT_CURRENT_DIR = ROOT / "output" / "current"
 EXAMPLES_DIR = ROOT / "examples"
 
 
@@ -125,17 +126,47 @@ def main() -> None:
         input_dir = Path(sys.argv[1])
         enum_field_name = sys.argv[2]
 
-    output_json = OUTPUT_PROJECT_DIR / "fields.schema.json"
+    parsed_output_json = OUTPUT_CURRENT_DIR / "parsed.schema.json"
+    builder_state_output_json = OUTPUT_CURRENT_DIR / "builder_state.json"
+    compat_output_json = OUTPUT_CURRENT_DIR / "fields.schema.json"
+    project_config_path = OUTPUT_CURRENT_DIR / "project.config.json"
 
     schema = build_schema_from_directory(
         input_dir=input_dir,
-        output_json_path=output_json,
+        output_json_path=parsed_output_json,
         enum_field_name=enum_field_name,
         debug=True,
     )
 
+    if project_config_path.exists():
+        project_config = json.loads(project_config_path.read_text(encoding="utf-8"))
+    else:
+        project_config = {
+            "projectName": "Imported Sheet Project",
+            "projectSlug": "imported-sheet-project",
+            "backendName": "imported-sheet-backend",
+            "entityName": "ImportedItem",
+            "entityLabelLower": "item",
+            "sheetName": "Sheet1",
+            "outputDirectory": str(OUTPUT_CURRENT_DIR),
+            "buildMarker": "IMPORTED_SHEET_BACKEND_V1",
+            "adminPassword": "CHANGE_ME_WRITE_KEY_2026",
+        }
+
+    builder_state = build_builder_state(
+        parsed_schema=schema,
+        project_config=project_config,
+    )
+
+    write_json(builder_state_output_json, builder_state)
+
+    # compatibilità temporanea con il resto della pipeline attuale
+    write_json(compat_output_json, schema)
+
     print("\nSchema generated successfully.")
-    print("Output:", output_json)
+    print("Parsed output:", parsed_output_json)
+    print("Builder state:", builder_state_output_json)
+    print("Compat output:", compat_output_json)
     print("Headers:", schema.get("headers", []))
     print("Enums:", schema.get("enums", {}))
 
