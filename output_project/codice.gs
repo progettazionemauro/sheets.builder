@@ -23,7 +23,7 @@ const BUILD_TIME = new Date().toISOString();
 const HEADERS = [
   "id",
   "year",
-  "Title",
+  "title",
   "url",
   "link",
   "nation",
@@ -32,7 +32,7 @@ const HEADERS = [
 const REQUIRED_ON_INSERT = [];
 const OPTIONAL_ON_INSERT = [
   "year",
-  "Title",
+  "title",
   "url",
   "nation",
   "rating"
@@ -62,7 +62,7 @@ const CONSTRAINTS = {
     "required": false,
     "min": 0
   },
-  "Title": {
+  "title": {
     "type": "string",
     "required": false,
     "maxLen": 255
@@ -212,7 +212,7 @@ function insert_(p, debug) {
   ensureHeaders_(sh);
 
   const year = clampInt_(p["year"], -999999999, 999999999, 0);
-  const title = norm_(p["Title"]);
+  const title = norm_(p["title"]);
   const url = norm_(p["url"]);
   const nation = norm_(p["nation"]);
   const rating = norm_(p["rating"]);
@@ -221,7 +221,7 @@ function insert_(p, debug) {
   if (missing.length) return { ok: false, error: "Missing required fields", missing };
 
   if (year && year < 0) return { ok: false, error: "year below min 0" };
-  if (title && title.length > 255) return { ok: false, error: "Title too long (max 255)" };
+  if (title && title.length > 255) return { ok: false, error: "title too long (max 255)" };
   if (url && url.length > 255) return { ok: false, error: "url too long (max 255)" };
   if (nation && nation.length > 255) return { ok: false, error: "nation too long (max 255)" };
   if (rating && ENUM_RATING.indexOf(rating) === -1) return { ok: false, error: "rating not allowed", allowed: ENUM_RATING };
@@ -271,7 +271,7 @@ function update_(id, p, debug) {
   if (!row) return { ok: false, error: "ID not found", id };
 
   const year = clampInt_(p["year"], -999999999, 999999999, 0);
-  const title = norm_(p["Title"]);
+  const title = norm_(p["title"]);
   const url = norm_(p["url"]);
   const nation = norm_(p["nation"]);
   const rating = norm_(p["rating"]);
@@ -280,7 +280,7 @@ function update_(id, p, debug) {
   if (missing.length) return { ok: false, error: "Missing required fields", missing };
 
   if (year && year < 0) return { ok: false, error: "year below min 0" };
-  if (title && title.length > 255) return { ok: false, error: "Title too long (max 255)" };
+  if (title && title.length > 255) return { ok: false, error: "title too long (max 255)" };
   if (url && url.length > 255) return { ok: false, error: "url too long (max 255)" };
   if (nation && nation.length > 255) return { ok: false, error: "nation too long (max 255)" };
   if (rating && ENUM_RATING.indexOf(rating) === -1) return { ok: false, error: "rating not allowed", allowed: ENUM_RATING };

@@ -59,8 +59,8 @@
     <input id="year" type="number" min="0" placeholder="year" />
 
 
-    <label for="title">Title <span class="muted">(optional)</span></label>
-    <input id="title" placeholder="Title" />
+    <label for="title">title <span class="muted">(optional)</span></label>
+    <input id="title" placeholder="title" />
 
 
     <label for="url">url <span class="muted">(optional)</span></label>
@@ -245,7 +245,7 @@
 
       const payload = {
         "year": document.getElementById("year").value.trim(),
-        "Title": document.getElementById("title").value.trim(),
+        "title": document.getElementById("title").value.trim(),
         "url": document.getElementById("url").value.trim(),
         "nation": document.getElementById("nation").value.trim(),
         "rating": document.getElementById("rating").value
@@ -281,7 +281,7 @@
 
       if (r.ok && r.record) {
         document.getElementById("year").value = r.record["year"] || "";
-        document.getElementById("title").value = r.record["Title"] || "";
+        document.getElementById("title").value = r.record["title"] || "";
         document.getElementById("url").value = r.record["url"] || "";
         document.getElementById("nation").value = r.record["nation"] || "";
         document.getElementById("rating").value = r.record["rating"] || "";
@@ -299,7 +299,7 @@
 
       const payload = {
         "year": document.getElementById("year").value.trim(),
-        "Title": document.getElementById("title").value.trim(),
+        "title": document.getElementById("title").value.trim(),
         "url": document.getElementById("url").value.trim(),
         "nation": document.getElementById("nation").value.trim(),
         "rating": document.getElementById("rating").value
