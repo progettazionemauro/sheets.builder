@@ -10,7 +10,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 
 def _norm_header(value: Any) -> str:
-    return str(value or "").strip()
+    return str(value or "").strip().lower()
 
 
 def _guess_type_from_sample(value: Any) -> str:
@@ -177,43 +177,50 @@ def _build_field_def(
     name: str,
     sample_value: Any,
     has_formula: bool,
+    formula_source: str | None,
+    formula_anchor_row: int | None,
     enum_values: List[str],
 ) -> Dict[str, Any]:
+    base = {
+        "name": name,
+        "required": False,
+        "visibleInViewer": True,
+        "enumValues": enum_values or [],
+        "locked": False,
+        "formulaSource": None,
+        "formulaAnchorRow": None,
+        "formulaMode": None,
+        "enumStyles": {},
+    }
+
     if name == "id":
         return {
-            "name": "id",
+            **base,
             "type": "int",
-            "required": False,
             "computed": True,
             "visibleInForm": False,
-            "visibleInViewer": True,
-            "enumValues": [],
             "locked": True,
         }
 
     if has_formula:
         return {
-            "name": name,
+            **base,
             "type": "computed",
-            "required": False,
             "computed": True,
             "visibleInForm": False,
-            "visibleInViewer": True,
-            "enumValues": [],
             "locked": True,
+            "formulaSource": formula_source,
+            "formulaAnchorRow": formula_anchor_row,
+            "formulaMode": "incremental_copy",
         }
 
     field_type = "enum" if enum_values else _guess_type_from_sample(sample_value)
 
     return {
-        "name": name,
+        **base,
         "type": field_type,
-        "required": False,
         "computed": False,
         "visibleInForm": True,
-        "visibleInViewer": True,
-        "enumValues": enum_values,
-        "locked": False,
     }
 
 
@@ -287,6 +294,9 @@ def import_schema_from_xlsx(
         sample_cell = ws.cell(row=sample_row, column=col_idx)
         sample_value = sample_cell.value
         has_formula = _is_formula_cell(sample_cell)
+        formula_source = str(sample_cell.value).strip() if has_formula else None
+        formula_anchor_row = sample_row if has_formula else None
+
         enum_values = _extract_enum_from_validation(
             workbook=wb,
             ws=ws,
@@ -299,6 +309,8 @@ def import_schema_from_xlsx(
             name=header,
             sample_value=sample_value,
             has_formula=has_formula,
+            formula_source=formula_source,
+            formula_anchor_row=formula_anchor_row,
             enum_values=enum_values,
         )
 
@@ -310,6 +322,7 @@ def import_schema_from_xlsx(
                 f"FIELD {header}: "
                 f"sample={sample_value!r}, "
                 f"formula={has_formula}, "
+                f"formula_source={formula_source!r}, "
                 f"enum={enum_values}, "
                 f"type={field['type']}"
             )
@@ -341,6 +354,7 @@ def import_schema_from_xlsx(
         "enums": enums,
         "constraints": constraints,
         "fields": fields,
+        "enumStyles": {},
     }
 
 

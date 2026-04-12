@@ -15,7 +15,7 @@ from generators.import_from_sheet import save_schema_from_xlsx
 from generators.merge_schema import merge_schema_with_visuals
 
 
-WORKDIR = ROOT / "workdir"
+OUTPUT_PROJECT_DIR = ROOT / "output_project"
 EXAMPLES_DIR = ROOT / "examples"
 
 
@@ -125,7 +125,7 @@ def main() -> None:
         input_dir = Path(sys.argv[1])
         enum_field_name = sys.argv[2]
 
-    output_json = WORKDIR / "fields.schema.json"
+    output_json = OUTPUT_PROJECT_DIR / "fields.schema.json"
 
     schema = build_schema_from_directory(
         input_dir=input_dir,

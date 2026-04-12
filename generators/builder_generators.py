@@ -21,6 +21,10 @@ class FieldDef:
     visible_in_viewer: bool
     enum_values: List[str]
     locked: bool = False
+    enum_styles: Dict[str, Dict[str, str]] | None = None
+    formula_source: str | None = None
+    formula_anchor_row: int | None = None
+    formula_mode: str | None = None
 
 
 # ============================================================
@@ -30,14 +34,12 @@ class FieldDef:
 def js_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
+
 def js_pretty(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
 
+
 def slugify_for_dom(name: str) -> str:
-    """
-    Crea un id HTML/JS sicuro ma leggibile.
-    Non vogliamo usare direttamente nomi come 'Data Produzione' come id DOM.
-    """
     s = name.strip().lower()
     s = re.sub(r"[^\w\s-]", "", s, flags=re.UNICODE)
     s = re.sub(r"[\s\-]+", "_", s)
@@ -46,6 +48,11 @@ def slugify_for_dom(name: str) -> str:
     if s[0].isdigit():
         s = f"f_{s}"
     return s
+
+
+def escape_html(s: str) -> str:
+    return html.escape(s, quote=True)
+
 
 def field_map_from_schema(fields_schema: Dict[str, Any]) -> List[FieldDef]:
     out: List[FieldDef] = []
@@ -60,42 +67,85 @@ def field_map_from_schema(fields_schema: Dict[str, Any]) -> List[FieldDef]:
                 visible_in_viewer=bool(raw.get("visibleInViewer", False)),
                 enum_values=list(raw.get("enumValues", []) or []),
                 locked=bool(raw.get("locked", False)),
+                enum_styles=dict(raw.get("enumStyles", {}) or {}),
+                formula_source=raw.get("formulaSource"),
+                formula_anchor_row=raw.get("formulaAnchorRow"),
+                formula_mode=raw.get("formulaMode"),
             )
         )
     return out
 
+
 def non_computed_fields(fields: List[FieldDef]) -> List[FieldDef]:
     return [f for f in fields if not f.computed]
+
 
 def form_fields(fields: List[FieldDef]) -> List[FieldDef]:
     return [f for f in fields if f.visible_in_form and not f.computed]
 
+
 def viewer_fields(fields: List[FieldDef]) -> List[FieldDef]:
     return [f for f in fields if f.visible_in_viewer]
+
 
 def required_on_insert(fields: List[FieldDef]) -> List[str]:
     return [f.name for f in fields if f.required and not f.computed]
 
+
 def optional_on_insert(fields: List[FieldDef]) -> List[str]:
     return [f.name for f in fields if not f.required and not f.computed]
+
 
 def computed_fields(fields: List[FieldDef]) -> List[str]:
     return [f.name for f in fields if f.computed]
 
+
 def enum_map(fields: List[FieldDef]) -> Dict[str, List[str]]:
     return {f.name: f.enum_values for f in fields if f.enum_values}
+
+
+def enum_styles_map(fields: List[FieldDef]) -> Dict[str, Dict[str, Dict[str, str]]]:
+    out: Dict[str, Dict[str, Dict[str, str]]] = {}
+    for f in fields:
+        if f.enum_styles:
+            out[f.name] = f.enum_styles
+    return out
+
 
 def constraints_from_schema(fields_schema: Dict[str, Any]) -> Dict[str, Any]:
     return dict(fields_schema.get("constraints", {}))
 
-def first_non_computed_text_field(fields: List[FieldDef]) -> str | None:
-    for f in fields:
-        if not f.computed and f.type in ("string", "date", "enum", "int"):
-            return f.name
-    return None
 
-def escape_html(s: str) -> str:
-    return html.escape(s, quote=True)
+def _normalize_formula_for_gs_template(formula: str, target_row_var: str = "rowNumber") -> str:
+    """
+    Rimpiazza i riferimenti di riga non assoluti con ${rowNumber} o ${row}.
+    Esempi:
+      C2     -> C${rowNumber}
+      $C2    -> $C${rowNumber}
+      C$2    -> C$2
+      $C$2   -> $C$2
+      D2:D99 -> D${rowNumber}:D${rowNumber}   (comportamento base)
+    """
+    if not formula:
+        return ""
+
+    pattern = re.compile(r'(?<![A-Z0-9_])(\$?[A-Z]{1,3})(\$?)(\d+)')
+
+    def repl(match: re.Match[str]) -> str:
+        col = match.group(1)
+        dollar_row = match.group(2)
+        row_num = match.group(3)
+
+        if dollar_row == "$":
+            return f"{col}${row_num}"
+
+        return f"{col}${{{target_row_var}}}"
+
+    return pattern.sub(repl, formula)
+
+
+def _js_template_literal_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("`", "\\`")
 
 
 # ============================================================
@@ -105,30 +155,41 @@ def escape_html(s: str) -> str:
 def _generate_backend_insert_extract(fields: List[FieldDef]) -> str:
     lines = []
     for f in non_computed_fields(fields):
+        var_name = slugify_for_dom(f.name)
         if f.type == "int":
             lines.append(
-                f'  const {slugify_for_dom(f.name)} = clampInt_(p[{js_string(f.name)}], -999999999, 999999999, 0);'
+                f'  const {var_name} = clampInt_(p[{js_string(f.name)}], -999999999, 999999999, 0);'
             )
         else:
             lines.append(
-                f'  const {slugify_for_dom(f.name)} = norm_(p[{js_string(f.name)}]);'
+                f'  const {var_name} = norm_(p[{js_string(f.name)}]);'
             )
     return "\n".join(lines)
+
 
 def _generate_backend_insert_missing(fields: List[FieldDef]) -> str:
     lines = ['  const missing = [];']
     for f in non_computed_fields(fields):
+        if not f.required:
+            continue
+
         var_name = slugify_for_dom(f.name)
-        if f.required:
-            if f.type == "int":
-                lines.append(f'  if (!{var_name} && {var_name} !== 0) missing.push({js_string(f.name)});')
-            else:
-                lines.append(f'  if (!{var_name}) missing.push({js_string(f.name)});')
+        if f.type == "int":
+            lines.append(
+                f'  if (!{var_name} && {var_name} !== 0) missing.push({js_string(f.name)});'
+            )
+        else:
+            lines.append(
+                f'  if (!{var_name}) missing.push({js_string(f.name)});'
+            )
+
     lines.append('  if (missing.length) return { ok: false, error: "Missing required fields", missing };')
     return "\n".join(lines)
 
+
 def _generate_backend_insert_validations(fields: List[FieldDef], constraints: Dict[str, Any]) -> str:
     lines: List[str] = []
+
     for f in non_computed_fields(fields):
         c = constraints.get(f.name, {})
         var_name = slugify_for_dom(f.name)
@@ -140,6 +201,18 @@ def _generate_backend_insert_validations(fields: List[FieldDef], constraints: Di
                     f'  if ({var_name} && {var_name}.length > {int(max_len)}) return {{ ok: false, error: {js_string(f"{f.name} too long (max {max_len})")} }};'
                 )
 
+        if f.type == "int":
+            min_v = c.get("min")
+            max_v = c.get("max")
+            if min_v is not None:
+                lines.append(
+                    f'  if ({var_name} && {var_name} < {int(min_v)}) return {{ ok: false, error: {js_string(f"{f.name} below min {min_v}")} }};'
+                )
+            if max_v is not None:
+                lines.append(
+                    f'  if ({var_name} && {var_name} > {int(max_v)}) return {{ ok: false, error: {js_string(f"{f.name} above max {max_v}")} }};'
+                )
+
         if f.type == "enum" and f.enum_values:
             allowed_name = f"ENUM_{slugify_for_dom(f.name).upper()}"
             lines.append(
@@ -148,6 +221,7 @@ def _generate_backend_insert_validations(fields: List[FieldDef], constraints: Di
 
     return "\n".join(lines)
 
+
 def _generate_backend_enum_constants(fields: List[FieldDef]) -> str:
     lines = []
     for f in fields:
@@ -155,6 +229,7 @@ def _generate_backend_enum_constants(fields: List[FieldDef]) -> str:
             const_name = f"ENUM_{slugify_for_dom(f.name).upper()}"
             lines.append(f"const {const_name} = {js_pretty(f.enum_values)};")
     return "\n".join(lines)
+
 
 def _generate_backend_row_write(fields: List[FieldDef]) -> str:
     row_values = []
@@ -167,10 +242,27 @@ def _generate_backend_row_write(fields: List[FieldDef]) -> str:
             row_values.append(slugify_for_dom(f.name))
     return ",\n    ".join(row_values)
 
-def _generate_backend_record_obj(fields: List[FieldDef]) -> str:
-    return "\n  ".join(
-        [f'HEADERS.forEach((h, i) => rec[h] = values[i]);']
-    )
+
+def _generate_backend_computed_formula_write(fields: List[FieldDef], mode: str) -> str:
+    target_var = "rowNumber" if mode == "insert" else "row"
+    lines: List[str] = []
+
+    for idx, f in enumerate(fields, start=1):
+        if not f.computed or f.name == "id":
+            continue
+
+        if f.formula_source and f.formula_mode == "incremental_copy":
+            normalized = _normalize_formula_for_gs_template(
+                f.formula_source,
+                target_row_var=target_var,
+            )
+            js_formula = _js_template_literal_escape(normalized)
+            lines.append(
+                f'  sh.getRange({target_var}, {idx}).setFormula(`{js_formula}`);'
+            )
+
+    return "\n".join(lines)
+
 
 def generate_gas_backend(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> str:
     fields = field_map_from_schema(fields_schema)
@@ -193,6 +285,11 @@ def generate_gas_backend(project_config: Dict[str, Any], fields_schema: Dict[str
     insert_missing = _generate_backend_insert_missing(fields)
     insert_validations = _generate_backend_insert_validations(fields, constraints)
     row_write = _generate_backend_row_write(fields)
+    insert_formula_write = _generate_backend_computed_formula_write(fields, mode="insert")
+    update_formula_write = _generate_backend_computed_formula_write(fields, mode="update")
+
+    insert_formula_block = f"\n{insert_formula_write}\n" if insert_formula_write else "\n"
+    update_formula_block = f"\n{update_formula_write}\n" if update_formula_write else "\n"
 
     return f'''/***************
  * AUTO-GENERATED BY SHEETS BUILDER
@@ -238,7 +335,6 @@ function doGet(e) {{
     const mode = String(p.mode || "meta").trim();
     const debug = String(p.debug || "") === "1";
 
-    // PUBLIC
     if (mode === "meta")   return jsonp_(cb, meta_());
     if (mode === "schema") return jsonp_(cb, schema_());
     if (mode === "view") {{
@@ -246,7 +342,6 @@ function doGet(e) {{
       return jsonp_(cb, view_(limit));
     }}
 
-    // PROTECTED
     const apiKey = String(p.apiKey || "");
     if (apiKey !== API_KEY) {{
       const out = {{ ok: false, error: "Invalid apiKey" }};
@@ -352,8 +447,7 @@ function insert_(p, debug) {{
   const rowNumber = sh.getLastRow() + 1;
 
   sh.getRange(rowNumber, 1, 1, HEADERS.length).setValues([[{row_write}]]);
-
-  const out = {{ ok: true, id, insertedRow: rowNumber }};
+{insert_formula_block}  const out = {{ ok: true, id, insertedRow: rowNumber }};
   if (debug) out.debug = {{ keys: Object.keys(p).sort() }};
   return out;
 }}
@@ -392,8 +486,7 @@ function update_(id, p, debug) {{
 {insert_validations}
 
   sh.getRange(row, 1, 1, HEADERS.length).setValues([[{row_write}]]);
-
-  const out = {{ ok: true, id, updatedRow: row }};
+{update_formula_block}  const out = {{ ok: true, id, updatedRow: row }};
   if (debug) out.debug = {{ keys: Object.keys(p).sort() }};
   return out;
 }}
@@ -519,11 +612,13 @@ def _html_input_for_field(field: FieldDef, constraints: Dict[str, Any]) -> str:
     <label for="{dom_id}">{label} <span class="muted">({required_label})</span></label>
     <input id="{dom_id}" placeholder="{escape_html(placeholder)}" />'''.rstrip()
 
+
 def _generate_form_html(fields: List[FieldDef], constraints: Dict[str, Any]) -> str:
     parts = []
     for f in form_fields(fields):
         parts.append(_html_input_for_field(f, constraints))
     return "\n\n".join(parts)
+
 
 def _generate_payload_js(fields: List[FieldDef]) -> str:
     lines = []
@@ -535,19 +630,16 @@ def _generate_payload_js(fields: List[FieldDef]) -> str:
             lines.append(f'        {js_string(f.name)}: document.getElementById({js_string(dom_id)}).value.trim()')
     return "{\n" + ",\n".join(lines) + "\n      }"
 
+
 def _generate_getbyid_fill_js(fields: List[FieldDef]) -> str:
     lines = []
     for f in form_fields(fields):
         dom_id = slugify_for_dom(f.name)
-        if f.type == "enum":
-            lines.append(
-                f'        document.getElementById({js_string(dom_id)}).value = r.record[{js_string(f.name)}] || "";'
-            )
-        else:
-            lines.append(
-                f'        document.getElementById({js_string(dom_id)}).value = r.record[{js_string(f.name)}] || "";'
-            )
+        lines.append(
+            f'        document.getElementById({js_string(dom_id)}).value = r.record[{js_string(f.name)}] || "";'
+        )
     return "\n".join(lines)
+
 
 def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> str:
     fields = field_map_from_schema(fields_schema)
@@ -555,7 +647,6 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 
     project_name = project_config["projectName"]
     entity_name = project_config["entityName"]
-    backend_name = project_config["backendName"]
     sheet_name = project_config["sheetName"]
 
     form_html = _generate_form_html(fields, constraints)
@@ -911,13 +1002,20 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 def _generate_viewer_visible_columns_js(fields: List[FieldDef]) -> str:
     return js_pretty([f.name for f in viewer_fields(fields)])
 
+
 def _generate_viewer_enum_map_js(fields: List[FieldDef]) -> str:
     return js_pretty(enum_map(fields))
+
+
+def _generate_viewer_enum_styles_js(fields: List[FieldDef]) -> str:
+    return js_pretty(enum_styles_map(fields))
+
 
 def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> str:
     fields = field_map_from_schema(fields_schema)
     visible_cols_js = _generate_viewer_visible_columns_js(fields)
     enum_map_js = _generate_viewer_enum_map_js(fields)
+    enum_styles_js = _generate_viewer_enum_styles_js(fields)
 
     entity_name = project_config["entityName"]
     sheet_name = project_config["sheetName"]
@@ -1000,6 +1098,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
   const VISIBLE_HEADERS = {visible_cols_js};
   const ENUMS = {enum_map_js};
+  const ENUM_STYLES = {enum_styles_js};
 
   function jsonp(url) {{
     return new Promise((resolve, reject) => {{
@@ -1080,7 +1179,20 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       html += `<tr class="${{trClass}}">`;
 
       for (const i of visibleIndexes) {{
-        html += `<td>${{esc(r[i])}}</td>`;
+        const header = LAST_HEADERS[i];
+        const cellVal = r[i];
+
+        let style = "";
+        const stylesForField = ENUM_STYLES[header] || {{}};
+        const styleDef = stylesForField[String(cellVal ?? "").trim()] || null;
+
+        if (styleDef) {{
+          const bg = styleDef.bg ? `background:${{styleDef.bg}};` : "";
+          const fg = styleDef.fg ? `color:${{styleDef.fg}};` : "";
+          style = `${{bg}}${{fg}}font-weight:700;text-align:center;`;
+        }}
+
+        html += `<td style="${{style}}">${{esc(cellVal)}}</td>`;
       }}
 
       html += "</tr>";

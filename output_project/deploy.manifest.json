@@ -1,0 +1,44 @@
+{
+  "projectSlug": "prova-film",
+  "projectName": "Prova_film",
+  "frontend": {
+    "provider": "github-pages",
+    "repoNameSuggested": "prova-film",
+    "branch": "main",
+    "publishDir": "docs",
+    "entryFile": "docs/index.html",
+    "viewerFile": "docs/viewer.html"
+  },
+  "backend": {
+    "provider": "google-apps-script",
+    "entryFile": "codice.gs",
+    "sheetName": "ProvaFilmData",
+    "backendName": "prova-film-backend"
+  },
+  "files": [
+    "codice.gs",
+    "docs/index.html",
+    "docs/viewer.html",
+    "project.config.json",
+    "fields.schema.json",
+    "deploy.manifest.json"
+  ],
+  "schemaSummary": {
+    "headers": [
+      "id",
+      "Titolo",
+      "Data Produzione"
+    ],
+    "computed": [
+      "id"
+    ],
+    "visibleInForm": [
+      "Data Produzione"
+    ],
+    "visibleInViewer": [
+      "id",
+      "Titolo",
+      "Data Produzione"
+    ]
+  }
+}

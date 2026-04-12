@@ -45,7 +45,20 @@ def merge_schema_with_visuals(
             if field_name in merged.get("constraints", {}):
                 merged["constraints"][field_name]["type"] = "enum"
 
-        if field_name in html_styles:
-            merged["enumStyles"][field_name] = html_styles[field_name]
+        styles_for_field = html_styles.get(field_name, {})
+        if styles_for_field:
+            merged["enumStyles"][field_name] = styles_for_field
+
+        for f in merged.get("fields", []):
+            if f.get("name") == field_name:
+                f.setdefault("enumStyles", {})
+                if styles_for_field:
+                    f["enumStyles"] = styles_for_field
+
+    for f in merged.get("fields", []):
+        f.setdefault("enumStyles", {})
+        f.setdefault("formulaSource", None)
+        f.setdefault("formulaAnchorRow", None)
+        f.setdefault("formulaMode", None)
 
     return merged

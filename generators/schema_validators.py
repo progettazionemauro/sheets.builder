@@ -14,6 +14,7 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
     optional_on_insert = fields_schema.get("optionalOnInsert", [])
     computed = fields_schema.get("computed", [])
     constraints = fields_schema.get("constraints", {})
+    enum_styles_top = fields_schema.get("enumStyles", {})
 
     if not isinstance(headers, list) or not headers:
         errors.append("Missing or invalid 'headers'.")
@@ -41,6 +42,9 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
     if not isinstance(constraints, dict):
         errors.append("'constraints' must be an object/dict.")
 
+    if not isinstance(enum_styles_top, dict):
+        errors.append("'enumStyles' must be an object/dict.")
+
     if "id" not in headers:
         errors.append("Missing mandatory header: 'id'.")
 
@@ -53,7 +57,7 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
             errors.append(f"Duplicate header: '{h}'.")
         seen_headers.add(h)
 
-    field_names = []
+    field_names: List[str] = []
     field_by_name: Dict[str, Dict[str, Any]] = {}
 
     for i, f in enumerate(fields):
@@ -96,6 +100,43 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
                     f"Field '{name}' is not enum but has non-empty enumValues."
                 )
 
+        enum_styles = f.get("enumStyles", {})
+        if enum_styles is not None and not isinstance(enum_styles, dict):
+            errors.append(f"Field '{name}' has invalid 'enumStyles' (must be dict or null).")
+        elif isinstance(enum_styles, dict):
+            for enum_key, style_def in enum_styles.items():
+                if not isinstance(enum_key, str):
+                    errors.append(f"Field '{name}' has non-string enumStyles key.")
+                    continue
+                if not isinstance(style_def, dict):
+                    errors.append(f"Field '{name}' enumStyles['{enum_key}'] must be a dict.")
+                    continue
+
+                bg = style_def.get("bg")
+                fg = style_def.get("fg")
+
+                if bg is not None and not isinstance(bg, str):
+                    errors.append(f"Field '{name}' enumStyles['{enum_key}'].bg must be string.")
+                if fg is not None and not isinstance(fg, str):
+                    errors.append(f"Field '{name}' enumStyles['{enum_key}'].fg must be string.")
+
+        formula_source = f.get("formulaSource")
+        formula_anchor_row = f.get("formulaAnchorRow")
+        formula_mode = f.get("formulaMode")
+
+        if formula_source is not None and not isinstance(formula_source, str):
+            errors.append(f"Field '{name}' has invalid 'formulaSource' (must be string or null).")
+
+        if formula_anchor_row is not None and not isinstance(formula_anchor_row, int):
+            errors.append(f"Field '{name}' has invalid 'formulaAnchorRow' (must be int or null).")
+
+        if formula_mode is not None and not isinstance(formula_mode, str):
+            errors.append(f"Field '{name}' has invalid 'formulaMode' (must be string or null).")
+
+        if field_type == "computed" and formula_source is not None:
+            if not formula_source.startswith("="):
+                errors.append(f"Field '{name}' formulaSource must start with '='.")
+
     for h in headers:
         if h not in field_by_name:
             errors.append(f"Header '{h}' has no matching field definition.")
@@ -119,9 +160,9 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
         if id_field.get("locked") is not True:
             errors.append("Field 'id' must have locked=true.")
 
-    non_computed_non_id = []
-    visible_form_fields = []
-    visible_viewer_fields = []
+    non_computed_non_id: List[str] = []
+    visible_form_fields: List[str] = []
+    visible_viewer_fields: List[str] = []
 
     for name, f in field_by_name.items():
         is_computed = bool(f.get("computed", False))
@@ -129,6 +170,11 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
         is_visible_form = bool(f.get("visibleInForm", False))
         is_visible_viewer = bool(f.get("visibleInViewer", False))
         field_type = f.get("type")
+
+        formula_source = f.get("formulaSource")
+        formula_anchor_row = f.get("formulaAnchorRow")
+        formula_mode = f.get("formulaMode")
+        enum_styles = f.get("enumStyles", {})
 
         if is_visible_form:
             visible_form_fields.append(name)
@@ -162,6 +208,78 @@ def validate_schema_for_product(fields_schema: Dict[str, Any]) -> List[str]:
         ):
             errors.append(
                 f"Field '{name}' is a normal editable field but visibleInForm=false."
+            )
+
+        if formula_source is not None and not isinstance(formula_source, str):
+            errors.append(
+                f"Field '{name}' has invalid formulaSource (must be string or null)."
+            )
+
+        if formula_anchor_row is not None and not isinstance(formula_anchor_row, int):
+            errors.append(
+                f"Field '{name}' has invalid formulaAnchorRow (must be int or null)."
+            )
+
+        if formula_mode is not None and not isinstance(formula_mode, str):
+            errors.append(
+                f"Field '{name}' has invalid formulaMode (must be string or null)."
+            )
+
+        if is_computed and formula_source:
+            if not formula_source.startswith("="):
+                errors.append(
+                    f"Computed field '{name}' has formulaSource that does not start with '='."
+                )
+
+            if not formula_mode:
+                errors.append(
+                    f"Computed field '{name}' has formulaSource but missing formulaMode."
+                )
+
+        if not is_computed and formula_source:
+            errors.append(
+                f"Non-computed field '{name}' cannot have formulaSource."
+            )
+
+        if formula_mode is not None and formula_mode not in {"incremental_copy"}:
+            errors.append(
+                f"Field '{name}' has unsupported formulaMode '{formula_mode}'."
+            )
+
+        if enum_styles is not None and not isinstance(enum_styles, dict):
+            errors.append(
+                f"Field '{name}' has invalid enumStyles (must be dict or null)."
+            )
+        elif isinstance(enum_styles, dict):
+            for enum_key, style_def in enum_styles.items():
+                if not isinstance(enum_key, str):
+                    errors.append(
+                        f"Field '{name}' has non-string enumStyles key."
+                    )
+                    continue
+
+                if not isinstance(style_def, dict):
+                    errors.append(
+                        f"Field '{name}' enumStyles['{enum_key}'] must be a dict."
+                    )
+                    continue
+
+                bg = style_def.get("bg")
+                fg = style_def.get("fg")
+
+                if bg is not None and not isinstance(bg, str):
+                    errors.append(
+                        f"Field '{name}' enumStyles['{enum_key}'].bg must be string."
+                    )
+
+                if fg is not None and not isinstance(fg, str):
+                    errors.append(
+                        f"Field '{name}' enumStyles['{enum_key}'].fg must be string."
+                    )
+
+        if field_type != "enum" and enum_styles:
+            errors.append(
+                f"Field '{name}' is not enum but has non-empty enumStyles."
             )
 
     if not visible_viewer_fields:
