@@ -151,8 +151,13 @@
     <textarea id="rawJsonInput" rows="10" placeholder='Incolla qui builder_state.json se preferisci'></textarea>
   </div>
 
-  <div class="card">
+    <div class="card">
     <h2>2. Project</h2>
+        <p class="muted">
+      In questa v0 puoi modificare <b>label</b>, <b>required</b>, visibilità nel form e nel viewer.
+      Il <b>type</b> resta visibile ma non modificabile, perché deriva dalla struttura del foglio sorgente.
+      I campi marcati come <b>system field</b> sono campi strutturali o auto-gestiti.
+    </p>
 
     <div class="grid">
       <div>
@@ -170,7 +175,7 @@
       </div>
 
       <div>
-        <label for="entityLabelLower">Entity label lower</label>
+        <label for="entityLabelLower">Entity label (lowercase)</label>
         <input id="entityLabelLower" />
 
         <label for="sheetName">Sheet name</label>
@@ -179,7 +184,7 @@
         <label for="buildMarker">Build marker</label>
         <input id="buildMarker" />
 
-        <label for="adminPassword">Admin password</label>
+        <label for="adminPassword">Backend write key</label>
         <input id="adminPassword" />
       </div>
     </div>
@@ -191,7 +196,7 @@
       In questa v0 puoi modificare label, required, visibilità nel form e nel viewer.
     </p>
 
-    <table id="fieldsTable">
+        <table id="fieldsTable">
       <thead>
         <tr>
           <th>name</th>
@@ -200,7 +205,7 @@
           <th>required</th>
           <th>visibleInForm</th>
           <th>visibleInViewer</th>
-          <th>locked</th>
+          <th>system field</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -356,15 +361,15 @@
     builderState.fields.forEach((field, idx) => {
       const tr = document.createElement("tr");
 
-      tr.innerHTML = `
+            tr.innerHTML = `
         <td class="${field.locked ? "readonly-cell" : ""}">
           <input data-key="name" data-index="${idx}" value="${escapeHtml(field.name)}" ${field.locked ? "readonly" : ""} />
         </td>
         <td>
           <input data-key="label" data-index="${idx}" value="${escapeHtml(field.label || "")}" />
         </td>
-        <td class="${field.locked ? "readonly-cell" : ""}">
-          <input data-key="type" data-index="${idx}" value="${escapeHtml(field.type)}" ${field.locked ? "readonly" : ""} />
+        <td class="readonly-cell">
+          <input data-key="type" data-index="${idx}" value="${escapeHtml(field.type)}" readonly />
         </td>
         <td>
           <select data-key="required" data-index="${idx}" ${field.computed ? "disabled" : ""}>
@@ -387,17 +392,18 @@
         <td class="readonly-cell">${field.locked ? "YES" : "NO"}</td>
       `;
 
-      tbody.appendChild(tr);
-    });
-
     bindFieldEvents();
   }
 
-  function bindFieldEvents() {
+    function bindFieldEvents() {
     document.querySelectorAll("[data-key]").forEach(el => {
       const key = el.dataset.key;
       const idx = Number(el.dataset.index);
       const field = builderState.fields[idx];
+
+      if (key === "type") {
+        return;
+      }
 
       if (el.tagName === "INPUT") {
         el.addEventListener("input", () => {
