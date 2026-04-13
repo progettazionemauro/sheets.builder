@@ -133,8 +133,10 @@
 
   <h1>Sheet Builder Editor <span class="muted">— builder_state v0</span></h1>
   <p class="muted">
-    Carica un file <code>builder_state.json</code>, modifica i metadati principali dei campi e scarica una versione aggiornata.
-  </p>
+  In questa v0 puoi modificare <b>label</b>, <b>required</b>, visibilità nel form e nel viewer.
+  Il <b>type</b> resta visibile ma non modificabile, perché deriva dalla struttura del foglio sorgente.
+  I campi marcati come <b>system field</b> sono campi strutturali o auto-gestiti.
+</p>
 
   <div class="card">
     <h2>1. Load builder state</h2>
@@ -154,10 +156,9 @@
     <div class="card">
     <h2>2. Project</h2>
         <p class="muted">
-      In questa v0 puoi modificare <b>label</b>, <b>required</b>, visibilità nel form e nel viewer.
-      Il <b>type</b> resta visibile ma non modificabile, perché deriva dalla struttura del foglio sorgente.
-      I campi marcati come <b>system field</b> sono campi strutturali o auto-gestiti.
-    </p>
+  Qui modifichi i metadati principali del progetto generato. Il campo <b>Backend write key</b>
+  è la chiave usata dal backend Apps Script per autorizzare insert, update e delete.
+</p>
 
     <div class="grid">
       <div>
@@ -193,8 +194,10 @@
   <div class="card">
     <h2>3. Fields editor</h2>
     <p class="muted">
-      In questa v0 puoi modificare label, required, visibilità nel form e nel viewer.
-    </p>
+  In questa v0 puoi modificare <b>label</b>, <b>required</b>, visibilità nel form e nel viewer.
+  Il <b>type</b> resta visibile ma non modificabile, perché deriva dalla struttura del foglio sorgente.
+  I campi marcati come <b>system field</b> sono campi strutturali o auto-gestiti.
+</p>
 
         <table id="fieldsTable">
       <thead>
@@ -354,6 +357,7 @@
     document.getElementById("adminPassword").value = p.adminPassword || "";
   }
 
+  <script>
   function renderFieldsTable() {
     const tbody = document.querySelector("#fieldsTable tbody");
     tbody.innerHTML = "";
@@ -361,7 +365,7 @@
     builderState.fields.forEach((field, idx) => {
       const tr = document.createElement("tr");
 
-            tr.innerHTML = `
+      tr.innerHTML = `
         <td class="${field.locked ? "readonly-cell" : ""}">
           <input data-key="name" data-index="${idx}" value="${escapeHtml(field.name)}" ${field.locked ? "readonly" : ""} />
         </td>
@@ -392,8 +396,12 @@
         <td class="readonly-cell">${field.locked ? "YES" : "NO"}</td>
       `;
 
+      tbody.appendChild(tr);
+    });
+
     bindFieldEvents();
   }
+</script>
 
     function bindFieldEvents() {
     document.querySelectorAll("[data-key]").forEach(el => {
