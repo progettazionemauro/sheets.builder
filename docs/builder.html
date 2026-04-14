@@ -540,6 +540,10 @@
     bindEnumStyleEvents();
   }
 
+  function renderEnumStyles() {
+  renderEnumStylesEditor();
+}
+
   function bindFieldEvents() {
     document.querySelectorAll("[data-key]").forEach(el => {
       const key = el.dataset.key;
@@ -653,10 +657,12 @@ function syncEnumInputs(field, value) {
       JSON.stringify(builderState, null, 2);
   }
 
-  function renderAll() {
+
+
+function renderAll() {
   renderProject();
   renderFieldsTable();
-  renderEnumStyles();
+  renderEnumStylesEditor();
   renderPreviewOnly();
 }
 
