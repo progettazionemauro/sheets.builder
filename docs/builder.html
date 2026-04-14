@@ -693,90 +693,7 @@
   });
 
   bindProjectEvents();
-</script>
-
-  function renderFieldsTable() {
-    const tbody = document.querySelector("#fieldsTable tbody");
-    tbody.innerHTML = "";
-
-    builderState.fields.forEach((field, idx) => {
-      const tr = document.createElement("tr");
-
-      tr.innerHTML = `
-        <td class="${field.locked ? "readonly-cell" : ""}">
-          <input data-key="name" data-index="${idx}" value="${escapeHtml(field.name)}" ${field.locked ? "readonly" : ""} />
-        </td>
-        <td>
-          <input data-key="label" data-index="${idx}" value="${escapeHtml(field.label || "")}" />
-        </td>
-        <td class="readonly-cell">
-          <input data-key="type" data-index="${idx}" value="${escapeHtml(field.type)}" readonly />
-        </td>
-        <td>
-          <select data-key="required" data-index="${idx}" ${field.computed ? "disabled" : ""}>
-            <option value="false" ${field.required ? "" : "selected"}>NO</option>
-            <option value="true" ${field.required ? "selected" : ""}>YES</option>
-          </select>
-        </td>
-        <td>
-          <select data-key="visibleInForm" data-index="${idx}" ${field.computed ? "disabled" : ""}>
-            <option value="false" ${field.visibleInForm ? "" : "selected"}>NO</option>
-            <option value="true" ${field.visibleInForm ? "selected" : ""}>YES</option>
-          </select>
-        </td>
-        <td>
-          <select data-key="visibleInViewer" data-index="${idx}">
-            <option value="false" ${field.visibleInViewer ? "" : "selected"}>NO</option>
-            <option value="true" ${field.visibleInViewer ? "selected" : ""}>YES</option>
-          </select>
-        </td>
-        <td class="readonly-cell">${field.locked ? "YES" : "NO"}</td>
-      `;
-
-      tbody.appendChild(tr);
-    });
-
-    bindFieldEvents();
-  }
-</script>
-
-    function bindFieldEvents() {
-    document.querySelectorAll("[data-key]").forEach(el => {
-      const key = el.dataset.key;
-      const idx = Number(el.dataset.index);
-      const field = builderState.fields[idx];
-
-      if (key === "type") {
-        return;
-      }
-
-      if (el.tagName === "INPUT") {
-        el.addEventListener("input", () => {
-          field[key] = el.value;
-          recomputeListsFromFields(builderState);
-          renderPreviewOnly();
-        });
-        return;
-      }
-
-      if (el.tagName === "SELECT") {
-        el.addEventListener("change", () => {
-          field[key] = el.value === "true";
-
-          if (key === "required" && field.computed) {
-            field.required = false;
-          }
-
-          if (key === "visibleInForm" && field.computed) {
-            field.visibleInForm = false;
-          }
-
-          recomputeListsFromFields(builderState);
-          renderPreviewOnly();
-        });
-      }
-    });
-  }
+ 
 
   function bindProjectEvents() {
     const mapping = [
@@ -810,13 +727,7 @@
     renderPreviewOnly();
   }
 
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
+
 
   async function loadFromFile(file) {
     const text = await file.text();
