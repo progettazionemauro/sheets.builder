@@ -471,74 +471,106 @@
   }
 
   function renderEnumStylesEditor() {
-    const wrap = document.getElementById("enumStylesWrap");
-    if (!wrap) return;
+  const wrap = document.getElementById("enumStylesWrap");
+  if (!wrap) return;
 
-    wrap.innerHTML = "";
-    ensureEnumStylesShape();
+  wrap.innerHTML = "";
+  ensureEnumStylesShape();
 
-    const enumFields = builderState.fields.filter(field => field.type === "enum");
+  const enumFields = builderState.fields.filter(field => field.type === "enum");
 
-    if (!enumFields.length) {
-      wrap.innerHTML = `<div class="muted">Nessun campo enum presente nel builder state.</div>`;
-      return;
-    }
+  if (!enumFields.length) {
+    wrap.innerHTML = `<div class="muted">Nessun campo enum presente nel builder state.</div>`;
+    return;
+  }
 
-    enumFields.forEach(field => {
-      const box = document.createElement("div");
-      box.className = "card";
-      box.style.margin = "12px 0";
-      box.style.padding = "12px";
+  enumFields.forEach(field => {
+    const box = document.createElement("div");
+    box.className = "card";
+    box.style.margin = "12px 0";
+    box.style.padding = "12px";
 
-      let html = `<h3 style="margin:0 0 10px;">${escapeHtml(field.label || field.name)} <span class="muted">(${escapeHtml(field.name)})</span></h3>`;
-      html += `<table><thead><tr><th>value</th><th>background</th><th>foreground</th><th>preview</th></tr></thead><tbody>`;
+    let html = `<h3 style="margin:0 0 10px;">${escapeHtml(field.label || field.name)} <span class="muted">(${escapeHtml(field.name)})</span></h3>`;
+    html += `<table><thead><tr><th>value</th><th>background</th><th>foreground</th><th>preview</th></tr></thead><tbody>`;
 
-      (field.enumValues || []).forEach(value => {
-        const styleObj = builderState.enumStyles[field.name][value] || { bg: "", fg: "" };
-        const previewStyle = [
-          styleObj.bg ? `background:${styleObj.bg}` : "",
-          styleObj.fg ? `color:${styleObj.fg}` : "",
-          "font-weight:700",
-          "text-align:center"
-        ].filter(Boolean).join("; ");
+    (field.enumValues || []).forEach(value => {
+      const styleObj = builderState.enumStyles[field.name][value] || { bg: "", fg: "" };
+      const bg = styleObj.bg || "#ffffff";
+      const fg = styleObj.fg || "#000000";
 
-        html += `
-          <tr>
-            <td class="readonly-cell">${escapeHtml(value)}</td>
-            <td>
+      const previewStyle = [
+        bg ? `background:${bg}` : "",
+        fg ? `color:${fg}` : "",
+        "font-weight:700",
+        "text-align:center"
+      ].filter(Boolean).join("; ");
+
+      html += `
+        <tr>
+          <td class="readonly-cell">${escapeHtml(value)}</td>
+
+          <td>
+            <div style="display:flex; gap:8px; align-items:center;">
               <input
                 data-enum-field="${escapeHtml(field.name)}"
                 data-enum-value="${escapeHtml(value)}"
                 data-enum-prop="bg"
-                value="${escapeHtml(styleObj.bg || "")}"
+                data-enum-role="text"
+                value="${escapeHtml(bg)}"
                 placeholder="#ffffff"
+                style="width:140px;"
               />
-            </td>
-            <td>
+              <input
+                type="color"
+                data-enum-field="${escapeHtml(field.name)}"
+                data-enum-value="${escapeHtml(value)}"
+                data-enum-prop="bg"
+                data-enum-role="picker"
+                value="${escapeHtml(bg)}"
+                style="width:56px; padding:4px;"
+              />
+            </div>
+          </td>
+
+          <td>
+            <div style="display:flex; gap:8px; align-items:center;">
               <input
                 data-enum-field="${escapeHtml(field.name)}"
                 data-enum-value="${escapeHtml(value)}"
                 data-enum-prop="fg"
-                value="${escapeHtml(styleObj.fg || "")}"
+                data-enum-role="text"
+                value="${escapeHtml(fg)}"
                 placeholder="#000000"
+                style="width:140px;"
               />
-            </td>
-            <td>
-              <div style="padding:8px; border-radius:8px; border:1px solid #ddd; ${previewStyle}">
-                ${escapeHtml(value)}
-              </div>
-            </td>
-          </tr>
-        `;
-      });
+              <input
+                type="color"
+                data-enum-field="${escapeHtml(field.name)}"
+                data-enum-value="${escapeHtml(value)}"
+                data-enum-prop="fg"
+                data-enum-role="picker"
+                value="${escapeHtml(fg)}"
+                style="width:56px; padding:4px;"
+              />
+            </div>
+          </td>
 
-      html += `</tbody></table>`;
-      box.innerHTML = html;
-      wrap.appendChild(box);
+          <td>
+            <div style="padding:8px; border-radius:8px; border:1px solid #ddd; ${previewStyle}">
+              ${escapeHtml(value)}
+            </div>
+          </td>
+        </tr>
+      `;
     });
 
-    bindEnumStyleEvents();
-  }
+    html += `</tbody></table>`;
+    box.innerHTML = html;
+    wrap.appendChild(box);
+  });
+
+  bindEnumStyleEvents();
+}
 
   function renderEnumStyles() {
   renderEnumStylesEditor();
