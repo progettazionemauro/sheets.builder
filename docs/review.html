@@ -131,6 +131,10 @@
       margin-left: 6px;
     }
 
+    .card h2 {
+      margin-top: 0;
+    }
+
     .hero-note {
       line-height: 1.5;
     }
@@ -139,9 +143,9 @@
 <body>
 
   <h1>Review Your Generated App <span class="badge">customer flow</span></h1>
-  <p class="muted hero-note">
-    In questa pagina puoi controllare i campi rilevati, i nomi visualizzati e i colori dei valori speciali
-    prima della generazione finale della tua interfaccia CRUD.
+    <p class="muted hero-note">
+    In questa pagina puoi controllare la struttura rilevata dal sistema prima della generazione finale
+    della tua interfaccia CRUD. Puoi verificare campi, nomi visualizzati e colori dei valori speciali.
   </p>
 
   <div class="card">
@@ -163,19 +167,16 @@
     <textarea id="rawJsonInput" rows="10" placeholder="Incolla qui il file di revisione se preferisci"></textarea>
   </div>
 
-  <div class="card">
+      <div class="card">
     <h2>2. App summary</h2>
     <p class="muted">
-      Qui puoi controllare i metadati principali dell’app generata.
+      Qui puoi controllare le informazioni principali dell’app che verrà generata.
     </p>
 
     <div class="grid">
       <div>
         <label for="projectName">App name</label>
         <input id="projectName" />
-
-        <label for="projectSlug">App slug</label>
-        <input id="projectSlug" />
 
         <label for="entityName">Main entity name</label>
         <input id="entityName" />
@@ -188,12 +189,28 @@
         <label for="sheetName">Source sheet name</label>
         <input id="sheetName" />
 
+        <label for="projectSlug">App slug</label>
+        <input id="projectSlug" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2b. Advanced settings</h2>
+    <p class="muted">
+      Queste impostazioni sono tecniche e di solito non richiedono modifiche per un utilizzo standard.
+    </p>
+
+    <div class="grid">
+      <div>
         <label for="backendName">Backend name</label>
         <input id="backendName" />
 
         <label for="buildMarker">Build marker</label>
         <input id="buildMarker" />
+      </div>
 
+      <div>
         <label for="adminPassword">Backend write key</label>
         <input id="adminPassword" />
       </div>
@@ -237,14 +254,15 @@
     <pre id="stateOut"></pre>
   </div>
 
-  <div class="card">
-    <h2>6. Export reviewed file</h2>
+    <div class="card">
+    <h2>6. Confirm and export</h2>
     <p class="muted">
-      Scarica il file aggiornato. Questo file potrà poi essere riutilizzato per rigenerare l’app finale.
+      Quando la revisione è corretta, scarica il file aggiornato. Questo passaggio consente di rigenerare
+      l’app finale con le modifiche confermate.
     </p>
 
     <div class="actions">
-      <button id="downloadBtn" type="button">Download reviewed file</button>
+      <button id="downloadBtn" type="button">Download reviewed configuration</button>
       <span id="downloadStatus" class="muted"></span>
     </div>
   </div>
@@ -680,7 +698,7 @@
     const parsed = JSON.parse(text);
     builderState = ensureBuilderStateShape(parsed);
     renderAll();
-    setStatus("loadStatus", "Review file loaded successfully", "ok");
+    setStatus("loadStatus", "Configuration loaded successfully", "ok");
   }
 
   document.getElementById("fileInput").addEventListener("change", async (e) => {
@@ -703,7 +721,7 @@
       const parsed = JSON.parse(raw);
       builderState = ensureBuilderStateShape(parsed);
       renderAll();
-      setStatus("loadStatus", "Review file loaded from pasted content", "ok");
+      setStatus("loadStatus", "Configuration loaded from pasted content", "ok");
     } catch (err) {
       setStatus("loadStatus", "Errore: " + err.message, "err");
       console.error(err);
@@ -721,13 +739,13 @@
 
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "reviewed_app_state.json";
+      a.download = "reviewed_configuration.json";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      setStatus("downloadStatus", "Reviewed file generated successfully", "ok");
+    setStatus("downloadStatus", "Reviewed configuration generated successfully", "ok");
     } catch (err) {
       setStatus("downloadStatus", "Errore: " + err.message, "err");
       console.error(err);
