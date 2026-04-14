@@ -368,7 +368,7 @@
         enums[field.name] = field.enumValues.slice();
       }
 
-            if (field.type === "enum") {
+      if (field.type === "enum") {
         if (!enumStyles[field.name]) {
           enumStyles[field.name] = {};
         }
@@ -377,6 +377,7 @@
     }
 
     state.enums = enums;
+    state.enumStyles = enumStyles;
     state.lists = {
       headers,
       requiredOnInsert,
@@ -443,7 +444,7 @@
     bindFieldEvents();
   }
 
-    function ensureEnumStylesShape() {
+  function ensureEnumStylesShape() {
     if (!builderState.enumStyles || typeof builderState.enumStyles !== "object") {
       builderState.enumStyles = {};
     }
@@ -471,8 +472,9 @@
 
   function renderEnumStylesEditor() {
     const wrap = document.getElementById("enumStylesWrap");
-    wrap.innerHTML = "";
+    if (!wrap) return;
 
+    wrap.innerHTML = "";
     ensureEnumStylesShape();
 
     const enumFields = builderState.fields.filter(field => field.type === "enum");
@@ -491,7 +493,7 @@
       let html = `<h3 style="margin:0 0 10px;">${escapeHtml(field.label || field.name)} <span class="muted">(${escapeHtml(field.name)})</span></h3>`;
       html += `<table><thead><tr><th>value</th><th>background</th><th>foreground</th><th>preview</th></tr></thead><tbody>`;
 
-      (field.enumValues || []).forEach((value, idx) => {
+      (field.enumValues || []).forEach(value => {
         const styleObj = builderState.enumStyles[field.name][value] || { bg: "", fg: "" };
         const previewStyle = [
           styleObj.bg ? `background:${styleObj.bg}` : "",
@@ -538,29 +540,6 @@
     bindEnumStyleEvents();
   }
 
-  function bindEnumStyleEvents() {
-    document.querySelectorAll("[data-enum-field]").forEach(el => {
-      el.addEventListener("input", () => {
-        const fieldName = el.dataset.enumField;
-        const valueName = el.dataset.enumValue;
-        const prop = el.dataset.enumProp;
-
-        if (!builderState.enumStyles[fieldName]) {
-          builderState.enumStyles[fieldName] = {};
-        }
-
-        if (!builderState.enumStyles[fieldName][valueName]) {
-          builderState.enumStyles[fieldName][valueName] = { bg: "", fg: "" };
-        }
-
-        builderState.enumStyles[fieldName][valueName][prop] = el.value.trim();
-
-        renderPreviewOnly();
-        renderEnumStylesEditor();
-      });
-    });
-  }
-
   function bindFieldEvents() {
     document.querySelectorAll("[data-key]").forEach(el => {
       const key = el.dataset.key;
@@ -599,6 +578,29 @@
     });
   }
 
+  function bindEnumStyleEvents() {
+    document.querySelectorAll("[data-enum-field]").forEach(el => {
+      el.addEventListener("input", () => {
+        const fieldName = el.dataset.enumField;
+        const valueName = el.dataset.enumValue;
+        const prop = el.dataset.enumProp;
+
+        if (!builderState.enumStyles[fieldName]) {
+          builderState.enumStyles[fieldName] = {};
+        }
+
+        if (!builderState.enumStyles[fieldName][valueName]) {
+          builderState.enumStyles[fieldName][valueName] = { bg: "", fg: "" };
+        }
+
+        builderState.enumStyles[fieldName][valueName][prop] = el.value.trim();
+
+        renderPreviewOnly();
+        renderEnumStylesEditor();
+      });
+    });
+  }
+
   function bindProjectEvents() {
     const mapping = [
       "projectName",
@@ -626,7 +628,7 @@
       JSON.stringify(builderState, null, 2);
   }
 
-    function renderAll() {
+  function renderAll() {
     renderProject();
     renderFieldsTable();
     renderEnumStylesEditor();
@@ -689,99 +691,6 @@
     } catch (err) {
       setStatus("downloadStatus", "Errore: " + err.message, "err");
       console.error(err);
-    }
-  });
-
-  bindProjectEvents();
- 
-
-  function bindProjectEvents() {
-    const mapping = [
-      "projectName",
-      "projectSlug",
-      "backendName",
-      "entityName",
-      "entityLabelLower",
-      "sheetName",
-      "buildMarker",
-      "adminPassword"
-    ];
-
-    mapping.forEach(key => {
-      const el = document.getElementById(key);
-      el.addEventListener("input", () => {
-        builderState.project[key] = el.value;
-        renderPreviewOnly();
-      });
-    });
-  }
-
-  function renderPreviewOnly() {
-    document.getElementById("stateOut").textContent =
-      JSON.stringify(builderState, null, 2);
-  }
-
-  function renderAll() {
-    renderProject();
-    renderFieldsTable();
-    renderPreviewOnly();
-  }
-
-
-
-  async function loadFromFile(file) {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    builderState = ensureBuilderStateShape(parsed);
-    renderAll();
-    setStatus("loadStatus", "builder_state.json caricato", "ok");
-  }
-
-  document.getElementById("fileInput").addEventListener("change", async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-
-    try {
-      await loadFromFile(file);
-    } catch (err) {
-      setStatus("loadStatus", "Errore: " + err.message, "err");
-    }
-  });
-
-  document.getElementById("loadSampleBtn").addEventListener("click", () => {
-    try {
-      const raw = document.getElementById("rawJsonInput").value.trim();
-      if (!raw) throw new Error("Area JSON vuota");
-
-      const parsed = JSON.parse(raw);
-      builderState = ensureBuilderStateShape(parsed);
-      renderAll();
-      setStatus("loadStatus", "JSON incollato caricato", "ok");
-    } catch (err) {
-      setStatus("loadStatus", "Errore: " + err.message, "err");
-    }
-  });
-
-  document.getElementById("downloadBtn").addEventListener("click", () => {
-    try {
-      if (!builderState) throw new Error("Nessun builder_state caricato");
-
-      const blob = new Blob(
-        [JSON.stringify(builderState, null, 2)],
-        { type: "application/json" }
-      );
-
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "builder_state.updated.json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-
-      setStatus("downloadStatus", "builder_state.updated.json generato", "ok");
-    } catch (err) {
-      setStatus("downloadStatus", "Errore: " + err.message, "err");
     }
   });
 
