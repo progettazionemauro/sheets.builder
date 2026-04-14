@@ -579,27 +579,52 @@
   }
 
   function bindEnumStyleEvents() {
-    document.querySelectorAll("[data-enum-field]").forEach(el => {
-      el.addEventListener("input", () => {
-        const fieldName = el.dataset.enumField;
-        const valueName = el.dataset.enumValue;
-        const prop = el.dataset.enumProp;
+  document.querySelectorAll("[data-role]").forEach(el => {
 
-        if (!builderState.enumStyles[fieldName]) {
-          builderState.enumStyles[fieldName] = {};
-        }
+    el.addEventListener("input", () => {
 
-        if (!builderState.enumStyles[fieldName][valueName]) {
-          builderState.enumStyles[fieldName][valueName] = { bg: "", fg: "" };
-        }
+      const field = el.dataset.field;
+      const value = el.dataset.value;
+      const role = el.dataset.role;
 
-        builderState.enumStyles[fieldName][valueName][prop] = el.value.trim();
+      if (!builderState.enumStyles[field]) {
+        builderState.enumStyles[field] = {};
+      }
 
-        renderPreviewOnly();
-        renderEnumStylesEditor();
-      });
+      if (!builderState.enumStyles[field][value]) {
+        builderState.enumStyles[field][value] = {};
+      }
+
+      const row = builderState.enumStyles[field][value];
+
+      if (role === "bgText") row.bg = el.value;
+      if (role === "fgText") row.fg = el.value;
+      if (role === "bgColor") row.bg = el.value;
+      if (role === "fgColor") row.fg = el.value;
+
+      renderPreviewOnly();
+      syncEnumInputs(field, value);
     });
-  }
+
+  });
+}
+
+function syncEnumInputs(field, value) {
+
+  const row = builderState.enumStyles[field][value];
+
+  document.querySelectorAll(`[data-field="${field}"][data-value="${value}"]`)
+    .forEach(el => {
+
+      const role = el.dataset.role;
+
+      if (role === "bgText") el.value = row.bg || "";
+      if (role === "bgColor") el.value = row.bg || "#ffffff";
+
+      if (role === "fgText") el.value = row.fg || "";
+      if (role === "fgColor") el.value = row.fg || "#000000";
+    });
+}
 
   function bindProjectEvents() {
     const mapping = [
@@ -629,11 +654,11 @@
   }
 
   function renderAll() {
-    renderProject();
-    renderFieldsTable();
-    renderEnumStylesEditor();
-    renderPreviewOnly();
-  }
+  renderProject();
+  renderFieldsTable();
+  renderEnumStyles();
+  renderPreviewOnly();
+}
 
   async function loadFromFile(file) {
     const text = await file.text();
