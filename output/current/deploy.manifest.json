@@ -1,0 +1,12 @@
+{
+  "projectName": "Prova_film",
+  "projectSlug": "prova-film",
+  "backendName": "prova-film-backend",
+  "sheetName": "ProvaFilmData",
+  "generatedFiles": [
+    "codice.gs",
+    "docs/index.html",
+    "docs/viewer.html"
+  ],
+  "sourceOfTruth": "builder_state.json"
+}

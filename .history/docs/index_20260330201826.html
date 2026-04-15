@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sheets Builder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+      background: #f7f7f7;
+      color: #111;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    p.muted, .muted {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+      padding: 16px;
+      margin: 14px 0;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: 700;
+    }
+
+    input, select, textarea, button {
+      font: inherit;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+
+    button {
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: #111;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: #666;
+    }
+
+    button.danger {
+      background: #a00;
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f0f0f0;
+      text-align: left;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eee;
+    }
+
+    .ok {
+      color: #0a6;
+      font-weight: 700;
+    }
+
+    .err {
+      color: #b00;
+      font-weight: 700;
+    }
+
+    pre {
+      background: #0b0b0b;
+      color: #d6ffd6;
+      padding: 12px;
+      border-radius: 10px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-size: 13px;
+    }
+
+    details {
+      margin-top: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .enum-style-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 6px 2px 0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Sheets Builder</h1>
+  <p class="muted">
+    Importa il foglio esportato, analizza le colonne e genera il frontend e il backend del progetto.
+  </p>
+
+  <div class="card">
+    <h2>1. Importa il foglio esportato</h2>
+    <p class="muted">
+      Il file Excel è obbligatorio. HTML e CSS sono opzionali e servono solo per arricchire la parte visiva, per esempio i colori degli enum.
+    </p>
+
+    <div class="row-3">
+      <div>
+        <label for="xlsxFile">File Excel (.xlsx) — obbligatorio</label>
+        <input id="xlsxFile" type="file" accept=".xlsx" />
+      </div>
+      <div>
+        <label for="htmlFile">File HTML — opzionale</label>
+        <input id="htmlFile" type="file" accept=".html" />
+      </div>
+      <div>
+        <label for="cssFile">File CSS — opzionale</label>
+        <input id="cssFile" type="file" accept=".css" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="analyzeBtn">Analizza file</button>
+      <span id="importStatus" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Informazioni del progetto</h2>
+    <p class="muted">
+      Inserisci solo le informazioni leggibili dall’utente. I dettagli tecnici vengono generati automaticamente dal builder.
+    </p>
+
+    <div class="row-2">
+      <div>
+        <label for="projectName">Nome del progetto</label>
+        <input id="projectName" placeholder="Es. HorrorAtlas" />
+      </div>
+      <div>
+        <label for="sheetName">Nome del foglio dati</label>
+        <input id="sheetName" placeholder="Es. HorrorMovie" />
+      </div>
+    </div>
+
+    <div class="row-2">
+      <div>
+        <label for="entityLabel">Nome visualizzato dell’elemento</label>
+        <input id="entityLabel" placeholder="Es. film, audit, cliente" />
+      </div>
+      <div>
+        <label for="adminPassword">Password amministratore</label>
+        <input id="adminPassword" placeholder="Generata automaticamente" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="regenPasswordBtn">Rigenera password</button>
+      <span id="projectStatus" class="muted"></span>
+    </div>
+
+    <details>
+      <summary>Mostra dettagli tecnici generati automaticamente</summary>
+
+      <div class="row-2">
+        <div>
+          <label for="projectSlug">Project slug</label>
+          <input id="projectSlug" readonly />
+        </div>
+        <div>
+          <label for="backendName">Nome backend</label>
+          <input id="backendName" readonly />
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div>
+          <label for="entityName">Nome entità</label>
+          <input id="entityName" readonly />
+        </div>
+        <div>
+          <label for="buildMarker">Marcatore build</label>
+          <input id="buildMarker" readonly />
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>3. Colonne rilevate e correzioni</h2>
+    <p class="muted">
+      Il builder legge le colonne dal file esportato. Qui puoi controllare il tipo rilevato e fare eventuali correzioni mirate.
+    </p>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="refreshSchemaBtn">Rileggi struttura</button>
+      <span id="schemaStatus" class="muted"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Colonna</th>
+            <th>Tipo</th>
+            <th>Calcolato</th>
+            <th>Nel form</th>
+            <th>Nel viewer</th>
+            <th>Enum</th>
+            <th>Stili enum</th>
+          </tr>
+        </thead>
+        <tbody id="schemaTableBody">
+          <tr>
+            <td colspan="7" class="muted">Nessuna analisi eseguita.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4. Anteprima schema interno</h2>
+    <p class="muted">
+      Pannello tecnico di controllo. Può essere utile per debug e verifiche interne.
+    </p>
+    <pre id="normalizedPreview">{}</pre>
+  </div>
+
+  <div class="card">
+    <h2>5. Anteprima tecnica completa</h2>
+    <p class="muted">
+      Stato tecnico completo del builder. Non è pensato per l’utente finale.
+    </p>
+    <pre id="fullStatePreview">{}</pre>
+  </div>
+
+  <div class="card">
+    <h2>6. Genera frontend e backend</h2>
+    <p class="muted">
+      Quando i controlli sono corretti, genera i file del progetto: codice.gs, index.html e viewer.html.
+    </p>
+
+    <div class="actions">
+      <button type="button" id="generateBtn">Genera progetto</button>
+      <span id="generateStatus" class="muted"></span>
+    </div>
+  </div>
+
+<script>
+  const state = {
+    files: {
+      xlsx: null,
+      html: null,
+      css: null,
+    },
+    project: {
+      projectName: "",
+      sheetName: "",
+      entityLabel: "",
+      adminPassword: "",
+      projectSlug: "",
+      backendName: "",
+      entityName: "",
+      buildMarker: ""
+    },
+    schema: {
+      headers: [],
+      fields: [],
+      enums: {},
+      enumStyles: {}
+    }
+  };
+
+  function slugify(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function toPascalCase(value) {
+    return String(value || "")
+      .replace(/[^a-zA-Z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .map(x => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase())
+      .join("");
+  }
+
+  function randomPassword() {
+    return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2, 10);
+  }
+
+  function syncDerivedFields() {
+    const projectName = document.getElementById("projectName").value.trim();
+    const entityLabel = document.getElementById("entityLabel").value.trim() || "item";
+
+    const slug = slugify(projectName || "project");
+    const entityName = toPascalCase(entityLabel || "item") + "Item";
+
+    document.getElementById("projectSlug").value = slug;
+    document.getElementById("backendName").value = slug + "-backend";
+    document.getElementById("entityName").value = entityName;
+    document.getElementById("buildMarker").value = slug.toUpperCase().replace(/-/g, "_") + "_BACKEND_V1";
+
+    state.project.projectName = projectName;
+    state.project.sheetName = document.getElementById("sheetName").value.trim();
+    state.project.entityLabel = entityLabel;
+    state.project.adminPassword = document.getElementById("adminPassword").value.trim();
+    state.project.projectSlug = document.getElementById("projectSlug").value;
+    state.project.backendName = document.getElementById("backendName").value;
+    state.project.entityName = document.getElementById("entityName").value;
+    state.project.buildMarker = document.getElementById("buildMarker").value;
+
+    renderFullState();
+  }
+
+  function renderSchemaTable() {
+    const tbody = document.getElementById("schemaTableBody");
+    const fields = state.schema.fields || [];
+
+    if (!fields.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="muted">Nessuna analisi eseguita.</td></tr>`;
+      return;
+    }
+
+    let html = "";
+
+    for (const field of fields) {
+      const enumValues = Array.isArray(field.enumValues) ? field.enumValues : [];
+      const enumStyles = (state.schema.enumStyles || {})[field.name] || {};
+
+      let stylesHtml = "";
+      for (const [value, style] of Object.entries(enumStyles)) {
+        const bg = style.bg || "#eee";
+        const fg = style.fg || "#111";
+        stylesHtml += `<span class="enum-style-box" style="background:${bg};color:${fg}">${value}</span>`;
+      }
+
+      html += `
+        <tr>
+          <td>${field.name}</td>
+          <td>${field.type || ""}</td>
+          <td>${field.computed ? "Sì" : "No"}</td>
+          <td>${field.visibleInForm ? "Sì" : "No"}</td>
+          <td>${field.visibleInViewer ? "Sì" : "No"}</td>
+          <td>${enumValues.length ? enumValues.join(", ") : "—"}</td>
+          <td>${stylesHtml || "—"}</td>
+        </tr>
+      `;
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  function renderNormalizedPreview() {
+    document.getElementById("normalizedPreview").textContent =
+      JSON.stringify(state.schema, null, 2);
+  }
+
+  function renderFullState() {
+    document.getElementById("fullStatePreview").textContent =
+      JSON.stringify(state, null, 2);
+  }
+
+  function fakeAnalyze() {
+    state.schema = {
+      headers: ["id", "year", "Title", "url", "link", "nation", "rating"],
+      enums: {
+        rating: ["Mediocre", "Medio", "Buono", "Ottimo", "Capolavoro", "Pessimo"]
+      },
+      enumStyles: {
+        rating: {
+          "Capolavoro": { bg: "#215a6c", fg: "#c6dbe1" },
+          "Ottimo": { bg: "#d4edbc", fg: "#11734b" },
+          "Buono": { bg: "#ffe5a0", fg: "#473821" },
+          "Medio": { bg: "#ffc8aa", fg: "#753800" },
+          "Mediocre": { bg: "#ffcfc9", fg: "#b10202" },
+          "Pessimo": { bg: "#e8eaed", fg: "#000000" }
+        }
+      },
+      fields: [
+        { name: "id", type: "int", computed: true, visibleInForm: false, visibleInViewer: true, enumValues: [] },
+        { name: "year", type: "int", computed: false, visibleInForm: true, visibleInViewer: true, enumValues: [] },
+        { name: "Title", type: "string", computed: false, visibleInForm: true, visibleInViewer: true, enumValues: [] },
+        { name: "url", type: "string", computed: false, visibleInForm: true, visibleInViewer: true, enumValues: [] },
+        { name: "link", type: "computed", computed: true, visibleInForm: false, visibleInViewer: true, enumValues: [] },
+        { name: "nation", type: "string", computed: false, visibleInForm: true, visibleInViewer: true, enumValues: [] },
+        { name: "rating", type: "enum", computed: false, visibleInForm: true, visibleInViewer: true, enumValues: ["Mediocre", "Medio", "Buono", "Ottimo", "Capolavoro", "Pessimo"] }
+      ]
+    };
+
+    renderSchemaTable();
+    renderNormalizedPreview();
+    renderFullState();
+  }
+
+  document.getElementById("regenPasswordBtn").addEventListener("click", () => {
+    document.getElementById("adminPassword").value = randomPassword();
+    syncDerivedFields();
+  });
+
+  document.getElementById("projectName").addEventListener("input", syncDerivedFields);
+  document.getElementById("sheetName").addEventListener("input", syncDerivedFields);
+  document.getElementById("entityLabel").addEventListener("input", syncDerivedFields);
+  document.getElementById("adminPassword").addEventListener("input", syncDerivedFields);
+
+  document.getElementById("analyzeBtn").addEventListener("click", () => {
+    state.files.xlsx = document.getElementById("xlsxFile").files[0]?.name || null;
+    state.files.html = document.getElementById("htmlFile").files[0]?.name || null;
+    state.files.css = document.getElementById("cssFile").files[0]?.name || null;
+
+    if (!state.files.xlsx) {
+      document.getElementById("importStatus").textContent = "Errore: file .xlsx mancante.";
+      document.getElementById("importStatus").className = "err";
+      return;
+    }
+
+    document.getElementById("importStatus").textContent = "Analisi completata.";
+    document.getElementById("importStatus").className = "ok";
+
+    fakeAnalyze();
+  });
+
+  document.getElementById("refreshSchemaBtn").addEventListener("click", () => {
+    fakeAnalyze();
+    document.getElementById("schemaStatus").textContent = "Struttura aggiornata.";
+    document.getElementById("schemaStatus").className = "ok";
+  });
+
+  document.getElementById("generateBtn").addEventListener("click", () => {
+    document.getElementById("generateStatus").textContent =
+      "Generazione pronta: qui collegheremo la pipeline reale Python.";
+    document.getElementById("generateStatus").className = "ok";
+  });
+
+  document.getElementById("adminPassword").value = randomPassword();
+  syncDerivedFields();
+  renderSchemaTable();
+  renderNormalizedPreview();
+  renderFullState();
+</script>
+
+</body>
+</html>

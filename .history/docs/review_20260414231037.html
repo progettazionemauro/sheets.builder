@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Review Generated App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1240px;
+      margin: 24px auto;
+      padding: 0 16px;
+      background: #f7f7f7;
+      color: #111;
+    }
+
+    h1, h2, h3 {
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      color: #666;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: bold;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #111;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #666;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    pre {
+      background: #111;
+      color: #d8ffd8;
+      padding: 14px;
+      border-radius: 10px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: #fff;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      font-size: 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #efefef;
+    }
+
+    .readonly-cell {
+      background: #f3f3f3;
+      color: #666;
+    }
+
+    .ok {
+      color: #0a6;
+      font-weight: bold;
+    }
+
+    .err {
+      color: #b00;
+      font-weight: bold;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eee;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    .hero-note {
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Review Your Generated App <span class="badge">customer flow</span></h1>
+    <p class="muted hero-note">
+    In questa pagina puoi controllare la struttura rilevata dal sistema prima della generazione finale
+    della tua interfaccia CRUD. Puoi verificare campi, nomi visualizzati e colori dei valori speciali.
+  </p>
+
+  <div class="card">
+    <h2>1. Load review file</h2>
+    <p class="muted">
+      Per ora il sistema usa un file di revisione generato internamente dal parser.
+      Nella versione finale questo passaggio partirà direttamente dai file spreadsheet caricati.
+    </p>
+
+    <label for="fileInput">Review file</label>
+    <input id="fileInput" type="file" accept=".json,application/json" />
+
+    <div class="actions">
+      <button id="loadSampleBtn" type="button" class="secondary">Load pasted review file</button>
+      <span id="loadStatus" class="muted"></span>
+    </div>
+
+    <label for="rawJsonInput">Optional pasted review file</label>
+    <textarea id="rawJsonInput" rows="10" placeholder="Incolla qui il file di revisione se preferisci"></textarea>
+  </div>
+
+      <div class="card">
+    <h2>2. App summary</h2>
+    <p class="muted">
+      Qui puoi controllare le informazioni principali dell’app che verrà generata.
+    </p>
+
+    <div class="grid">
+      <div>
+        <label for="projectName">App name</label>
+        <input id="projectName" />
+
+        <label for="entityName">Main entity name</label>
+        <input id="entityName" />
+
+        <label for="entityLabelLower">Main entity label</label>
+        <input id="entityLabelLower" />
+      </div>
+
+      <div>
+        <label for="sheetName">Source sheet name</label>
+        <input id="sheetName" />
+
+        <label for="projectSlug">App slug</label>
+        <input id="projectSlug" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2b. Advanced settings</h2>
+    <p class="muted">
+      Queste impostazioni sono tecniche e di solito non richiedono modifiche per un utilizzo standard.
+    </p>
+
+    <div class="grid">
+      <div>
+        <label for="backendName">Backend name</label>
+        <input id="backendName" />
+
+        <label for="buildMarker">Build marker</label>
+        <input id="buildMarker" />
+      </div>
+
+      <div>
+        <label for="adminPassword">Backend write key</label>
+        <input id="adminPassword" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Detected fields</h2>
+    <p class="muted">
+      Qui puoi controllare i nomi visualizzati dei campi e decidere se devono comparire nel form o nel viewer finale.
+      I tipi rilevati dal parser restano non modificabili in questa fase.
+    </p>
+
+    <table id="fieldsTable">
+      <thead>
+        <tr>
+          <th>field name</th>
+          <th>display label</th>
+          <th>type</th>
+          <th>required</th>
+          <th>show in form</th>
+          <th>show in viewer</th>
+          <th>system field</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>4. Special value colors</h2>
+    <p class="muted">
+      Per i campi con valori predefiniti puoi controllare i colori visualizzati nel viewer finale.
+    </p>
+
+    <div id="enumStylesWrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>5. Review file preview</h2>
+    <pre id="stateOut"></pre>
+  </div>
+
+    <div class="card">
+    <h2>6. Confirm and export</h2>
+    <p class="muted">
+      Quando la revisione è corretta, scarica il file aggiornato. Questo passaggio consente di rigenerare
+      l’app finale con le modifiche confermate.
+    </p>
+
+    <div class="actions">
+      <button id="downloadBtn" type="button">Download reviewed configuration</button>
+      <span id="downloadStatus" class="muted"></span>
+    </div>
+  </div>
+
+<script>
+  let builderState = null;
+
+  function setStatus(id, msg, cls = "muted") {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = cls;
+  }
+
+  function normalizeBool(value) {
+    return value === true;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function ensureBuilderStateShape(state) {
+    if (!state || typeof state !== "object") {
+      throw new Error("Review file non valido: root non oggetto");
+    }
+
+    if (!state.project || typeof state.project !== "object") {
+      state.project = {};
+    }
+
+    if (!Array.isArray(state.fields)) {
+      state.fields = [];
+    }
+
+    if (!state.constraints || typeof state.constraints !== "object") {
+      state.constraints = {};
+    }
+
+    if (!state.enums || typeof state.enums !== "object") {
+      state.enums = {};
+    }
+
+    if (!state.enumStyles || typeof state.enumStyles !== "object") {
+      state.enumStyles = {};
+    }
+
+    if (!state.lists || typeof state.lists !== "object") {
+      state.lists = {};
+    }
+
+    if (!state.options || typeof state.options !== "object") {
+      state.options = {};
+    }
+
+    state.fields = state.fields.map(field => {
+      const f = { ...field };
+      f.name = String(f.name || "").trim();
+      f.label = String(f.label || f.name || "").trim();
+      f.type = String(f.type || "string").trim();
+      f.required = normalizeBool(f.required);
+      f.computed = normalizeBool(f.computed);
+      f.visibleInForm = normalizeBool(f.visibleInForm);
+      f.visibleInViewer = normalizeBool(f.visibleInViewer);
+      f.locked = normalizeBool(f.locked);
+      if (!Array.isArray(f.enumValues)) f.enumValues = [];
+      return f;
+    });
+
+    recomputeListsFromFields(state);
+    return state;
+  }
+
+  function recomputeListsFromFields(state) {
+    const headers = [];
+    const requiredOnInsert = [];
+    const optionalOnInsert = [];
+    const computed = [];
+    const visibleInForm = [];
+    const visibleInViewer = [];
+    const enums = {};
+    const enumStyles = state.enumStyles || {};
+
+    for (const field of state.fields) {
+      headers.push(field.name);
+
+      if (field.computed) {
+        computed.push(field.name);
+      } else if (field.required) {
+        requiredOnInsert.push(field.name);
+      } else {
+        optionalOnInsert.push(field.name);
+      }
+
+      if (field.visibleInForm) {
+        visibleInForm.push(field.name);
+      }
+
+      if (field.visibleInViewer) {
+        visibleInViewer.push(field.name);
+      }
+
+      if (field.type === "enum" && Array.isArray(field.enumValues) && field.enumValues.length) {
+        enums[field.name] = field.enumValues.slice();
+      }
+
+      if (field.type === "enum") {
+        if (!enumStyles[field.name]) {
+          enumStyles[field.name] = {};
+        }
+        field.enumStyles = enumStyles[field.name];
+      }
+    }
+
+    state.enums = enums;
+    state.enumStyles = enumStyles;
+    state.lists = {
+      headers,
+      requiredOnInsert,
+      optionalOnInsert,
+      computed,
+      visibleInForm,
+      visibleInViewer
+    };
+  }
+
+  function renderProject() {
+    const p = builderState.project || {};
+    document.getElementById("projectName").value = p.projectName || "";
+    document.getElementById("projectSlug").value = p.projectSlug || "";
+    document.getElementById("backendName").value = p.backendName || "";
+    document.getElementById("entityName").value = p.entityName || "";
+    document.getElementById("entityLabelLower").value = p.entityLabelLower || "";
+    document.getElementById("sheetName").value = p.sheetName || "";
+    document.getElementById("buildMarker").value = p.buildMarker || "";
+    document.getElementById("adminPassword").value = p.adminPassword || "";
+  }
+
+  function renderFieldsTable() {
+    const tbody = document.querySelector("#fieldsTable tbody");
+    tbody.innerHTML = "";
+
+    builderState.fields.forEach((field, idx) => {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td class="${field.locked ? "readonly-cell" : ""}">
+          <input data-key="name" data-index="${idx}" value="${escapeHtml(field.name)}" ${field.locked ? "readonly" : ""} />
+        </td>
+        <td>
+          <input data-key="label" data-index="${idx}" value="${escapeHtml(field.label || "")}" />
+        </td>
+        <td class="readonly-cell">
+          <input data-key="type" data-index="${idx}" value="${escapeHtml(field.type)}" readonly />
+        </td>
+        <td>
+          <select data-key="required" data-index="${idx}" ${field.computed ? "disabled" : ""}>
+            <option value="false" ${field.required ? "" : "selected"}>NO</option>
+            <option value="true" ${field.required ? "selected" : ""}>YES</option>
+          </select>
+        </td>
+        <td>
+          <select data-key="visibleInForm" data-index="${idx}" ${field.computed ? "disabled" : ""}>
+            <option value="false" ${field.visibleInForm ? "" : "selected"}>NO</option>
+            <option value="true" ${field.visibleInForm ? "selected" : ""}>YES</option>
+          </select>
+        </td>
+        <td>
+          <select data-key="visibleInViewer" data-index="${idx}">
+            <option value="false" ${field.visibleInViewer ? "" : "selected"}>NO</option>
+            <option value="true" ${field.visibleInViewer ? "selected" : ""}>YES</option>
+          </select>
+        </td>
+        <td class="readonly-cell">${field.locked ? "YES" : "NO"}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+
+    bindFieldEvents();
+  }
+
+  function ensureEnumStylesShape() {
+    if (!builderState.enumStyles || typeof builderState.enumStyles !== "object") {
+      builderState.enumStyles = {};
+    }
+
+    builderState.fields.forEach(field => {
+      if (field.type !== "enum") return;
+
+      if (!builderState.enumStyles[field.name] || typeof builderState.enumStyles[field.name] !== "object") {
+        builderState.enumStyles[field.name] = {};
+      }
+
+      (field.enumValues || []).forEach(value => {
+        if (!builderState.enumStyles[field.name][value]) {
+          builderState.enumStyles[field.name][value] = { bg: "", fg: "" };
+        } else {
+          const styleObj = builderState.enumStyles[field.name][value];
+          builderState.enumStyles[field.name][value] = {
+            bg: String(styleObj.bg || ""),
+            fg: String(styleObj.fg || "")
+          };
+        }
+      });
+    });
+  }
+
+  function renderEnumStylesEditor() {
+    const wrap = document.getElementById("enumStylesWrap");
+    if (!wrap) return;
+
+    wrap.innerHTML = "";
+    ensureEnumStylesShape();
+
+    const enumFields = builderState.fields.filter(field => field.type === "enum");
+
+    if (!enumFields.length) {
+      wrap.innerHTML = `<div class="muted">Nessun campo con valori speciali rilevato.</div>`;
+      return;
+    }
+
+    enumFields.forEach(field => {
+      const box = document.createElement("div");
+      box.className = "card";
+      box.style.margin = "12px 0";
+      box.style.padding = "12px";
+
+      let html = `<h3 style="margin:0 0 10px;">${escapeHtml(field.label || field.name)} <span class="muted">(${escapeHtml(field.name)})</span></h3>`;
+      html += `<table><thead><tr><th>value</th><th>background</th><th>foreground</th><th>preview</th></tr></thead><tbody>`;
+
+      (field.enumValues || []).forEach(value => {
+        const styleObj = builderState.enumStyles[field.name][value] || { bg: "", fg: "" };
+        const bg = styleObj.bg || "#ffffff";
+        const fg = styleObj.fg || "#000000";
+
+        const previewStyle = [
+          bg ? `background:${bg}` : "",
+          fg ? `color:${fg}` : "",
+          "font-weight:700",
+          "text-align:center"
+        ].filter(Boolean).join("; ");
+
+        html += `
+          <tr>
+            <td class="readonly-cell">${escapeHtml(value)}</td>
+
+            <td>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input
+                  data-enum-field="${escapeHtml(field.name)}"
+                  data-enum-value="${escapeHtml(value)}"
+                  data-enum-prop="bg"
+                  data-enum-role="text"
+                  value="${escapeHtml(bg)}"
+                  placeholder="#ffffff"
+                  style="width:140px;"
+                />
+                <input
+                  type="color"
+                  data-enum-field="${escapeHtml(field.name)}"
+                  data-enum-value="${escapeHtml(value)}"
+                  data-enum-prop="bg"
+                  data-enum-role="picker"
+                  value="${escapeHtml(bg)}"
+                  style="width:56px; padding:4px;"
+                />
+              </div>
+            </td>
+
+            <td>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input
+                  data-enum-field="${escapeHtml(field.name)}"
+                  data-enum-value="${escapeHtml(value)}"
+                  data-enum-prop="fg"
+                  data-enum-role="text"
+                  value="${escapeHtml(fg)}"
+                  placeholder="#000000"
+                  style="width:140px;"
+                />
+                <input
+                  type="color"
+                  data-enum-field="${escapeHtml(field.name)}"
+                  data-enum-value="${escapeHtml(value)}"
+                  data-enum-prop="fg"
+                  data-enum-role="picker"
+                  value="${escapeHtml(fg)}"
+                  style="width:56px; padding:4px;"
+                />
+              </div>
+            </td>
+
+            <td>
+              <div style="padding:8px; border-radius:8px; border:1px solid #ddd; ${previewStyle}">
+                ${escapeHtml(value)}
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      box.innerHTML = html;
+      wrap.appendChild(box);
+    });
+
+    bindEnumStyleEvents();
+  }
+
+  function renderEnumStyles() {
+    renderEnumStylesEditor();
+  }
+
+  function bindFieldEvents() {
+    document.querySelectorAll("[data-key]").forEach(el => {
+      const key = el.dataset.key;
+      const idx = Number(el.dataset.index);
+      const field = builderState.fields[idx];
+
+      if (key === "type") {
+        return;
+      }
+
+      if (el.tagName === "INPUT") {
+        el.addEventListener("input", () => {
+          field[key] = el.value;
+          recomputeListsFromFields(builderState);
+          renderPreviewOnly();
+        });
+        return;
+      }
+
+      if (el.tagName === "SELECT") {
+        el.addEventListener("change", () => {
+          field[key] = el.value === "true";
+
+          if (key === "required" && field.computed) {
+            field.required = false;
+          }
+
+          if (key === "visibleInForm" && field.computed) {
+            field.visibleInForm = false;
+          }
+
+          recomputeListsFromFields(builderState);
+          renderPreviewOnly();
+        });
+      }
+    });
+  }
+
+  function syncEnumStyleInputs(fieldName, valueName, prop, value) {
+    document.querySelectorAll(
+      `[data-enum-field="${fieldName}"][data-enum-value="${valueName}"][data-enum-prop="${prop}"]`
+    ).forEach(el => {
+      if (el.value !== value) {
+        el.value = value;
+      }
+    });
+  }
+
+  function bindEnumStyleEvents() {
+    document.querySelectorAll("[data-enum-field]").forEach(el => {
+      el.addEventListener("input", () => {
+        const fieldName = el.dataset.enumField;
+        const valueName = el.dataset.enumValue;
+        const prop = el.dataset.enumProp;
+        const role = el.dataset.enumRole;
+
+        if (!builderState.enumStyles[fieldName]) {
+          builderState.enumStyles[fieldName] = {};
+        }
+
+        if (!builderState.enumStyles[fieldName][valueName]) {
+          builderState.enumStyles[fieldName][valueName] = { bg: "", fg: "" };
+        }
+
+        let val = el.value.trim();
+
+        if (role === "picker") {
+          val = val.toLowerCase();
+        }
+
+        builderState.enumStyles[fieldName][valueName][prop] = val;
+
+        syncEnumStyleInputs(fieldName, valueName, prop, val);
+        renderPreviewOnly();
+        renderEnumStylesEditor();
+      });
+    });
+  }
+
+  function bindProjectEvents() {
+    const mapping = [
+      "projectName",
+      "projectSlug",
+      "backendName",
+      "entityName",
+      "entityLabelLower",
+      "sheetName",
+      "buildMarker",
+      "adminPassword"
+    ];
+
+    mapping.forEach(key => {
+      const el = document.getElementById(key);
+      el.addEventListener("input", () => {
+        if (!builderState) return;
+        builderState.project[key] = el.value;
+        renderPreviewOnly();
+      });
+    });
+  }
+
+  function renderPreviewOnly() {
+    document.getElementById("stateOut").textContent =
+      JSON.stringify(builderState, null, 2);
+  }
+
+  function renderAll() {
+    renderProject();
+    renderFieldsTable();
+    renderEnumStyles();
+    renderPreviewOnly();
+  }
+
+  async function loadFromFile(file) {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    builderState = ensureBuilderStateShape(parsed);
+    renderAll();
+    setStatus("loadStatus", "Configuration loaded successfully", "ok");
+  }
+
+  document.getElementById("fileInput").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    try {
+      await loadFromFile(file);
+    } catch (err) {
+      setStatus("loadStatus", "Errore: " + err.message, "err");
+      console.error(err);
+    }
+  });
+
+  document.getElementById("loadSampleBtn").addEventListener("click", () => {
+    try {
+      const raw = document.getElementById("rawJsonInput").value.trim();
+      if (!raw) throw new Error("Area review file vuota");
+
+      const parsed = JSON.parse(raw);
+      builderState = ensureBuilderStateShape(parsed);
+      renderAll();
+      setStatus("loadStatus", "Review file loaded from pasted content", "ok");
+    } catch (err) {
+      setStatus("loadStatus", "Errore: " + err.message, "err");
+      console.error(err);
+    }
+  });
+
+  document.getElementById("downloadBtn").addEventListener("click", () => {
+    try {
+      if (!builderState) throw new Error("Nessun review file caricato");
+
+      const blob = new Blob(
+        [JSON.stringify(builderState, null, 2)],
+        { type: "application/json" }
+      );
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "reviewed_app_state.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+
+      setStatus("downloadStatus", "Reviewed file generated successfully", "ok");
+    } catch (err) {
+      setStatus("downloadStatus", "Errore: " + err.message, "err");
+      console.error(err);
+    }
+  });
+
+  bindProjectEvents();
+</script>
+
+</body>
+</html>

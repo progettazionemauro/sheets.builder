@@ -1,0 +1,240 @@
+{
+  "project": {
+    "projectName": "Generated App",
+    "projectSlug": "generated-app",
+    "backendName": "generated-app-backend",
+    "entityName": "Item",
+    "entityLabelLower": "item",
+    "sheetName": "Sheet1",
+    "buildMarker": "GENERATED_APP_BACKEND_V1",
+    "adminPassword": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "fields": [
+    {
+      "name": "id",
+      "label": "id",
+      "type": "int",
+      "required": false,
+      "computed": true,
+      "visibleInForm": false,
+      "visibleInViewer": true,
+      "locked": true,
+      "enumValues": []
+    },
+    {
+      "name": "year",
+      "label": "year",
+      "type": "int",
+      "required": false,
+      "computed": false,
+      "visibleInForm": true,
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
+    },
+    {
+      "name": "title",
+      "label": "title",
+      "type": "string",
+      "required": false,
+      "computed": false,
+      "visibleInForm": true,
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
+    },
+    {
+      "name": "url",
+      "label": "url",
+      "type": "string",
+      "required": false,
+      "computed": false,
+      "visibleInForm": true,
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
+    },
+    {
+      "name": "link",
+      "label": "link",
+      "type": "computed",
+      "required": false,
+      "computed": true,
+      "visibleInForm": false,
+      "visibleInViewer": true,
+      "locked": true,
+      "enumValues": [],
+      "formulaSource": "=HYPERLINK(D2:D987, C2:C987)",
+      "formulaAnchorRow": 2,
+      "formulaMode": "incremental_copy"
+    },
+    {
+      "name": "nation",
+      "label": "nation",
+      "type": "string",
+      "required": false,
+      "computed": false,
+      "visibleInForm": true,
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
+    },
+    {
+      "name": "rating",
+      "label": "rating",
+      "type": "enum",
+      "required": false,
+      "computed": false,
+      "visibleInForm": true,
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": [
+        "Mediocre",
+        "Medio",
+        "Buono",
+        "Ottimo",
+        "Capolavoro",
+        "Pessimo"
+      ],
+      "enumStyles": {
+        "Capolavoro": {
+          "bg": "#215a6c",
+          "fg": "#c6dbe1"
+        },
+        "Ottimo": {
+          "bg": "#d4edbc",
+          "fg": "#11734b"
+        },
+        "Buono": {
+          "bg": "#ffe5a0",
+          "fg": "#473821"
+        },
+        "Medio": {
+          "bg": "#ffc8aa",
+          "fg": "#753800"
+        },
+        "Mediocre": {
+          "bg": "#ffcfc9",
+          "fg": "#b10202"
+        },
+        "Pessimo": {
+          "bg": "#e8eaed",
+          "fg": "#000000"
+        }
+      }
+    }
+  ],
+  "constraints": {
+    "id": {
+      "type": "int",
+      "required": false,
+      "min": 0
+    },
+    "year": {
+      "type": "int",
+      "required": false,
+      "min": 0
+    },
+    "title": {
+      "type": "string",
+      "required": false,
+      "maxLen": 255
+    },
+    "url": {
+      "type": "string",
+      "required": false,
+      "maxLen": 255
+    },
+    "link": {
+      "type": "computed",
+      "required": false
+    },
+    "nation": {
+      "type": "string",
+      "required": false,
+      "maxLen": 255
+    },
+    "rating": {
+      "type": "enum",
+      "required": false
+    }
+  },
+  "enums": {
+    "rating": [
+      "Mediocre",
+      "Medio",
+      "Buono",
+      "Ottimo",
+      "Capolavoro",
+      "Pessimo"
+    ]
+  },
+  "enumStyles": {
+    "rating": {
+      "Capolavoro": {
+        "bg": "#215a6c",
+        "fg": "#c6dbe1"
+      },
+      "Ottimo": {
+        "bg": "#d4edbc",
+        "fg": "#11734b"
+      },
+      "Buono": {
+        "bg": "#ffe5a0",
+        "fg": "#473821"
+      },
+      "Medio": {
+        "bg": "#ffc8aa",
+        "fg": "#753800"
+      },
+      "Mediocre": {
+        "bg": "#ffcfc9",
+        "fg": "#b10202"
+      },
+      "Pessimo": {
+        "bg": "#e8eaed",
+        "fg": "#000000"
+      }
+    }
+  },
+  "lists": {
+    "headers": [
+      "id",
+      "year",
+      "title",
+      "url",
+      "link",
+      "nation",
+      "rating"
+    ],
+    "requiredOnInsert": [],
+    "optionalOnInsert": [
+      "year",
+      "title",
+      "url",
+      "nation",
+      "rating"
+    ],
+    "computed": [
+      "id",
+      "link"
+    ],
+    "visibleInForm": [
+      "year",
+      "title",
+      "url",
+      "nation",
+      "rating"
+    ],
+    "visibleInViewer": [
+      "id",
+      "year",
+      "title",
+      "url",
+      "link",
+      "nation",
+      "rating"
+    ]
+  },
+  "options": {}
+}

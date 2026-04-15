@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ProvaFilmItem Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 12px; }
+    .muted { color:#666; }
+    .toolbar { display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin: 8px 0 12px; }
+    .toolbar label { display:block; font-size:12px; font-weight:700; color:#444; margin-bottom:4px; }
+    .toolbar input, .toolbar select {
+      padding:8px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      background:#fff;
+      min-width:180px;
+    }
+
+    table { border-collapse: collapse; width: 100%; }
+    th, td {
+      border:1px solid #e5e5e5;
+      padding:8px;
+      font-size: 13px;
+      vertical-align: top;
+      overflow-wrap:anywhere;
+      white-space: pre-wrap;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #2f3b52;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    tbody tr:nth-child(even){ background:#f6f8fb; }
+    tbody tr:nth-child(odd){ background:#ffffff; }
+
+    tbody tr.first-row {
+      background: #fff3cd !important;
+      outline: 2px solid #ffe69c;
+      outline-offset: -2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="muted">Viewer read-only — tab <b>ProvaFilmData</b></div>
+
+  <div class="toolbar">
+    <div>
+      <label for="searchBox">Filtro testo</label>
+      <input id="searchBox" type="text" placeholder="Cerca..." />
+    </div>
+    <div>
+      <label for="limitBox">Limite righe</label>
+      <select id="limitBox">
+        <option>20</option>
+        <option selected>50</option>
+        <option>100</option>
+        <option>200</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="status" class="muted" style="margin:6px 0;">Caricamento…</div>
+  <div id="tbl"></div>
+
+<script>
+  const qs = new URLSearchParams(location.search);
+  const WEB_APP_URL = qs.get("webApp");
+  const URL_LIMIT = qs.get("limit") || "50";
+
+  const VISIBLE_HEADERS = [
+  "id",
+  "year",
+  "title",
+  "url",
+  "link",
+  "nation",
+  "rating"
+];
+  const ENUMS = {
+  "rating": [
+    "Mediocre",
+    "Medio",
+    "Buono",
+    "Ottimo",
+    "Capolavoro",
+    "Pessimo"
+  ]
+};
+  const ENUM_STYLES = {
+  "rating": {
+    "Capolavoro": {
+      "bg": "#215a6c",
+      "fg": "#c6dbe1"
+    },
+    "Ottimo": {
+      "bg": "#d4edbc",
+      "fg": "#11734b"
+    },
+    "Buono": {
+      "bg": "#ffe5a0",
+      "fg": "#473821"
+    },
+    "Medio": {
+      "bg": "#ffc8aa",
+      "fg": "#753800"
+    },
+    "Mediocre": {
+      "bg": "#ffcfc9",
+      "fg": "#b10202"
+    },
+    "Pessimo": {
+      "bg": "#e8eaed",
+      "fg": "#000000"
+    }
+  }
+};
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = "cb_" + Math.random().toString(36).slice(2);
+      const script = document.createElement("script");
+
+      const t = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout JSONP"));
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(t);
+        try { delete window[cbName]; } catch (_) { window[cbName] = undefined; }
+        script.remove();
+      }
+
+      window[cbName] = (data) => {
+        cleanup();
+        resolve(data);
+      };
+
+      const u = new URL(url);
+      u.searchParams.set("cb", cbName);
+      u.searchParams.set("_", Date.now().toString());
+
+      script.src = u.toString();
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("JSONP load error"));
+      };
+
+      document.body.appendChild(script);
+    });
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => (
+      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+    ));
+  }
+
+  let LAST_HEADERS = [];
+  let LAST_ROWS = [];
+
+  function renderTable() {
+    const status = document.getElementById("status");
+    const tbl = document.getElementById("tbl");
+    const search = document.getElementById("searchBox").value.trim().toLowerCase();
+
+    if (!LAST_HEADERS.length) {
+      tbl.innerHTML = "";
+      status.textContent = "Nessun dato";
+      return;
+    }
+
+    const visibleIndexes = LAST_HEADERS
+      .map((h, i) => (VISIBLE_HEADERS.includes(h) ? i : -1))
+      .filter(i => i >= 0);
+
+    let rows = LAST_ROWS.slice();
+
+    if (search) {
+      rows = rows.filter(r =>
+        visibleIndexes.some(i => String(r[i] ?? "").toLowerCase().includes(search))
+      );
+    }
+
+    let html = "<table><thead><tr>";
+    for (const i of visibleIndexes) {
+      html += `<th>${esc(LAST_HEADERS[i])}</th>`;
+    }
+    html += "</tr></thead><tbody>";
+
+    for (let rI = 0; rI < rows.length; rI++) {
+      const r = rows[rI];
+      const trClass = (rI === 0) ? "first-row" : "";
+      html += `<tr class="${trClass}">`;
+
+      for (const i of visibleIndexes) {
+        const header = LAST_HEADERS[i];
+        const cellVal = r[i];
+
+        let style = "";
+        const stylesForField = ENUM_STYLES[header] || {};
+        const styleDef = stylesForField[String(cellVal ?? "").trim()] || null;
+
+        if (styleDef) {
+          const bg = styleDef.bg ? `background:${styleDef.bg};` : "";
+          const fg = styleDef.fg ? `color:${styleDef.fg};` : "";
+          style = `${bg}${fg}font-weight:700;text-align:center;`;
+        }
+
+        html += `<td style="${style}">${esc(cellVal)}</td>`;
+      }
+
+      html += "</tr>";
+    }
+
+    html += "</tbody></table>";
+    tbl.innerHTML = html;
+    status.textContent = `OK | headers=${LAST_HEADERS.length} | rows=${rows.length}`;
+  }
+
+  async function load() {
+    const status = document.getElementById("status");
+
+    if (!WEB_APP_URL) {
+      status.textContent = "Errore: manca parametro 'webApp' nell'URL.";
+      return;
+    }
+
+    try {
+      const limit = document.getElementById("limitBox").value || URL_LIMIT;
+      const u = new URL(WEB_APP_URL);
+      u.searchParams.set("mode", "view");
+      u.searchParams.set("limit", limit);
+
+      const resp = await jsonp(u.toString());
+      if (!resp || resp.ok !== true) {
+        status.textContent = "Errore: " + (resp?.error || "risposta non valida");
+        return;
+      }
+
+      LAST_HEADERS = resp.headers || [];
+      LAST_ROWS = (resp.rows || []).slice().reverse();
+
+      renderTable();
+
+    } catch (e) {
+      status.textContent = "Errore: " + e.message;
+    }
+  }
+
+  document.getElementById("searchBox").addEventListener("input", renderTable);
+  document.getElementById("limitBox").value = URL_LIMIT;
+  document.getElementById("limitBox").addEventListener("change", load);
+
+  load();
+</script>
+
+</body>
+</html>
