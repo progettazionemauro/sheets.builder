@@ -13,6 +13,7 @@ from app.builder_state import build_builder_state
 
 
 OUTPUT_CURRENT_DIR = ROOT / "output" / "current"
+EXAMPLES_DIR = ROOT / "examples"
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -23,8 +24,29 @@ def write_json(path: Path, data: dict) -> None:
     )
 
 
+def find_single_input_dir() -> Path:
+    candidate_dirs = [p for p in EXAMPLES_DIR.iterdir() if p.is_dir()]
+    if not candidate_dirs:
+        raise SystemExit(f"No subdirectories found inside examples/: {EXAMPLES_DIR}")
+    if len(candidate_dirs) > 1:
+        raise SystemExit(
+            "More than one subdirectory found inside examples/. "
+            "Pass the desired input directory explicitly."
+        )
+    return candidate_dirs[0]
+
+
 def main() -> None:
-    if len(sys.argv) not in (2, 3):
+    if len(sys.argv) == 1:
+        input_dir = find_single_input_dir()
+        enum_field_name = "rating"
+    elif len(sys.argv) == 2:
+        input_dir = Path(sys.argv[1])
+        enum_field_name = "rating"
+    elif len(sys.argv) == 3:
+        input_dir = Path(sys.argv[1])
+        enum_field_name = sys.argv[2]
+    else:
         raise SystemExit(
             "Usage:\n"
             "  python pipeline/prepare_review_from_input.py <input_dir> [enum_field_name]\n\n"
@@ -32,9 +54,6 @@ def main() -> None:
             "  python pipeline/prepare_review_from_input.py examples/case_001\n"
             "  python pipeline/prepare_review_from_input.py examples/case_001 rating"
         )
-
-    input_dir = Path(sys.argv[1])
-    enum_field_name = sys.argv[2] if len(sys.argv) == 3 else "rating"
 
     OUTPUT_CURRENT_DIR.mkdir(parents=True, exist_ok=True)
 
