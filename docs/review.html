@@ -254,18 +254,31 @@
     <pre id="stateOut"></pre>
   </div>
 
-  <div class="card">
-    <h2>6. Confirm and export</h2>
-    <p class="muted">
-      Quando la revisione è corretta, scarica il file aggiornato. Questo passaggio consente di rigenerare
-      l’app finale con le modifiche confermate.
-    </p>
+ <div class="card">
+  <h2>6. Approve and generate final app</h2>
+  <p class="muted">
+    Quando la revisione è corretta, conferma la struttura rilevata. Questo passaggio prepara la configurazione finale
+    da usare per generare il CRUD e il viewer della tua applicazione.
+  </p>
 
-    <div class="actions">
-      <button id="downloadBtn" type="button">Download reviewed configuration</button>
-      <span id="downloadStatus" class="muted"></span>
-    </div>
+  <div class="card">
+  <h2>7. What happens next</h2>
+  <p class="muted">
+    Dopo la conferma, la configurazione approvata viene usata per costruire l’app finale.
+    Il risultato atteso è una pagina CRUD con viewer integrato, basata sulla struttura rilevata dai file spreadsheet sorgente.
+  </p>
+</div>
+
+  <div class="actions">
+    <button id="downloadBtn" type="button">Approve and generate configuration</button>
+    <span id="downloadStatus" class="muted"></span>
   </div>
+
+  <p class="muted" style="margin-top:12px;">
+    Nota: in questa fase il sistema scarica ancora un file intermedio di configurazione confermata.
+    Il motore Python lo userà per generare l’app finale.
+  </p>
+</div>
 
 <script>
   let builderState = null;
@@ -730,7 +743,7 @@
 
   document.getElementById("downloadBtn").addEventListener("click", () => {
     try {
-      if (!builderState) throw new Error("Nessuna configuration caricata");
+      if (!builderState) throw new Error("No parsed configuration loaded");
 
       const blob = new Blob(
         [JSON.stringify(builderState, null, 2)],
@@ -739,13 +752,13 @@
 
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "reviewed_configuration.json";
+      a.download = "approved_configuration.json";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      setStatus("downloadStatus", "Reviewed configuration generated successfully", "ok");
+      setStatus("downloadStatus", "Approved configuration generated successfully", "ok");
     } catch (err) {
       setStatus("downloadStatus", "Errore: " + err.message, "err");
       console.error(err);
