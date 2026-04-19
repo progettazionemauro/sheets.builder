@@ -1,8 +1,8 @@
 {
-  "projectName": "Prova_film",
-  "projectSlug": "prova-film",
-  "backendName": "prova-film-backend",
-  "sheetName": "ProvaFilmData",
+  "projectName": "Generated App",
+  "projectSlug": "generated-app",
+  "backendName": "generated-app-backend",
+  "sheetName": "Sheet1",
   "generatedFiles": [
     "codice.gs",
     "docs/index.html",

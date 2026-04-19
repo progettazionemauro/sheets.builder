@@ -84,98 +84,82 @@
   "fields": [
     {
       "name": "id",
-      "required": false,
-      "visibleInViewer": true,
-      "enumValues": [],
-      "locked": true,
-      "formulaSource": null,
-      "formulaAnchorRow": null,
-      "formulaMode": null,
-      "enumStyles": {},
+      "label": "id",
       "type": "int",
+      "required": false,
       "computed": true,
       "visibleInForm": false,
-      "label": "Id"
+      "visibleInViewer": true,
+      "locked": true,
+      "enumValues": []
     },
     {
       "name": "year",
-      "required": false,
-      "visibleInViewer": true,
-      "enumValues": [],
-      "locked": false,
-      "formulaSource": null,
-      "formulaAnchorRow": null,
-      "formulaMode": null,
-      "enumStyles": {},
+      "label": "year",
       "type": "int",
+      "required": false,
       "computed": false,
       "visibleInForm": true,
-      "label": "Anno"
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
     },
     {
       "name": "title",
-      "required": false,
-      "visibleInViewer": true,
-      "enumValues": [],
-      "locked": false,
-      "formulaSource": null,
-      "formulaAnchorRow": null,
-      "formulaMode": null,
-      "enumStyles": {},
+      "label": "title",
       "type": "string",
+      "required": false,
       "computed": false,
       "visibleInForm": true,
-      "label": "Title"
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
     },
     {
       "name": "url",
-      "required": false,
-      "visibleInViewer": true,
-      "enumValues": [],
-      "locked": false,
-      "formulaSource": null,
-      "formulaAnchorRow": null,
-      "formulaMode": null,
-      "enumStyles": {},
+      "label": "url",
       "type": "string",
+      "required": false,
       "computed": false,
       "visibleInForm": true,
-      "label": "Url"
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
     },
     {
       "name": "link",
-      "required": false,
-      "visibleInViewer": true,
-      "enumValues": [],
-      "locked": true,
-      "formulaSource": "=HYPERLINK(D2:D987, C2:C987)",
-      "formulaAnchorRow": 2,
-      "formulaMode": "incremental_copy",
-      "enumStyles": {},
+      "label": "link",
       "type": "computed",
+      "required": false,
       "computed": true,
       "visibleInForm": false,
-      "label": "Link"
+      "visibleInViewer": true,
+      "locked": true,
+      "enumValues": [],
+      "formulaSource": "=HYPERLINK(D2:D987, C2:C987)",
+      "formulaAnchorRow": 2,
+      "formulaMode": "incremental_copy"
     },
     {
       "name": "nation",
-      "required": false,
-      "visibleInViewer": true,
-      "enumValues": [],
-      "locked": false,
-      "formulaSource": null,
-      "formulaAnchorRow": null,
-      "formulaMode": null,
-      "enumStyles": {},
+      "label": "nation",
       "type": "string",
+      "required": false,
       "computed": false,
       "visibleInForm": true,
-      "label": "Nation"
+      "visibleInViewer": true,
+      "locked": false,
+      "enumValues": []
     },
     {
       "name": "rating",
+      "label": "rating",
+      "type": "enum",
       "required": false,
+      "computed": false,
+      "visibleInForm": true,
       "visibleInViewer": true,
+      "locked": false,
       "enumValues": [
         "Mediocre",
         "Medio",
@@ -184,10 +168,6 @@
         "Capolavoro",
         "Pessimo"
       ],
-      "locked": false,
-      "formulaSource": null,
-      "formulaAnchorRow": null,
-      "formulaMode": null,
       "enumStyles": {
         "Capolavoro": {
           "bg": "#215a6c",
@@ -198,12 +178,12 @@
           "fg": "#11734b"
         },
         "Buono": {
-          "bg": "#ff9eb1",
-          "fg": "#463e20"
+          "bg": "#ffe5a0",
+          "fg": "#473821"
         },
         "Medio": {
           "bg": "#ffc8aa",
-          "fg": "#753500"
+          "fg": "#753800"
         },
         "Mediocre": {
           "bg": "#ffcfc9",
@@ -213,11 +193,7 @@
           "bg": "#e8eaed",
           "fg": "#000000"
         }
-      },
-      "type": "enum",
-      "computed": false,
-      "visibleInForm": true,
-      "label": "Rating"
+      }
     }
   ],
   "enumStyles": {
@@ -231,12 +207,12 @@
         "fg": "#11734b"
       },
       "Buono": {
-        "bg": "#ff9eb1",
-        "fg": "#463e20"
+        "bg": "#ffe5a0",
+        "fg": "#473821"
       },
       "Medio": {
         "bg": "#ffc8aa",
-        "fg": "#753500"
+        "fg": "#753800"
       },
       "Mediocre": {
         "bg": "#ffcfc9",

@@ -14,22 +14,6 @@
       color: #111;
     }
 
-    a.button, button {
-  display: inline-block;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 8px;
-  background: #111;
-  color: #fff;
-  text-decoration: none;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-a.button.secondary {
-  background: #666;
-}
-
     h1, h2, h3 {
       margin-bottom: 8px;
     }
@@ -270,33 +254,24 @@ a.button.secondary {
     <pre id="stateOut"></pre>
   </div>
 
- <div class="card">
-  <h2>6. Approve and generate final app</h2>
-  <p class="muted">
-    Quando la revisione è corretta, conferma la struttura rilevata. Questo passaggio prepara la configurazione finale
-    da usare per generare il CRUD e il viewer della tua applicazione.
-  </p>
-
   <div class="card">
-  <h2>7. What happens next</h2>
+  <h2>6. Confirm and export</h2>
   <p class="muted">
-    Dopo la conferma, la configurazione approvata viene usata per costruire l’app finale.
-    Il risultato atteso è una pagina CRUD con viewer integrato, basata sulla struttura rilevata dai file spreadsheet sorgente.
+    Quando la revisione è corretta, scarica il file aggiornato. Questo passaggio consente di rigenerare
+    l’app finale con le modifiche confermate.
   </p>
-</div>
 
   <div class="actions">
-    <button id="downloadBtn" type="button">Approve and generate configuration</button>
+    <button id="downloadBtn" type="button">Download reviewed configuration</button>
     <span id="downloadStatus" class="muted"></span>
   </div>
-<div class="actions" style="margin-top:10px;">
-  <a class="button secondary" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
 </div>
- <p class="muted" style="margin-top:12px;">
-  Dopo aver scaricato la configurazione approvata, il motore Python genera i file finali del progetto.
-  Una volta completata la generazione, puoi aprire la pagina finale di consegna.
-</p>
-</div>
+
+    <div class="actions">
+      <button id="downloadBtn" type="button">Download reviewed configuration</button>
+      <span id="downloadStatus" class="muted"></span>
+    </div>
+  </div>
 
 <script>
   let builderState = null;
@@ -761,7 +736,7 @@ a.button.secondary {
 
   document.getElementById("downloadBtn").addEventListener("click", () => {
     try {
-      if (!builderState) throw new Error("No parsed configuration loaded");
+      if (!builderState) throw new Error("Nessuna configuration caricata");
 
       const blob = new Blob(
         [JSON.stringify(builderState, null, 2)],
@@ -770,13 +745,13 @@ a.button.secondary {
 
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "approved_configuration.json";
+      a.download = "reviewed_configuration.json";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      setStatus("downloadStatus", "Approved configuration generated successfully. Next: run the final generation step, then open app_ready.html.", "ok");
+      setStatus("downloadStatus", "Reviewed configuration generated successfully", "ok");
     } catch (err) {
       setStatus("downloadStatus", "Errore: " + err.message, "err");
       console.error(err);

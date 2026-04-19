@@ -1,11 +1,11 @@
 {
-  "projectName": "Prova_film",
-  "projectSlug": "prova-film",
-  "backendName": "prova-film-backend",
-  "entityName": "ProvaFilmItem",
+  "projectName": "Generated App",
+  "projectSlug": "generated-app",
+  "backendName": "generated-app-backend",
+  "entityName": "Item",
   "entityLabelLower": "item",
-  "sheetName": "ProvaFilmData",
-  "outputDirectory": "build/prova-film",
-  "buildMarker": "PROVA_FILM_BACKEND_V1",
-  "adminPassword": "UVZi4cpCddok7swLSf"
+  "sheetName": "Sheet1",
+  "outputDirectory": "",
+  "buildMarker": "GENERATED_APP_BACKEND_V1",
+  "adminPassword": "CHANGE_ME_WRITE_KEY_2026"
 }
