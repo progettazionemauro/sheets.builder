@@ -82,8 +82,12 @@
       cursor: pointer;
     }
 
-    a.button.secondary {
+    a.button.secondary, button.secondary {
       background: #666;
+    }
+
+    .hidden {
+      display: none;
     }
 
     ol {
@@ -109,8 +113,8 @@
 
   <h1>Your app is ready</h1>
   <p class="muted">
-    La configurazione è stata approvata e il progetto finale è pronto per la consegna.
-    Qui trovi i file generati e i prossimi passaggi minimi per pubblicare la tua applicazione.
+    La configurazione è stata approvata e il progetto finale è pronto.
+    Qui trovi i file generati e il percorso più rapido per arrivare al CRUD finale.
   </p>
 
   <div class="card">
@@ -121,7 +125,7 @@
       <div class="filebox">
         <h3>index.html</h3>
         <p>
-          Frontend CRUD principale. È la pagina di immissione dati e gestione record.
+          Frontend CRUD principale. È la pagina finale di immissione e gestione record.
         </p>
         <div class="actions">
           <a class="button" href="index.html" target="_blank" rel="noopener">Open</a>
@@ -131,7 +135,7 @@
       <div class="filebox">
         <h3>viewer.html</h3>
         <p>
-          Viewer finale dei dati. Mostra il contenuto in forma tabellare con la resa visuale definita.
+          Viewer finale dei dati. Mostra il contenuto tabellare con la resa visuale definita.
         </p>
         <div class="actions">
           <a class="button" href="viewer.html" target="_blank" rel="noopener">Open</a>
@@ -151,21 +155,45 @@
   </div>
 
   <div class="card">
+    <h2>Deployment status</h2>
+    <p class="muted">
+      Hai già configurato GitHub Pages e pubblicato Google Apps Script?
+    </p>
+
+    <div class="actions">
+      <button id="alreadyReadyBtn" type="button">Yes, open my CRUD app</button>
+      <button id="needStepsBtn" type="button" class="secondary">No, show me the steps</button>
+    </div>
+  </div>
+
+  <div id="readyPanel" class="card hidden">
+    <h2>Open your final app</h2>
+    <p class="muted">
+      Se il deploy è già stato configurato, puoi accedere subito al CRUD finale.
+    </p>
+
+    <div class="actions">
+      <a class="button" href="index.html" target="_blank" rel="noopener">Open generated CRUD app</a>
+      <a class="button secondary" href="viewer.html" target="_blank" rel="noopener">Open viewer</a>
+    </div>
+  </div>
+
+  <div id="stepsPanel" class="card hidden">
     <h2>Next steps</h2>
     <p class="muted">
-      Per pubblicare l’app finale bastano pochi passaggi.
+      Se non hai ancora completato il deploy, questi sono i passaggi minimi.
     </p>
 
     <ol>
       <li>Carica <code>codice.gs</code> nel tuo progetto Google Apps Script.</li>
-      <li>Pubblica o aggiorna la Web App Apps Script.</li>
+      <li>Pubblica o aggiorna la Web App di Apps Script.</li>
       <li>Carica <code>index.html</code> e <code>viewer.html</code> nella tua GitHub Pages.</li>
       <li>Apri <code>index.html</code> e verifica il CRUD finale.</li>
     </ol>
 
     <div class="actions">
-      <a class="button" href="index.html" target="_blank" rel="noopener">Open generated CRUD app</a>
       <a class="button secondary" href="review.html" target="_blank" rel="noopener">Back to review</a>
+      <a class="button" href="index.html" target="_blank" rel="noopener">Open generated CRUD app</a>
     </div>
   </div>
 
@@ -176,6 +204,23 @@
       da una piattaforma chiusa. Questo è il cuore dell’approccio Djungo.
     </p>
   </div>
+
+  <script>
+    const alreadyReadyBtn = document.getElementById("alreadyReadyBtn");
+    const needStepsBtn = document.getElementById("needStepsBtn");
+    const readyPanel = document.getElementById("readyPanel");
+    const stepsPanel = document.getElementById("stepsPanel");
+
+    alreadyReadyBtn.addEventListener("click", () => {
+      readyPanel.classList.remove("hidden");
+      stepsPanel.classList.add("hidden");
+    });
+
+    needStepsBtn.addEventListener("click", () => {
+      stepsPanel.classList.remove("hidden");
+      readyPanel.classList.add("hidden");
+    });
+  </script>
 
 </body>
 </html>
