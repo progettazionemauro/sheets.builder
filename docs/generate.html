@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generate App — Djungo Builder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1080px;
+      margin: 32px auto;
+      padding: 0 16px;
+      background: #f7f7f7;
+      color: #111;
+    }
+
+    h1, h2 {
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
+    .muted {
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: bold;
+    }
+
+    input[type="file"], input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 14px;
+    }
+
+    a.button, button {
+      display: inline-block;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #111;
+      color: #fff;
+      text-decoration: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    a.button.secondary, button.secondary {
+      background: #666;
+    }
+
+    .ok {
+      color: #0a6;
+      font-weight: bold;
+    }
+
+    .err {
+      color: #b00;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    pre {
+      background: #111;
+      color: #d8ffd8;
+      padding: 14px;
+      border-radius: 10px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    ul {
+      margin: 8px 0 0 18px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 860px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Generate your app</h1>
+  <p class="muted">
+    Carica i file esportati da Google Sheets per avviare il flusso di generazione.
+    Il sistema userà questi file per leggere la struttura del database e preparare
+    il frontend CRUD, il viewer e il backend Apps Script.
+  </p>
+
+  <div class="card">
+    <h2>1. Upload source files</h2>
+    <p class="muted">
+      I file richiesti sono l’export <code>.xlsx</code> del foglio e l’export <code>.html</code>
+      usato per leggere stili, etichette e colori.
+    </p>
+
+    <div class="grid">
+      <div>
+        <label for="xlsxFile">Google Sheets export (.xlsx)</label>
+        <input id="xlsxFile" type="file" accept=".xlsx" />
+      </div>
+      <div>
+        <label for="htmlFile">Google Sheets export (.html)</label>
+        <input id="htmlFile" type="file" accept=".html,text/html" />
+      </div>
+    </div>
+
+    <label for="sheetName">Sheet name (optional)</label>
+    <input id="sheetName" type="text" placeholder="Es. HorrorMovie" />
+
+    <div class="actions">
+      <button id="simulateParserBtn" type="button">Start parser</button>
+      <span id="parserStatus" class="muted"></span>
+    </div>
+  </div>
+
+  <div id="parserPanel" class="card hidden">
+    <h2>2. Parser result</h2>
+    <p class="muted">
+      In questa fase il sistema rileva campi, formule, valori enum e impostazioni visuali.
+      Nel flusso completo, questa parte alimenta internamente la configurazione del progetto.
+    </p>
+
+    <ul>
+      <li>Campi rilevati dal foglio</li>
+      <li>Valori enum e relativi colori</li>
+      <li>Formule presenti nei campi calcolati</li>
+      <li>Configurazione di base del frontend</li>
+    </ul>
+
+    <div class="actions">
+      <a class="button secondary" href="review.html" target="_blank" rel="noopener">Open internal review page</a>
+    </div>
+  </div>
+
+  <div id="filesPanel" class="card hidden">
+    <h2>3. Generated files</h2>
+    <p class="muted">
+      Una volta completata la pipeline, i tre file finali del progetto saranno:
+    </p>
+
+    <ul>
+      <li><code>index.html</code> — home page del database e CRUD finale</li>
+      <li><code>viewer.html</code> — viewer tabellare</li>
+      <li><code>codice.gs</code> — backend Google Apps Script</li>
+    </ul>
+
+    <div class="actions">
+      <a class="button" href="index.html" download="index.html">Download index.html</a>
+      <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
+      <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
+    </div>
+  </div>
+
+  <div id="nextPanel" class="card hidden">
+    <h2>4. Continue</h2>
+    <p class="muted">
+      Dopo la generazione dei file puoi passare alla pagina finale, dove troverai
+      il bivio tra istruzioni di deploy e accesso diretto al database.
+    </p>
+
+    <div class="actions">
+      <a class="button" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Current stage</h2>
+    <pre id="debugOut">Waiting for source files…</pre>
+  </div>
+
+  <script>
+    const xlsxFile = document.getElementById("xlsxFile");
+    const htmlFile = document.getElementById("htmlFile");
+    const sheetName = document.getElementById("sheetName");
+    const simulateParserBtn = document.getElementById("simulateParserBtn");
+    const parserStatus = document.getElementById("parserStatus");
+    const parserPanel = document.getElementById("parserPanel");
+    const filesPanel = document.getElementById("filesPanel");
+    const nextPanel = document.getElementById("nextPanel");
+    const debugOut = document.getElementById("debugOut");
+
+    function setStatus(msg, cls = "muted") {
+      parserStatus.textContent = msg;
+      parserStatus.className = cls;
+    }
+
+    function fileInfo(file) {
+      if (!file) return null;
+      return {
+        name: file.name,
+        size: file.size,
+        type: file.type || "n/a"
+      };
+    }
+
+    simulateParserBtn.addEventListener("click", async () => {
+      const xlsx = xlsxFile.files[0];
+      const html = htmlFile.files[0];
+
+      if (!xlsx || !html) {
+        setStatus("Upload both .xlsx and .html files first.", "err");
+        return;
+      }
+
+      const snapshot = {
+        stage: "client-upload",
+        xlsx: fileInfo(xlsx),
+        html: fileInfo(html),
+        sheetName: sheetName.value.trim() || "(not provided)",
+        note: "In this GitHub Pages phase, the UI simulates the product flow. The real parser/generator is still driven by the Python pipeline."
+      };
+
+      debugOut.textContent = JSON.stringify(snapshot, null, 2);
+
+      setStatus("Parser flow prepared successfully.", "ok");
+      parserPanel.classList.remove("hidden");
+      filesPanel.classList.remove("hidden");
+      nextPanel.classList.remove("hidden");
+    });
+  </script>
+
+</body>
+</html>
