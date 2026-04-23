@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 1080px;
+      max-width: 1100px;
       margin: 32px auto;
       padding: 0 16px;
       background: #f7f7f7;
@@ -43,7 +43,7 @@
       font-weight: bold;
     }
 
-    input[type="file"], input[type="text"] {
+    input[type="file"], input[type="text"], textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 10px;
@@ -99,6 +99,12 @@
       white-space: pre-wrap;
     }
 
+    code {
+      background: #f0f0f0;
+      padding: 2px 5px;
+      border-radius: 6px;
+    }
+
     ul {
       margin: 8px 0 0 18px;
       color: #333;
@@ -116,49 +122,50 @@
 
   <h1>Generate your app</h1>
   <p class="muted">
-    Carica i file esportati da Google Sheets per avviare il flusso di generazione.
-    Il sistema userà questi file per leggere la struttura del database e preparare
-    il frontend CRUD, il viewer e il backend Apps Script.
+    Carica i file esportati da Google Sheets e prepara la generazione del progetto finale.
+    In questa fase il parser e il generatore reali continuano a essere gestiti dalla pipeline Python,
+    ma questa pagina rappresenta il flusso cliente corretto.
   </p>
 
   <div class="card">
-    <h2>1. Upload source files</h2>
+    <h2>1. Source files</h2>
     <p class="muted">
-      I file richiesti sono l’export <code>.xlsx</code> del foglio e l’export <code>.html</code>
-      usato per leggere stili, etichette e colori.
+      I tre input logici di partenza sono:
+      <code>.xlsx</code>, <code>.html</code> e <code>sheet name</code>.
+      Il nome del foglio è obbligatorio perché viene usato nella configurazione del progetto.
     </p>
 
     <div class="grid">
       <div>
-        <label for="xlsxFile">Google Sheets export (.xlsx)</label>
+        <label for="xlsxFile">Google Sheets export (.xlsx) *</label>
         <input id="xlsxFile" type="file" accept=".xlsx" />
       </div>
       <div>
-        <label for="htmlFile">Google Sheets export (.html)</label>
+        <label for="htmlFile">Google Sheets export (.html) *</label>
         <input id="htmlFile" type="file" accept=".html,text/html" />
       </div>
     </div>
 
-    <label for="sheetName">Sheet name (optional)</label>
+    <label for="sheetName">Sheet name *</label>
     <input id="sheetName" type="text" placeholder="Es. HorrorMovie" />
 
     <div class="actions">
-      <button id="simulateParserBtn" type="button">Start parser</button>
+      <button id="parserBtn" type="button">Start parser</button>
       <span id="parserStatus" class="muted"></span>
     </div>
   </div>
 
   <div id="parserPanel" class="card hidden">
-    <h2>2. Parser result</h2>
+    <h2>2. Parser status</h2>
     <p class="muted">
-      In questa fase il sistema rileva campi, formule, valori enum e impostazioni visuali.
-      Nel flusso completo, questa parte alimenta internamente la configurazione del progetto.
+      Il parser legge la struttura del database, i campi, le formule rilevate, gli enum e i colori.
+      In questa fase intermedia, il controllo tecnico dettagliato può ancora essere rifinito nella pipeline interna.
     </p>
 
     <ul>
       <li>Campi rilevati dal foglio</li>
-      <li>Valori enum e relativi colori</li>
-      <li>Formule presenti nei campi calcolati</li>
+      <li>Formule trovate nei campi calcolati</li>
+      <li>Enum e colori visuali</li>
       <li>Configurazione di base del frontend</li>
     </ul>
 
@@ -167,30 +174,62 @@
     </div>
   </div>
 
-  <div id="filesPanel" class="card hidden">
-    <h2>3. Generated files</h2>
+  <div id="generatePanel" class="card hidden">
+    <h2>3. Generate final files</h2>
     <p class="muted">
-      Una volta completata la pipeline, i tre file finali del progetto saranno:
+      Dopo il parser, la pipeline genera i tre file finali del progetto:
+      <code>index.html</code>, <code>viewer.html</code> e <code>codice.gs</code>.
     </p>
 
-    <ul>
-      <li><code>index.html</code> — home page del database e CRUD finale</li>
-      <li><code>viewer.html</code> — viewer tabellare</li>
-      <li><code>codice.gs</code> — backend Google Apps Script</li>
-    </ul>
+    <div class="actions">
+      <button id="generateBtn" type="button">Generate index.html, viewer.html and codice.gs</button>
+      <span id="generateStatus" class="muted"></span>
+    </div>
+
+    <div id="generatedFilesBox" class="hidden" style="margin-top:14px;">
+      <p class="ok">Final package prepared</p>
+      <ul>
+        <li><code>index.html</code> — home page del database e CRUD finale</li>
+        <li><code>viewer.html</code> — viewer tabellare</li>
+        <li><code>codice.gs</code> — backend Google Apps Script</li>
+      </ul>
+
+      <div class="actions">
+        <a class="button secondary" href="index.html" download="index.html">Download index.html</a>
+        <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
+        <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="deployPanel" class="card hidden">
+    <h2>4. Deployment data</h2>
+    <p class="muted">
+      Dopo aver generato e pubblicato i file, inserisci i dati necessari per aprire direttamente
+      la pagina finale del database. Questi valori devono essere chiari anche al cliente finale.
+    </p>
+
+    <label for="webAppUrl">Apps Script Web App URL *</label>
+    <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
+
+    <label for="apiKey">API key *</label>
+    <input id="apiKey" type="text" placeholder="CHANGE_ME_WRITE_KEY_2026" />
+
+    <label for="crudEndpoint">CRUD endpoint</label>
+    <input id="crudEndpoint" type="text" readonly />
 
     <div class="actions">
-      <a class="button" href="index.html" download="index.html">Download index.html</a>
-      <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
-      <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
+      <button id="buildEndpointBtn" type="button">Build CRUD endpoint</button>
+      <button id="openCrudBtn" type="button" class="secondary">Open database</button>
+      <span id="deployStatus" class="muted"></span>
     </div>
   </div>
 
   <div id="nextPanel" class="card hidden">
-    <h2>4. Continue</h2>
+    <h2>5. Continue</h2>
     <p class="muted">
-      Dopo la generazione dei file puoi passare alla pagina finale, dove troverai
-      il bivio tra istruzioni di deploy e accesso diretto al database.
+      Una volta che i file finali sono pronti e il deploy è stato configurato, puoi usare anche la pagina finale
+      di consegna per il cliente.
     </p>
 
     <div class="actions">
@@ -207,17 +246,26 @@
     const xlsxFile = document.getElementById("xlsxFile");
     const htmlFile = document.getElementById("htmlFile");
     const sheetName = document.getElementById("sheetName");
-    const simulateParserBtn = document.getElementById("simulateParserBtn");
+
+    const parserBtn = document.getElementById("parserBtn");
     const parserStatus = document.getElementById("parserStatus");
     const parserPanel = document.getElementById("parserPanel");
-    const filesPanel = document.getElementById("filesPanel");
+
+    const generateBtn = document.getElementById("generateBtn");
+    const generateStatus = document.getElementById("generateStatus");
+    const generatePanel = document.getElementById("generatePanel");
+    const generatedFilesBox = document.getElementById("generatedFilesBox");
+
+    const deployPanel = document.getElementById("deployPanel");
+    const webAppUrl = document.getElementById("webAppUrl");
+    const apiKey = document.getElementById("apiKey");
+    const crudEndpoint = document.getElementById("crudEndpoint");
+    const buildEndpointBtn = document.getElementById("buildEndpointBtn");
+    const openCrudBtn = document.getElementById("openCrudBtn");
+    const deployStatus = document.getElementById("deployStatus");
+
     const nextPanel = document.getElementById("nextPanel");
     const debugOut = document.getElementById("debugOut");
-
-    function setStatus(msg, cls = "muted") {
-      parserStatus.textContent = msg;
-      parserStatus.className = cls;
-    }
 
     function fileInfo(file) {
       if (!file) return null;
@@ -228,29 +276,85 @@
       };
     }
 
-    simulateParserBtn.addEventListener("click", async () => {
+    function updateDebug(data) {
+      debugOut.textContent = JSON.stringify(data, null, 2);
+    }
+
+    function buildCrudUrl() {
+      const basePath = window.location.pathname.replace(/[^\/]*$/, "");
+      const url = new URL(basePath + "index.html", window.location.origin);
+      url.searchParams.set("webApp", webAppUrl.value.trim());
+      url.searchParams.set("apiKey", apiKey.value.trim());
+      return url.toString();
+    }
+
+    parserBtn.addEventListener("click", () => {
       const xlsx = xlsxFile.files[0];
       const html = htmlFile.files[0];
+      const sheet = sheetName.value.trim();
 
-      if (!xlsx || !html) {
-        setStatus("Upload both .xlsx and .html files first.", "err");
+      if (!xlsx || !html || !sheet) {
+        parserStatus.textContent = "Upload .xlsx, .html and fill sheet name.";
+        parserStatus.className = "err";
         return;
       }
 
-      const snapshot = {
-        stage: "client-upload",
+      parserStatus.textContent = "Parser flow prepared successfully.";
+      parserStatus.className = "ok";
+
+      parserPanel.classList.remove("hidden");
+      generatePanel.classList.remove("hidden");
+
+      updateDebug({
+        stage: "parser-prepared",
         xlsx: fileInfo(xlsx),
         html: fileInfo(html),
-        sheetName: sheetName.value.trim() || "(not provided)",
-        note: "In this GitHub Pages phase, the UI simulates the product flow. The real parser/generator is still driven by the Python pipeline."
-      };
+        sheetName: sheet,
+        note: "In this intermediate phase, the real parser still runs in the Python pipeline."
+      });
+    });
 
-      debugOut.textContent = JSON.stringify(snapshot, null, 2);
+    generateBtn.addEventListener("click", () => {
+      generateStatus.textContent = "Final generation flow prepared.";
+      generateStatus.className = "ok";
 
-      setStatus("Parser flow prepared successfully.", "ok");
-      parserPanel.classList.remove("hidden");
-      filesPanel.classList.remove("hidden");
+      generatedFilesBox.classList.remove("hidden");
+      deployPanel.classList.remove("hidden");
       nextPanel.classList.remove("hidden");
+
+      const current = JSON.parse(debugOut.textContent || "{}");
+      current.stage = "generation-prepared";
+      current.note2 = "The real generation still runs in the Python pipeline and produces index.html, viewer.html and codice.gs.";
+      updateDebug(current);
+    });
+
+    buildEndpointBtn.addEventListener("click", () => {
+      const webApp = webAppUrl.value.trim();
+      const key = apiKey.value.trim();
+
+      if (!webApp || !key) {
+        deployStatus.textContent = "Insert both Apps Script Web App URL and API key.";
+        deployStatus.className = "err";
+        return;
+      }
+
+      const endpoint = buildCrudUrl();
+      crudEndpoint.value = endpoint;
+      deployStatus.textContent = "CRUD endpoint generated successfully.";
+      deployStatus.className = "ok";
+    });
+
+    openCrudBtn.addEventListener("click", () => {
+      const endpoint = crudEndpoint.value.trim() || buildCrudUrl();
+
+      if (!webAppUrl.value.trim() || !apiKey.value.trim()) {
+        deployStatus.textContent = "Insert Web App URL and API key first.";
+        deployStatus.className = "err";
+        return;
+      }
+
+      crudEndpoint.value = endpoint;
+      window.open(endpoint, "_blank", "noopener");
     });
   </script>
 
