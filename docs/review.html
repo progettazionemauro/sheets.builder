@@ -154,6 +154,10 @@ a.button.secondary {
     .hero-note {
       line-height: 1.5;
     }
+
+    .hidden {
+  display: none;
+}
   </style>
 </head>
 <body>
@@ -288,7 +292,14 @@ a.button.secondary {
   <div class="actions">
     <button id="downloadBtn" type="button">Approve and generate configuration</button>
     <span id="downloadStatus" class="muted"></span>
+  <div id="finalDownloads" class="actions hidden" style="margin-top:12px;">
+  <a id="downloadIndex" class="button secondary" href="#">Download index.html</a>
+  <a id="downloadViewer" class="button secondary" href="#">Download viewer.html</a>
+  <a id="downloadGas" class="button secondary" href="#">Download codice.gs</a>
+  <a id="openAppReady" class="button" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
+</div>
   </div>
+
 <div class="actions" style="margin-top:10px;">
   <a class="button secondary" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
 </div>
@@ -433,6 +444,10 @@ a.button.secondary {
     document.getElementById("sheetName").value = p.sheetName || "";
     document.getElementById("buildMarker").value = p.buildMarker || "";
     document.getElementById("adminPassword").value = p.adminPassword || "";
+    const finalDownloads = document.getElementById("finalDownloads");
+    const downloadViewer = document.getElementById("downloadViewer");
+    const downloadIndex = document.getElementById("downloadIndex");
+    const downloadGas = document.getElementById("downloadGas");
   }
 
   function renderFieldsTable() {
@@ -723,6 +738,32 @@ a.button.secondary {
     renderEnumStyles();
     renderPreviewOnly();
   }
+  function autoloadFromLocalStorageIfRequested() {
+  const qs = new URLSearchParams(window.location.search);
+  const shouldAutoload = qs.get("autoload") === "1";
+
+  if (!shouldAutoload) {
+    return;
+  }
+
+  try {
+    const raw = localStorage.getItem("DJUNGO_BUILDER_STATE");
+    if (!raw) {
+      setStatus("loadStatus", "Errore: nessun builder state trovato in localStorage", "err");
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    builderState = ensureBuilderStateShape(parsed);
+
+    renderAll();
+
+    setStatus("loadStatus", "Builder state loaded automatically from parser result", "ok");
+  } catch (err) {
+    setStatus("loadStatus", "Errore autoload: " + err.message, "err");
+    console.error(err);
+  }
+}
 
   async function loadFromFile(file) {
     const text = await file.text();
@@ -759,31 +800,57 @@ a.button.secondary {
     }
   });
 
-  document.getElementById("downloadBtn").addEventListener("click", () => {
-    try {
-      if (!builderState) throw new Error("No parsed configuration loaded");
+  document.getElementById("downloadBtn").addEventListener("click", async () => {
+  try {
+    if (!builderState) throw new Error("No parsed configuration loaded");
 
-      const blob = new Blob(
-        [JSON.stringify(builderState, null, 2)],
-        { type: "application/json" }
-      );
+    const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
+    if (!sessionId) throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
 
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "approved_configuration.json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
+    setStatus("downloadStatus", "Generating final files...", "muted");
 
-      setStatus("downloadStatus", "Approved configuration generated successfully. Next: run the final generation step, then open app_ready.html.", "ok");
-    } catch (err) {
-      setStatus("downloadStatus", "Errore: " + err.message, "err");
-      console.error(err);
+    const resp = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        builder_state: builderState
+      })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.error || "Generation failed");
     }
-  });
+
+    downloadIndex.href = data.downloads.index_html;
+    downloadIndex.download = "index.html";
+
+    downloadViewer.href = data.downloads.viewer_html;
+    downloadViewer.download = "viewer.html";
+
+    downloadGas.href = data.downloads.codice_gs;
+    downloadGas.download = "codice.gs";
+
+    finalDownloads.classList.remove("hidden");
+
+    setStatus(
+  "downloadStatus",
+  "Final files generated successfully. Download the files or continue to the app ready page.",
+  "ok"
+);
+
+  } catch (err) {
+    setStatus("downloadStatus", "Errore: " + err.message, "err");
+    console.error(err);
+  }
+});
 
   bindProjectEvents();
+  autoloadFromLocalStorageIfRequested();
 </script>
 
 </body>

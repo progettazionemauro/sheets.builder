@@ -36,30 +36,24 @@
       font-weight: bold;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 14px;
+    .err {
+      color: #b00;
+      font-weight: bold;
     }
 
-    .filebox {
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      padding: 14px;
-      background: #fafafa;
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: bold;
     }
 
-    .filebox h3 {
-      margin-top: 0;
-      margin-bottom: 8px;
-      font-size: 16px;
-    }
-
-    .filebox p {
-      margin: 0;
-      color: #555;
-      font-size: 14px;
-      line-height: 1.45;
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      background: #fff;
     }
 
     .actions {
@@ -86,10 +80,6 @@
       background: #666;
     }
 
-    .hidden {
-      display: none;
-    }
-
     ol {
       margin: 10px 0 0 18px;
       color: #333;
@@ -101,105 +91,147 @@
       padding: 2px 5px;
       border-radius: 6px;
     }
-
-    @media (max-width: 860px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-    }
   </style>
 </head>
 <body>
 
   <h1>Your app is ready</h1>
-<p class="muted">
-  La configurazione è stata approvata e il progetto finale è pronto.
-  Qui trovi i file generati e il percorso più rapido per arrivare alla home page del database.
-</p>
-
-  <div class="card">
-  <h2>Generated files</h2>
-  <p class="ok">Final package ready</p>
   <p class="muted">
-    Scarica i tre file finali del progetto. <code>index.html</code> è la home page del database,
-    <code>viewer.html</code> è il viewer tabellare, <code>codice.gs</code> è il backend Apps Script.
+    I file finali del progetto sono pronti. Puoi scaricarli, pubblicarli e poi aprire direttamente
+    la home page del database.
   </p>
 
-  <div class="actions">
-    <a class="button secondary" href="index.html" download="index.html">Download index.html</a>
-    <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
-    <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
-  </div>
-</div>
-
   <div class="card">
-    <h2>Deployment status</h2>
+    <h2>1. Download final files</h2>
     <p class="muted">
-      Hai già configurato GitHub Pages e pubblicato Google Apps Script?
+      Scarica i tre file finali del progetto.
     </p>
 
     <div class="actions">
-      <button id="alreadyReadyBtn" type="button">Yes, open my CRUD app</button>
-      <button id="needStepsBtn" type="button" class="secondary">No, show me the steps</button>
+      <a class="button secondary" href="index.html" download="index.html">Download index.html</a>
+      <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
+      <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
     </div>
   </div>
 
-  <div id="readyPanel" class="card hidden">
-  <h2>Open your database</h2>
-  <p class="muted">
-    Se GitHub Pages e Google Apps Script sono già configurati, puoi accedere subito
-    alla pagina finale del database.
-  </p>
+  <div class="card">
+    <h2>2. Deployment data</h2>
+    <p class="muted">
+      Dopo aver pubblicato <code>codice.gs</code> come Web App Apps Script, inserisci qui il suo URL
+      e la chiave API usata dal backend.
+    </p>
 
-  <div class="actions">
-    <a class="button" href="index.html" target="_blank" rel="noopener">Open database</a>
+    <label for="webAppUrl">Apps Script Web App URL</label>
+    <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
+
+    <label for="apiKey">API key</label>
+    <input id="apiKey" type="text" placeholder="CHANGE_ME_WRITE_KEY_2026" />
+
+    <label for="crudEndpoint">Database endpoint</label>
+    <input id="crudEndpoint" type="text" readonly />
+
+    <div class="actions">
+      <button id="buildEndpointBtn" type="button">Build database endpoint</button>
+      <button id="openDatabaseBtn" type="button" class="secondary">Open database</button>
+      <span id="status" class="muted"></span>
+    </div>
   </div>
-</div>
-
-  <div id="stepsPanel" class="card hidden">
-  <h2>Next steps</h2>
-  <p class="muted">
-    Se non hai ancora completato il deploy, esegui questi passaggi minimi per arrivare
-    alla pagina finale del database.
-  </p>
-
-  <ol>
-    <li>Carica <code>codice.gs</code> nel tuo progetto Google Apps Script.</li>
-    <li>Pubblica o aggiorna la Web App di Apps Script.</li>
-    <li>Carica <code>index.html</code> e <code>viewer.html</code> nella tua GitHub Pages.</li>
-    <li>Apri <code>index.html</code>: sarà la home page del database.</li>
-  </ol>
-
-  <div class="actions">
-    <a class="button secondary" href="review.html" target="_blank" rel="noopener">Back to review</a>
-    <a class="button" href="index.html" target="_blank" rel="noopener">Open database</a>
-  </div>
-</div>
 
   <div class="card">
-    <h2>What this means</h2>
+    <h2>3. Minimal deployment steps</h2>
+
+    <ol>
+      <li>Apri Google Apps Script e incolla <code>codice.gs</code>.</li>
+      <li>Pubblica o aggiorna la Web App.</li>
+      <li>Copia l’URL finale della Web App nel campo sopra.</li>
+      <li>Carica <code>index.html</code> e <code>viewer.html</code> nella tua GitHub Pages.</li>
+      <li>Premi <b>Open database</b>.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Djungo principle</h2>
     <p class="muted">
-      Il progetto finale resta portabile: i file generati sono tuoi e possono essere pubblicati senza dipendere
-      da una piattaforma chiusa. Questo è il cuore dell’approccio Djungo.
+      Il progetto resta portabile: i file generati sono tuoi, il codice è leggibile e puoi pubblicarlo
+      senza dipendere da una piattaforma chiusa.
     </p>
   </div>
 
-  <script>
-    const alreadyReadyBtn = document.getElementById("alreadyReadyBtn");
-    const needStepsBtn = document.getElementById("needStepsBtn");
-    const readyPanel = document.getElementById("readyPanel");
-    const stepsPanel = document.getElementById("stepsPanel");
+<script>
+  const webAppUrl = document.getElementById("webAppUrl");
+  const apiKey = document.getElementById("apiKey");
+  const crudEndpoint = document.getElementById("crudEndpoint");
+  const statusEl = document.getElementById("status");
 
-    alreadyReadyBtn.addEventListener("click", () => {
-      readyPanel.classList.remove("hidden");
-      stepsPanel.classList.add("hidden");
-    });
+  function setStatus(msg, cls = "muted") {
+    statusEl.textContent = msg;
+    statusEl.className = cls;
+  }
 
-    needStepsBtn.addEventListener("click", () => {
-      stepsPanel.classList.remove("hidden");
-      readyPanel.classList.add("hidden");
-    });
-  </script>
+  function buildCrudUrl() {
+    const basePath = window.location.pathname.replace(/[^\/]*$/, "");
+    const url = new URL(basePath + "index.html", window.location.origin);
+    url.searchParams.set("webApp", webAppUrl.value.trim());
+    url.searchParams.set("apiKey", apiKey.value.trim());
+    return url.toString();
+  }
+
+  function saveDeploymentData() {
+    sessionStorage.setItem("DJUNGO_WEB_APP_URL", webAppUrl.value.trim());
+    sessionStorage.setItem("DJUNGO_API_KEY", apiKey.value.trim());
+  }
+
+  function restoreDeploymentData() {
+    const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
+    const savedKey = sessionStorage.getItem("DJUNGO_API_KEY");
+
+    if (savedWebApp) webAppUrl.value = savedWebApp;
+    if (savedKey) apiKey.value = savedKey;
+
+    if (savedWebApp && savedKey) {
+      crudEndpoint.value = buildCrudUrl();
+    }
+  }
+
+  document.getElementById("buildEndpointBtn").addEventListener("click", () => {
+    if (!webAppUrl.value.trim() || !apiKey.value.trim()) {
+      setStatus("Inserisci Web App URL e API key.", "err");
+      return;
+    }
+
+    saveDeploymentData();
+    crudEndpoint.value = buildCrudUrl();
+    setStatus("Database endpoint generated successfully.", "ok");
+  });
+
+  document.getElementById("openDatabaseBtn").addEventListener("click", () => {
+    if (!webAppUrl.value.trim() || !apiKey.value.trim()) {
+      setStatus("Inserisci Web App URL e API key.", "err");
+      return;
+    }
+
+    saveDeploymentData();
+    const endpoint = buildCrudUrl();
+    crudEndpoint.value = endpoint;
+    window.open(endpoint, "_blank", "noopener");
+  });
+
+  webAppUrl.addEventListener("input", () => {
+    if (webAppUrl.value.trim() && apiKey.value.trim()) {
+      crudEndpoint.value = buildCrudUrl();
+      saveDeploymentData();
+    }
+  });
+
+  apiKey.addEventListener("input", () => {
+    if (webAppUrl.value.trim() && apiKey.value.trim()) {
+      crudEndpoint.value = buildCrudUrl();
+      saveDeploymentData();
+    }
+  });
+
+  restoreDeploymentData();
+</script>
 
 </body>
 </html>

@@ -170,6 +170,32 @@
     return document.getElementById("apiKey").value.trim();
   }
 
+  function readStartupParams_() {
+  const qs = new URLSearchParams(window.location.search);
+
+  return {
+    webApp: qs.get("webApp") || "",
+    apiKey: qs.get("apiKey") || ""
+  };
+}
+
+function applyStartupParams_() {
+  const params = readStartupParams_();
+
+  const apiKeyInput = document.getElementById("apiKey");
+  const webAppInput = document.getElementById("webAppUrl");
+
+  if (params.apiKey && apiKeyInput) {
+    apiKeyInput.value = params.apiKey;
+    sessionStorage.setItem("BUILDER_API_KEY", params.apiKey);
+    sessionStorage.setItem("HORROR_API_KEY", params.apiKey);
+  }
+
+  if (params.webApp && webAppInput) {
+    webAppInput.value = params.webApp;
+    sessionStorage.setItem("BUILDER_WEB_APP_URL", params.webApp);
+  }
+}
   function viewerUrl_(cacheBust) {
     const basePath = window.location.pathname.replace(/[^\/]*$/, "");
     const u = new URL(basePath + "viewer.html", window.location.origin);
@@ -349,8 +375,34 @@
     }
   });
 
-  const apiKeyInput = document.getElementById("apiKey");
+  
+    const apiKeyInput = document.getElementById("apiKey");
   const webAppInput = document.getElementById("webAppUrl");
+
+  function readStartupParams_() {
+    const qs = new URLSearchParams(window.location.search);
+
+    return {
+      webApp: qs.get("webApp") || "",
+      apiKey: qs.get("apiKey") || ""
+    };
+  }
+
+  function applyStartupParams_() {
+    const params = readStartupParams_();
+
+    if (params.apiKey && apiKeyInput) {
+      apiKeyInput.value = params.apiKey;
+      sessionStorage.setItem("BUILDER_API_KEY", params.apiKey);
+    }
+
+    if (params.webApp && webAppInput) {
+      webAppInput.value = params.webApp;
+      sessionStorage.setItem("BUILDER_WEB_APP_URL", params.webApp);
+    }
+  }
+
+  applyStartupParams_();
 
   const savedKey = sessionStorage.getItem("BUILDER_API_KEY");
   const savedWebApp = sessionStorage.getItem("BUILDER_WEB_APP_URL");
@@ -358,6 +410,9 @@
   if (savedKey && !apiKeyInput.value) apiKeyInput.value = savedKey;
   if (savedWebApp && !webAppInput.value) {
     webAppInput.value = savedWebApp;
+  }
+
+  if (webAppInput && webAppInput.value.trim()) {
     loadViewer(false);
   }
 

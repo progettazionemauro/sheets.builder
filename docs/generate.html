@@ -170,7 +170,7 @@
     </ul>
 
     <div class="actions">
-      <a class="button secondary" href="review.html" target="_blank" rel="noopener">Open internal review page</a>
+     <button id="openReviewBtn" type="button" class="secondary">Open internal review page</button>
     </div>
   </div>
 
@@ -195,10 +195,9 @@
       </ul>
 
       <div class="actions">
-        <a class="button secondary" href="index.html" download="index.html">Download index.html</a>
-        <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
-        <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
-      </div>
+        <a id="downloadIndex" class="button secondary hidden" href="#">Download index.html</a>
+<a id="downloadViewer" class="button secondary hidden" href="#">Download viewer.html</a>
+<a id="downloadGas" class="button secondary hidden" href="#">Download codice.gs</a>
     </div>
   </div>
 
@@ -243,120 +242,232 @@
   </div>
 
   <script>
-    const xlsxFile = document.getElementById("xlsxFile");
-    const htmlFile = document.getElementById("htmlFile");
-    const sheetName = document.getElementById("sheetName");
+  const xlsxFile = document.getElementById("xlsxFile");
+  const htmlFile = document.getElementById("htmlFile");
+  const sheetName = document.getElementById("sheetName");
 
-    const parserBtn = document.getElementById("parserBtn");
-    const parserStatus = document.getElementById("parserStatus");
-    const parserPanel = document.getElementById("parserPanel");
+  const parserBtn = document.getElementById("parserBtn");
+  const parserStatus = document.getElementById("parserStatus");
+  const parserPanel = document.getElementById("parserPanel");
 
-    const generateBtn = document.getElementById("generateBtn");
-    const generateStatus = document.getElementById("generateStatus");
-    const generatePanel = document.getElementById("generatePanel");
-    const generatedFilesBox = document.getElementById("generatedFilesBox");
+  const generateBtn = document.getElementById("generateBtn");
+  const generateStatus = document.getElementById("generateStatus");
+  const generatePanel = document.getElementById("generatePanel");
+  const generatedFilesBox = document.getElementById("generatedFilesBox");
 
-    const deployPanel = document.getElementById("deployPanel");
-    const webAppUrl = document.getElementById("webAppUrl");
-    const apiKey = document.getElementById("apiKey");
-    const crudEndpoint = document.getElementById("crudEndpoint");
-    const buildEndpointBtn = document.getElementById("buildEndpointBtn");
-    const openCrudBtn = document.getElementById("openCrudBtn");
-    const deployStatus = document.getElementById("deployStatus");
+  const deployPanel = document.getElementById("deployPanel");
+  const webAppUrl = document.getElementById("webAppUrl");
+  const apiKey = document.getElementById("apiKey");
+  const crudEndpoint = document.getElementById("crudEndpoint");
+  const buildEndpointBtn = document.getElementById("buildEndpointBtn");
+  const openCrudBtn = document.getElementById("openCrudBtn");
+  const deployStatus = document.getElementById("deployStatus");
 
-    const nextPanel = document.getElementById("nextPanel");
-    const debugOut = document.getElementById("debugOut");
+  const nextPanel = document.getElementById("nextPanel");
+  const debugOut = document.getElementById("debugOut");
 
-    function fileInfo(file) {
-      if (!file) return null;
-      return {
-        name: file.name,
-        size: file.size,
-        type: file.type || "n/a"
-      };
+  const downloadIndex = document.getElementById("downloadIndex");
+  const downloadViewer = document.getElementById("downloadViewer");
+  const downloadGas = document.getElementById("downloadGas");
+  const openReviewBtn = document.getElementById("openReviewBtn");
+
+  let currentSessionId = null;
+  let currentBuilderState = null;
+  let currentDownloads = null;
+
+  function fileInfo(file) {
+    if (!file) return null;
+    return {
+      name: file.name,
+      size: file.size,
+      type: file.type || "n/a"
+    };
+  }
+
+  function updateDebug(data) {
+    debugOut.textContent = JSON.stringify(data, null, 2);
+  }
+
+  function setStatus(el, msg, cls = "muted") {
+    el.textContent = msg;
+    el.className = cls;
+  }
+
+  function buildCrudUrl() {
+    const basePath = window.location.pathname.replace(/[^\/]*$/, "");
+    const url = new URL(basePath + "index.html", window.location.origin);
+    url.searchParams.set("webApp", webAppUrl.value.trim());
+    url.searchParams.set("apiKey", apiKey.value.trim());
+    return url.toString();
+  }
+
+  parserBtn.addEventListener("click", async () => {
+    const xlsx = xlsxFile.files[0];
+    const html = htmlFile.files[0];
+    const sheet = sheetName.value.trim();
+
+    if (!xlsx || !html || !sheet) {
+      setStatus(parserStatus, "Upload .xlsx, .html and fill sheet name.", "err");
+      return;
     }
 
-    function updateDebug(data) {
-      debugOut.textContent = JSON.stringify(data, null, 2);
-    }
+    try {
+      parserBtn.disabled = true;
+      setStatus(parserStatus, "Parsing source files…", "muted");
 
-    function buildCrudUrl() {
-      const basePath = window.location.pathname.replace(/[^\/]*$/, "");
-      const url = new URL(basePath + "index.html", window.location.origin);
-      url.searchParams.set("webApp", webAppUrl.value.trim());
-      url.searchParams.set("apiKey", apiKey.value.trim());
-      return url.toString();
-    }
+      const formData = new FormData();
+      formData.append("xlsx", xlsx);
+      formData.append("html", html);
+      formData.append("sheet_name", sheet);
 
-    parserBtn.addEventListener("click", () => {
-      const xlsx = xlsxFile.files[0];
-      const html = htmlFile.files[0];
-      const sheet = sheetName.value.trim();
+      const resp = await fetch("/api/parse", {
+        method: "POST",
+        body: formData
+      });
 
-      if (!xlsx || !html || !sheet) {
-        parserStatus.textContent = "Upload .xlsx, .html and fill sheet name.";
-        parserStatus.className = "err";
-        return;
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || "Parser failed");
       }
 
-      parserStatus.textContent = "Parser flow prepared successfully.";
-      parserStatus.className = "ok";
+      currentSessionId = data.session_id;
+      currentBuilderState = data.builder_state;
+
+      localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId);
+      localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(currentBuilderState));
+
+      setStatus(parserStatus, "Parser completed successfully.", "ok");
 
       parserPanel.classList.remove("hidden");
       generatePanel.classList.remove("hidden");
 
       updateDebug({
-        stage: "parser-prepared",
-        xlsx: fileInfo(xlsx),
-        html: fileInfo(html),
-        sheetName: sheet,
-        note: "In this intermediate phase, the real parser still runs in the Python pipeline."
+        stage: "parser-completed",
+        session_id: currentSessionId,
+        source: {
+          xlsx: fileInfo(xlsx),
+          html: fileInfo(html),
+          sheetName: sheet
+        },
+        builder_state: currentBuilderState
       });
-    });
 
-    generateBtn.addEventListener("click", () => {
-      generateStatus.textContent = "Final generation flow prepared.";
-      generateStatus.className = "ok";
+    } catch (err) {
+      setStatus(parserStatus, "ERR: " + err.message, "err");
+      updateDebug({
+        stage: "parser-error",
+        error: err.message
+      });
+    } finally {
+      parserBtn.disabled = false;
+    }
+  });
+
+  openReviewBtn.addEventListener("click", () => {
+    if (!currentBuilderState) {
+      setStatus(parserStatus, "Run parser first.", "err");
+      return;
+    }
+
+    localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId || "");
+    localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(currentBuilderState));
+    window.open("review.html?autoload=1", "_blank", "noopener");
+  });
+
+  generateBtn.addEventListener("click", async () => {
+    if (!currentSessionId || !currentBuilderState) {
+      setStatus(generateStatus, "Run parser first.", "err");
+      return;
+    }
+
+    try {
+      generateBtn.disabled = true;
+      setStatus(generateStatus, "Generating final files…", "muted");
+
+      const resp = await fetch("/api/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          session_id: currentSessionId,
+          builder_state: currentBuilderState
+        })
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || "Generation failed");
+      }
+
+      currentDownloads = data.downloads;
+
+      downloadIndex.href = currentDownloads.index_html;
+      downloadIndex.download = "index.html";
+      downloadIndex.classList.remove("hidden");
+
+      downloadViewer.href = currentDownloads.viewer_html;
+      downloadViewer.download = "viewer.html";
+      downloadViewer.classList.remove("hidden");
+
+      downloadGas.href = currentDownloads.codice_gs;
+      downloadGas.download = "codice.gs";
+      downloadGas.classList.remove("hidden");
 
       generatedFilesBox.classList.remove("hidden");
       deployPanel.classList.remove("hidden");
       nextPanel.classList.remove("hidden");
 
-      const current = JSON.parse(debugOut.textContent || "{}");
-      current.stage = "generation-prepared";
-      current.note2 = "The real generation still runs in the Python pipeline and produces index.html, viewer.html and codice.gs.";
-      updateDebug(current);
-    });
+      setStatus(generateStatus, "Final files generated successfully.", "ok");
 
-    buildEndpointBtn.addEventListener("click", () => {
-      const webApp = webAppUrl.value.trim();
-      const key = apiKey.value.trim();
+      updateDebug({
+        stage: "generation-completed",
+        session_id: currentSessionId,
+        downloads: currentDownloads,
+        builder_state: currentBuilderState
+      });
 
-      if (!webApp || !key) {
-        deployStatus.textContent = "Insert both Apps Script Web App URL and API key.";
-        deployStatus.className = "err";
-        return;
-      }
+    } catch (err) {
+      setStatus(generateStatus, "ERR: " + err.message, "err");
+      updateDebug({
+        stage: "generation-error",
+        error: err.message
+      });
+    } finally {
+      generateBtn.disabled = false;
+    }
+  });
 
-      const endpoint = buildCrudUrl();
-      crudEndpoint.value = endpoint;
-      deployStatus.textContent = "CRUD endpoint generated successfully.";
-      deployStatus.className = "ok";
-    });
+  buildEndpointBtn.addEventListener("click", () => {
+    const webApp = webAppUrl.value.trim();
+    const key = apiKey.value.trim();
 
-    openCrudBtn.addEventListener("click", () => {
-      const endpoint = crudEndpoint.value.trim() || buildCrudUrl();
+    if (!webApp || !key) {
+      setStatus(deployStatus, "Insert both Apps Script Web App URL and API key.", "err");
+      return;
+    }
 
-      if (!webAppUrl.value.trim() || !apiKey.value.trim()) {
-        deployStatus.textContent = "Insert Web App URL and API key first.";
-        deployStatus.className = "err";
-        return;
-      }
+    const endpoint = buildCrudUrl();
+    crudEndpoint.value = endpoint;
+    setStatus(deployStatus, "CRUD endpoint generated successfully.", "ok");
+  });
 
-      crudEndpoint.value = endpoint;
-      window.open(endpoint, "_blank", "noopener");
-    });
-  </script>
+  openCrudBtn.addEventListener("click", () => {
+    const webApp = webAppUrl.value.trim();
+    const key = apiKey.value.trim();
+
+    if (!webApp || !key) {
+      setStatus(deployStatus, "Insert Web App URL and API key first.", "err");
+      return;
+    }
+
+    const endpoint = buildCrudUrl();
+    crudEndpoint.value = endpoint;
+    window.open(endpoint, "_blank", "noopener");
+  });
+</script>
 
 </body>
 </html>
