@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HorrorAtlas — v1</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 28px auto; padding: 0 16px; }
+    h1 { margin: 0 0 6px; }
+    .muted { color:#666; }
+    .card { border:1px solid #e5e5e5; border-radius:10px; padding:14px; background:#fafafa; margin:12px 0; }
+    label { display:block; margin:10px 0 6px; font-weight:700; }
+    input, select { width:100%; padding:9px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box; background:#fff; }
+    button { padding:9px 12px; border:0; border-radius:8px; background:#111; color:#fff; cursor:pointer; font-weight:800; }
+    button.secondary { background:#666; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    .ok { color:#0a6; font-weight:800; }
+    .err { color:#b00; font-weight:800; }
+    iframe { width:100%; height:560px; border:1px solid #ddd; border-radius:10px; background:#fff; }
+    small { display:block; margin-top:8px; color:#666; }
+    pre { background:#0b0b0b; color:#d6ffd6; border-radius:10px; padding:12px; overflow:auto; }
+  </style>
+</head>
+<body>
+
+  <h1>HorrorAtlas <span class="muted">— v1</span></h1>
+  <p class="muted">
+    Backend: Google Apps Script (JSONP) → tab <b>HorrorMovie</b>.
+    <br>Read: pubblico. Write: protetto da <code>apiKey</code>.
+  </p>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px;">Config</h3>
+
+    <label for="apiKey">apiKey (solo insert/update/delete/getById)</label>
+    <input id="apiKey" type="password" autocomplete="off" spellcheck="false"
+           placeholder="CHANGE_ME_WRITE_KEY_2026" />
+
+    <div class="actions">
+      <button id="pingBtn" type="button">meta</button>
+      <button id="schemaBtn" type="button" class="secondary">schema</button>
+      <span id="cfgStatus" class="muted"></span>
+    </div>
+
+    <small>Tip: fai prima <b>schema</b>, poi inserisci 1 record, poi controlla nel viewer.</small>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px;">Insert (new movie)</h3>
+
+    <div class="row">
+      <div>
+        <label for="year">year <span class="muted">(required)</span></label>
+        <input id="year" type="number" min="1890" max="2100" placeholder="1981" />
+      </div>
+      <div>
+        <label for="nation">nation <span class="muted">(optional)</span></label>
+        <input id="nation" placeholder="USA" />
+      </div>
+    </div>
+
+    <label for="title">Title <span class="muted">(required)</span></label>
+    <input id="title" placeholder="Psycho" />
+
+    <label for="url">url <span class="muted">(optional)</span></label>
+    <input id="url" placeholder="https://en.wikipedia.org/wiki/Psycho_(1960_film)" />
+
+    <label for="rating">rating <span class="muted">(optional)</span></label>
+    <select id="rating">
+      <option value="" selected>—</option>
+      <option>Pessimo</option>
+      <option>Mediocre</option>
+      <option>Medio</option>
+      <option>Buono</option>
+      <option>Ottimo</option>
+      <option>Capolavoro</option>
+    </select>
+
+    <div class="actions">
+      <button id="insertBtn" type="button">Insert</button>
+      <span id="insertStatus" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px;">CRUD by id</h3>
+    <div class="row">
+      <div>
+        <label for="id">id</label>
+        <input id="id" type="number" min="1" step="1" placeholder="1" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <div class="actions" style="margin-top:0;">
+          <button id="getBtn" type="button" class="secondary">getById</button>
+          <button id="updateBtn" type="button">update</button>
+          <button id="deleteBtn" type="button" class="secondary">delete</button>
+        </div>
+      </div>
+    </div>
+
+    <small class="muted">
+      update riscrive year/title/url/nation/rating e rigenera <b>link</b> (se url presente).
+    </small>
+    <div class="actions">
+      <span id="crudStatus" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px;">Viewer (read-only)</h3>
+    <iframe id="viewer" loading="lazy"></iframe>
+    <div class="actions">
+      <span class="muted">Il viewer si aggiorna automaticamente dopo insert/update/delete.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="muted">Response</div>
+    <pre id="out"></pre>
+  </div>
+
+<script>
+  // ===== CONFIG FISSA =====
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzmP0437k6Mo5ebcAv3N2Kdx_ZG0IqCVnO3x28YKSrBJ2EclnShUgHJJ1s2NH2od0FQ/exec";
+
+  function setMsg(el, msg, cls) {
+    el.className = cls || "muted";
+    el.textContent = msg;
+  }
+
+  function makeCbName() {
+    return "cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+  }
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = makeCbName();
+      const script = document.createElement("script");
+
+      const t = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout JSONP"));
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(t);
+        try { delete window[cbName]; } catch (_) { window[cbName] = undefined; }
+        script.remove();
+      }
+
+      window[cbName] = (data) => {
+        cleanup();
+        resolve(data);
+      };
+
+      const u = new URL(url);
+      u.searchParams.set("cb", cbName);
+      u.searchParams.set("_", Date.now().toString());
+
+      script.src = u.toString();
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("JSONP load error (check /exec + access)"));
+      };
+
+      document.body.appendChild(script);
+    });
+  }
+
+  function baseUrl_() {
+    return WEB_APP_URL;
+  }
+
+  function apiKey_() {
+    return document.getElementById("apiKey").value.trim();
+  }
+
+  function viewerUrl_(cacheBust) {
+    const basePath = window.location.pathname.replace(/[^\/]*$/, "");
+    const u = new URL(basePath + "viewer.html", window.location.origin);
+    u.searchParams.set("webApp", WEB_APP_URL);
+    u.searchParams.set("limit", "50");
+    if (cacheBust) u.searchParams.set("_", Date.now().toString());
+    return u.toString();
+  }
+
+  const out = document.getElementById("out");
+  const viewer = document.getElementById("viewer");
+
+  async function call_(mode, params = {}, needsKey = false) {
+    const u = new URL(baseUrl_());
+    u.searchParams.set("mode", mode);
+    if (needsKey) u.searchParams.set("apiKey", apiKey_());
+    Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v ?? "")));
+    const resp = await jsonp(u.toString());
+    out.textContent = JSON.stringify(resp, null, 2);
+    return resp;
+  }
+
+  function loadViewer(cacheBust) {
+    viewer.src = viewerUrl_(cacheBust);
+  }
+
+  function refreshViewerSoon(delayMs = 700) {
+    setTimeout(() => loadViewer(true), delayMs);
+  }
+
+  function normalizeInsertError_(resp) {
+    if (!resp || resp.ok === true) return "";
+    if (resp.error === "Duplicate record") {
+      return `Record duplicato: "${resp.title}" (${resp.year})`;
+    }
+    return resp.error || "Errore sconosciuto";
+  }
+
+  // ===== META =====
+  document.getElementById("pingBtn").addEventListener("click", async () => {
+    try {
+      setMsg(document.getElementById("cfgStatus"), "Calling meta…");
+      const r = await call_("meta", {}, false);
+      setMsg(
+        document.getElementById("cfgStatus"),
+        r.ok ? "OK meta" : ("ERR: " + (r.error || "")),
+        r.ok ? "ok" : "err"
+      );
+    } catch (e) {
+      setMsg(document.getElementById("cfgStatus"), "ERR: " + e.message, "err");
+    }
+  });
+
+  // ===== SCHEMA =====
+  document.getElementById("schemaBtn").addEventListener("click", async () => {
+    try {
+      setMsg(document.getElementById("cfgStatus"), "Calling schema…");
+      const r = await call_("schema", {}, false);
+      setMsg(
+        document.getElementById("cfgStatus"),
+        r.ok ? "OK schema" : ("ERR: " + (r.error || "")),
+        r.ok ? "ok" : "err"
+      );
+    } catch (e) {
+      setMsg(document.getElementById("cfgStatus"), "ERR: " + e.message, "err");
+    }
+  });
+
+  // ===== INSERT =====
+  document.getElementById("insertBtn").addEventListener("click", async () => {
+    const st = document.getElementById("insertStatus");
+    try {
+      setMsg(st, "Inserting…");
+
+      const payload = {
+        year: document.getElementById("year").value.trim(),
+        title: document.getElementById("title").value.trim(),
+        url: document.getElementById("url").value.trim(),
+        nation: document.getElementById("nation").value.trim(),
+        rating: document.getElementById("rating").value
+      };
+
+      console.log("INSERT payload =", payload);
+
+      const r = await call_("insert", payload, true);
+
+      if (r.ok) {
+        setMsg(st, `OK inserted id=${r.id}`, "ok");
+        refreshViewerSoon();
+      } else {
+        setMsg(st, "ERR: " + normalizeInsertError_(r), "err");
+      }
+
+    } catch (e) {
+      setMsg(st, "ERR: " + e.message, "err");
+    }
+  });
+
+  // ===== GET BY ID =====
+  document.getElementById("getBtn").addEventListener("click", async () => {
+    const st = document.getElementById("crudStatus");
+    try {
+      const id = document.getElementById("id").value.trim();
+      setMsg(st, "Loading…");
+
+      const r = await call_("getById", { id }, true);
+
+      setMsg(
+        st,
+        r.ok ? `OK loaded id=${id}` : ("ERR: " + (r.error || "")),
+        r.ok ? "ok" : "err"
+      );
+
+      if (r.ok && r.record) {
+        document.getElementById("year").value = r.record.year || "";
+        document.getElementById("title").value = r.record.Title || r.record.title || "";
+        document.getElementById("url").value = r.record.url || "";
+        document.getElementById("nation").value = r.record.nation || "";
+        document.getElementById("rating").value = r.record.rating || "";
+      }
+    } catch (e) {
+      setMsg(st, "ERR: " + e.message, "err");
+    }
+  });
+
+  // ===== UPDATE =====
+  document.getElementById("updateBtn").addEventListener("click", async () => {
+    const st = document.getElementById("crudStatus");
+    try {
+      const id = document.getElementById("id").value.trim();
+      setMsg(st, "Updating…");
+
+      const payload = {
+        id,
+        year: document.getElementById("year").value.trim(),
+        title: document.getElementById("title").value.trim(),
+        url: document.getElementById("url").value.trim(),
+        nation: document.getElementById("nation").value.trim(),
+        rating: document.getElementById("rating").value
+      };
+
+      const r = await call_("update", payload, true);
+
+      setMsg(
+        st,
+        r.ok ? `OK updated id=${id}` : ("ERR: " + (r.error || "")),
+        r.ok ? "ok" : "err"
+      );
+
+      if (r.ok) {
+        refreshViewerSoon();
+      }
+
+    } catch (e) {
+      setMsg(st, "ERR: " + e.message, "err");
+    }
+  });
+
+  // ===== DELETE =====
+  document.getElementById("deleteBtn").addEventListener("click", async () => {
+    const st = document.getElementById("crudStatus");
+    try {
+      const id = document.getElementById("id").value.trim();
+      if (!id) throw new Error("Missing id");
+      if (!confirm(`Delete id=${id}?`)) return;
+
+      setMsg(st, "Deleting…");
+
+      const r = await call_("delete", { id }, true);
+
+      setMsg(
+        st,
+        r.ok ? `OK deleted id=${id}` : ("ERR: " + (r.error || "")),
+        r.ok ? "ok" : "err"
+      );
+
+      if (r.ok) {
+        refreshViewerSoon();
+      }
+
+    } catch (e) {
+      setMsg(st, "ERR: " + e.message, "err");
+    }
+  });
+
+  // ===== VIEWER START =====
+  loadViewer(false);
+
+  // ===== MEMORIZZA apiKey SOLO PER QUESTA SESSIONE =====
+  const apiKeyInput = document.getElementById("apiKey");
+  const savedKey = sessionStorage.getItem("HORROR_API_KEY");
+
+  if (savedKey && !apiKeyInput.value) {
+    apiKeyInput.value = savedKey;
+  }
+
+  apiKeyInput.addEventListener("input", () => {
+    sessionStorage.setItem("HORROR_API_KEY", apiKeyInput.value.trim());
+  });
+</script>
+
+</body>
+</html>

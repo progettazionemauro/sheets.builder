@@ -4,21 +4,26 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual env
+# Virtual environments
 venv/
-.env
+.venv/
 
-# OS / editor
+# VS Code / local history
+.history/
+.vscode/
+
+# Runtime / generated sessions
+workdir/
+output/
+output_project/
+
+# OS files
 .DS_Store
 Thumbs.db
-.vscode/
-.idea/
 
-# Temporary
-tmp/
+# Local backups
+*.backup
+*.bak
+
+# Logs
 *.log
-
-# Keep outputs tracked only if you want current demo online
-# If not, uncomment:
-# output/current/
-# output/gas_manual/

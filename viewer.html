@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HorrorMovie Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 12px; }
+    .muted { color:#666; }
+
+    table { border-collapse: collapse; width: 100%; }
+    th, td {
+      border:1px solid #e5e5e5;
+      padding:8px;
+      font-size: 13px;
+      vertical-align: top;
+      overflow-wrap:anywhere;
+      white-space: pre-wrap;
+    }
+
+    thead th{
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #2f3b52;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    tbody tr:nth-child(even){ background:#f6f8fb; }
+    tbody tr:nth-child(odd){ background:#ffffff; }
+
+    tbody tr.first-row {
+      background: #fff3cd !important;
+      outline: 2px solid #ffe69c;
+      outline-offset: -2px;
+    }
+
+    a { color: #1155cc; text-decoration: underline; font-weight: 800; }
+
+    td.rating { font-weight: 900; text-align:center; }
+    td.rating-pessimo     { background:#8b0000 !important; color:#fff !important; }
+    td.rating-mediocre    { background:#c0392b !important; color:#fff !important; }
+    td.rating-medio       { background:#f39c12 !important; color:#111 !important; }
+    td.rating-buono       { background:#f1c40f !important; color:#111 !important; }
+    td.rating-ottimo      { background:#2ecc71 !important; color:#111 !important; }
+    td.rating-capolavoro  { background:#1abc9c !important; color:#111 !important; }
+
+    td.col-url {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="muted">Viewer read-only (ultime righe) — tab <b>HorrorMovie</b></div>
+  <div id="status" class="muted" style="margin:6px 0;">Caricamento…</div>
+  <div id="tbl"></div>
+
+<script>
+  const qs = new URLSearchParams(location.search);
+  const WEB_APP_URL = qs.get("webApp");
+  const LIMIT = qs.get("limit") || "50";
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = "cb_" + Math.random().toString(36).slice(2);
+      const script = document.createElement("script");
+
+      const t = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout JSONP"));
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(t);
+        try { delete window[cbName]; } catch (_) { window[cbName] = undefined; }
+        script.remove();
+      }
+
+      window[cbName] = (data) => {
+        cleanup();
+        resolve(data);
+      };
+
+      const u = new URL(url);
+      u.searchParams.set("cb", cbName);
+      u.searchParams.set("_", Date.now().toString());
+
+      script.src = u.toString();
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("JSONP load error"));
+      };
+
+      document.body.appendChild(script);
+    });
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => (
+      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+    ));
+  }
+
+  function normHeader_(h) {
+    return String(h ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function findCol_(headers, keyword) {
+    const key = String(keyword).toLowerCase();
+    for (let i = 0; i < headers.length; i++) {
+      const nh = normHeader_(headers[i]);
+      if (nh === key) return i;
+      if (nh.includes(key)) return i;
+    }
+    return -1;
+  }
+
+  function ratingClass_(val) {
+    const v = String(val ?? "").trim().toLowerCase();
+    if (!v) return "";
+    if (v === "pessimo") return "rating-pessimo";
+    if (v === "mediocre") return "rating-mediocre";
+    if (v === "medio") return "rating-medio";
+    if (v === "buono") return "rating-buono";
+    if (v === "ottimo") return "rating-ottimo";
+    if (v === "capolavoro") return "rating-capolavoro";
+    return "";
+  }
+
+  async function load() {
+    const status = document.getElementById("status");
+    const tbl = document.getElementById("tbl");
+
+    if (!WEB_APP_URL) {
+      status.textContent = "Errore: manca parametro 'webApp' nell'URL.";
+      return;
+    }
+
+    try {
+      const u = new URL(WEB_APP_URL);
+      u.searchParams.set("mode", "view");
+      u.searchParams.set("limit", LIMIT);
+
+      const resp = await jsonp(u.toString());
+      if (!resp || resp.ok !== true) {
+        status.textContent = "Errore: " + (resp?.error || "risposta non valida");
+        return;
+      }
+
+      const headers = resp.headers || [];
+      const rowsRaw = resp.rows || [];
+
+      // più recente in alto
+      const rows = rowsRaw.slice().reverse();
+
+      const idxTitle  = findCol_(headers, "title");
+      const idxLink   = findCol_(headers, "link");
+      const idxUrl    = findCol_(headers, "url");
+      const idxRating = findCol_(headers, "rating");
+
+      status.textContent =
+        `OK | cols: title=${idxTitle}, link=${idxLink}, url=${idxUrl}, rating=${idxRating} | headers=` +
+        headers.map(h => `"${String(h)}"`).join(", ");
+
+      let html = "<table><thead><tr>";
+      for (const h of headers) html += `<th>${esc(h)}</th>`;
+      html += "</tr></thead><tbody>";
+
+      for (let rI = 0; rI < rows.length; rI++) {
+        const r = rows[rI];
+
+        let url = (idxUrl >= 0) ? String(r[idxUrl] ?? "").trim() : "";
+
+        // fallback frontend: se l'utente ha scritto solo www.qualcosa
+        if (/^www\./i.test(url)) {
+          url = "https://" + url;
+        }
+
+        const urlOk = /^https?:\/\//i.test(url);
+
+        const trClass = (rI === 0) ? "first-row" : "";
+        html += `<tr class="${trClass}">`;
+
+        for (let c = 0; c < headers.length; c++) {
+          const cellVal = r[c];
+          let content = esc(cellVal);
+
+          // TITLE cliccabile usando la colonna url
+          if (c === idxTitle && urlOk) {
+            const text = String(cellVal ?? "").trim() || "open";
+            content = `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+          }
+
+          // LINK cliccabile anch'esso verso url
+          if (c === idxLink && urlOk) {
+            const text = String(cellVal ?? "").trim() || "open";
+            content = `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+          }
+
+          let cls = "";
+          if (c === idxRating) cls = `rating ${ratingClass_(cellVal)}`;
+          if (c === idxUrl) cls = (cls ? cls + " " : "") + "col-url";
+
+          html += `<td class="${cls}">${content}</td>`;
+        }
+
+        html += "</tr>";
+      }
+
+      html += "</tbody></table>";
+      tbl.innerHTML = html;
+
+    } catch (e) {
+      status.textContent = "Errore: " + e.message;
+    }
+  }
+
+  load();
+</script>
+
+</body>
+</html>
+
+</body>
+</html>
