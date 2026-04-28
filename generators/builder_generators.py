@@ -686,19 +686,15 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   <h1>{escape_html(project_name)} <span class="muted">— generated</span></h1>
   <p class="muted">
     Backend: Google Apps Script (JSONP) → tab <b>{escape_html(sheet_name)}</b>.
-    <br>Read: pubblico. Write: protetto da <code>apiKey</code>.
+    <br>Read e write passano dal proxy sicuro del Builder.
   </p>
 
-  <div class="card">
-    <h3 style="margin:0 0 10px;">Config</h3>
+    <div class="card">
+    <h3 style="margin:0 0 10px;">Backend</h3>
 
-    <label for="apiKey">apiKey (solo insert/update/delete/getById)</label>
-    <input id="apiKey" type="password" autocomplete="off" spellcheck="false"
-           placeholder="Inserisci la chiave admin" />
-
-    <label for="webAppUrl">Web App URL</label>
-    <input id="webAppUrl" type="text" autocomplete="off" spellcheck="false"
-           placeholder="https://script.google.com/macros/s/.../exec" />
+    <p class="muted">
+      Questa app usa il proxy sicuro del Builder. Il frontend non espone Web App URL né API key.
+    </p>
 
     <div class="actions">
       <button id="pingBtn" type="button">meta</button>
@@ -706,7 +702,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
       <span id="cfgStatus" class="muted"></span>
     </div>
 
-    <small>Tip: fai prima <b>schema</b>, poi inserisci 1 record, poi controlla nel viewer.</small>
+    <small>Slug app: <code>{escape_html(project_slug)}</code></small>
   </div>
 
   <div class="card">
@@ -756,14 +752,13 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   </div>
 
 <script>
+  const APP_SLUG = {js_string(project_slug)};
+
   function setMsg(el, msg, cls) {{
     el.className = cls || "muted";
     el.textContent = msg;
   }}
 
-  function makeCbName() {{
-    return "cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
-  }}
 
     async function apiCall_(mode, params = {{}}) {{
     let url = `/api/apps/${{APP_SLUG}}/${{mode}}`;
@@ -786,18 +781,47 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     return data;
   }}
 
-  function baseUrl_() {{
-    return document.getElementById("webAppUrl").value.trim();
+    function apiUrl_(mode) {{
+    return `/api/apps/${{APP_SLUG}}/${{mode}}`;
   }}
 
-  function apiKey_() {{
-    return document.getElementById("apiKey").value.trim();
+  async function apiCall_(mode, params = {{}}, method = "GET") {{
+    let url = apiUrl_(mode);
+
+    const options = {{
+      method,
+      headers: {{}}
+    }};
+
+    if (method === "GET") {{
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {{
+        qs.set(k, String(v ?? ""));
+      }});
+
+      const query = qs.toString();
+      if (query) url += "?" + query;
+    }} else {{
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(params);
+    }}
+
+    const resp = await fetch(url, options);
+    const data = await resp.json();
+
+    out.textContent = JSON.stringify(data, null, 2);
+
+    if (!resp.ok) {{
+      throw new Error(data.error || `HTTP ${{resp.status}}`);
+    }}
+
+    return data;
   }}
 
   function viewerUrl_(cacheBust) {{
     const basePath = window.location.pathname.replace(/[^\\/]*$/, "");
     const u = new URL(basePath + "viewer.html", window.location.origin);
-    u.searchParams.set("webApp", baseUrl_());
+    u.searchParams.set("app", APP_SLUG);
     u.searchParams.set("limit", "50");
     if (cacheBust) u.searchParams.set("_", Date.now().toString());
     return u.toString();
@@ -806,26 +830,12 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   const out = document.getElementById("out");
   const viewer = document.getElementById("viewer");
 
-  async function call_(mode, params = {{}}, needsKey = false) {{
-    const webApp = baseUrl_();
-    if (!webApp) throw new Error("Missing Web App URL");
-
-    const u = new URL(webApp);
-    u.searchParams.set("mode", mode);
-    if (needsKey) u.searchParams.set("apiKey", apiKey_());
-
-    Object.entries(params).forEach(([k, v]) => {{
-      u.searchParams.set(k, String(v ?? ""));
-    }});
-
-    const resp = await jsonp(u.toString());
-    out.textContent = JSON.stringify(resp, null, 2);
-    return resp;
+    async function call_(mode, params = {{}}, needsKey = false) {{
+    const method = needsKey ? "POST" : "GET";
+    return await apiCall_(mode, params, method);
   }}
 
-  function loadViewer(cacheBust) {{
-    const webApp = baseUrl_();
-    if (!webApp) return;
+    function loadViewer(cacheBust) {{
     viewer.src = viewerUrl_(cacheBust);
   }}
 
@@ -957,26 +967,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     }}
   }});
 
-  const apiKeyInput = document.getElementById("apiKey");
-  const webAppInput = document.getElementById("webAppUrl");
-
-  const savedKey = sessionStorage.getItem("BUILDER_API_KEY");
-  const savedWebApp = sessionStorage.getItem("BUILDER_WEB_APP_URL");
-
-  if (savedKey && !apiKeyInput.value) apiKeyInput.value = savedKey;
-  if (savedWebApp && !webAppInput.value) {{
-    webAppInput.value = savedWebApp;
-    loadViewer(false);
-  }}
-
-  apiKeyInput.addEventListener("input", () => {{
-    sessionStorage.setItem("BUILDER_API_KEY", apiKeyInput.value.trim());
-  }});
-
-  webAppInput.addEventListener("input", () => {{
-    sessionStorage.setItem("BUILDER_WEB_APP_URL", webAppInput.value.trim());
-    loadViewer(false);
-  }});
+  loadViewer(false);
 </script>
 
 </body>
@@ -1094,39 +1085,25 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const LABELS = {label_map_js};
   const ENUM_STYLES = {enum_styles_js};
 
-  function jsonp(url) {{
-    return new Promise((resolve, reject) => {{
-      const cbName = "cb_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
+    async function apiCall_(mode, params = {{}}) {{
+    let url = `/api/apps/${{APP_SLUG}}/${{mode}}`;
 
-      const t = setTimeout(() => {{
-        cleanup();
-        reject(new Error("Timeout JSONP"));
-      }}, 15000);
-
-      function cleanup() {{
-        clearTimeout(t);
-        try {{ delete window[cbName]; }} catch (_) {{ window[cbName] = undefined; }}
-        script.remove();
-      }}
-
-      window[cbName] = (data) => {{
-        cleanup();
-        resolve(data);
-      }};
-
-      const u = new URL(url);
-      u.searchParams.set("cb", cbName);
-      u.searchParams.set("_", Date.now().toString());
-
-      script.src = u.toString();
-      script.onerror = () => {{
-        cleanup();
-        reject(new Error("JSONP load error"));
-      }};
-
-      document.body.appendChild(script);
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {{
+      qs.set(k, String(v ?? ""));
     }});
+
+    const query = qs.toString();
+    if (query) url += "?" + query;
+
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (!resp.ok) {{
+      throw new Error(data.error || `HTTP ${{resp.status}}`);
+    }}
+
+    return data;
   }}
 
   function esc(s) {{
@@ -1206,15 +1183,13 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     status.textContent = `OK | headers=${{LAST_HEADERS.length}} | rows=${{rows.length}}`;
   }}
 
-  async function load() {{
+    async function load() {{
     const status = document.getElementById("status");
 
-  
     try {{
       const limit = document.getElementById("limitBox").value || URL_LIMIT;
       const resp = await apiCall_("view", {{ limit }});
 
-      const resp = await jsonp(u.toString());
       if (!resp || resp.ok !== true) {{
         status.textContent = "Errore: " + (resp?.error || "risposta non valida");
         return;
