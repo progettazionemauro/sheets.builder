@@ -1,44 +1,34 @@
-# Sheet Builder
+# Sheet Builder / Djungo Builder
 
 Build reusable CRUD web apps starting from exported Google Sheets files.
 
-## Current pipeline
+The project generates a portable mini web application composed of:
 
-Input:
-- `.xlsx`
-- `.html` optional
+- `index.html` — CRUD/admin frontend
+- `viewer.html` — public/read-only viewer
+- `codice.gs` — Google Apps Script backend
 
-Pipeline:
-1. parse spreadsheet structure
-2. merge visual metadata from HTML
-3. build `parsed.schema.json`
-4. build `builder_state.json`
-5. generate:
-   - `codice.gs`
-   - `docs/index.html`
-   - `docs/viewer.html`
+The guiding principle is portability: the generated files remain readable, reusable and owned by the user.
 
-## Main directories
+## Current architecture
 
-- `app/` → builder state and contracts
-- `generators/` → parsers, merge, validators, generators
-- `pipeline/` → orchestration scripts
-- `output/current/` → latest generated project
-- `output/gas_manual/` → manual Google Apps Script package
-- `docs/` → published frontend demo
+Frontend:
 
-## Main command
-
-bash
-python pipeline/build_all_from_input.py examples/case_001
-
-
-## Review flow
-
-Customer review page:
+- `docs/generate.html`
 - `docs/review.html`
+- `docs/app_ready.html`
+- generated `index.html`
+- generated `viewer.html`
 
-After exporting `reviewed_app_state.json`, apply it with:
+Backend:
 
-```bash
-python pipeline/apply_review_state.py /path/to/reviewed_app_state.json
+- Flask app in `server.py`
+- WSGI entry point in `wsgi.py`
+- Gunicorn + systemd on Hetzner
+- nginx reverse proxy
+- Python parser/generator pipeline
+
+Live URL:
+
+```text
+https://builder.sgbh.org/generate.html

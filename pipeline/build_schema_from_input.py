@@ -103,6 +103,27 @@ def build_schema_from_directory(
     return final_schema
 
 
+def apply_project_config(builder_state: dict, project_config: dict) -> dict:
+    project = builder_state.setdefault("project", {})
+
+    keys = [
+        "sheetName",
+        "projectName",
+        "projectSlug",
+        "backendName",
+        "entityName",
+        "entityLabelLower",
+        "buildMarker",
+        "adminPassword",
+    ]
+
+    for key in keys:
+        if key in project_config and project_config[key]:
+            project[key] = project_config[key]
+
+    return builder_state
+
+
 def main() -> None:
     if len(sys.argv) == 1:
         candidate_dirs = [p for p in EXAMPLES_DIR.iterdir() if p.is_dir()]
@@ -153,10 +174,8 @@ def main() -> None:
             "adminPassword": "CHANGE_ME_WRITE_KEY_2026",
         }
 
-    builder_state = build_builder_state(
-        parsed_schema=schema,
-        project_config=project_config,
-    )
+    builder_state = build_builder_state(schema)
+    builder_state = apply_project_config(builder_state, project_config)
 
     write_json(builder_state_output_json, builder_state)
 

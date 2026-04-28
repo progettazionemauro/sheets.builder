@@ -71,7 +71,7 @@
 
 <script>
   const qs = new URLSearchParams(location.search);
-  const WEB_APP_URL = qs.get("webApp");
+  const APP_SLUG = qs.get("app") || "generated-app";
   const URL_LIMIT = qs.get("limit") || "50";
 
   const VISIBLE_HEADERS = [
@@ -246,16 +246,10 @@
   async function load() {
     const status = document.getElementById("status");
 
-    if (!WEB_APP_URL) {
-      status.textContent = "Errore: manca parametro 'webApp' nell'URL.";
-      return;
-    }
-
+  
     try {
       const limit = document.getElementById("limitBox").value || URL_LIMIT;
-      const u = new URL(WEB_APP_URL);
-      u.searchParams.set("mode", "view");
-      u.searchParams.set("limit", limit);
+      const resp = await apiCall_("view", { limit });
 
       const resp = await jsonp(u.toString());
       if (!resp || resp.ok !== true) {

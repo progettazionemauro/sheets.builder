@@ -650,6 +650,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     project_name = project_config["projectName"]
     entity_name = project_config["entityName"]
     sheet_name = project_config["sheetName"]
+    project_slug = project_config.get("projectSlug", "horror-movie")
 
     form_html = _generate_form_html(fields, constraints)
     payload_js = _generate_payload_js(fields)
@@ -764,39 +765,25 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     return "cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
   }}
 
-  function jsonp(url) {{
-    return new Promise((resolve, reject) => {{
-      const cbName = makeCbName();
-      const script = document.createElement("script");
+    async function apiCall_(mode, params = {{}}) {{
+    let url = `/api/apps/${{APP_SLUG}}/${{mode}}`;
 
-      const t = setTimeout(() => {{
-        cleanup();
-        reject(new Error("Timeout JSONP"));
-      }}, 15000);
-
-      function cleanup() {{
-        clearTimeout(t);
-        try {{ delete window[cbName]; }} catch (_) {{ window[cbName] = undefined; }}
-        script.remove();
-      }}
-
-      window[cbName] = (data) => {{
-        cleanup();
-        resolve(data);
-      }};
-
-      const u = new URL(url);
-      u.searchParams.set("cb", cbName);
-      u.searchParams.set("_", Date.now().toString());
-
-      script.src = u.toString();
-      script.onerror = () => {{
-        cleanup();
-        reject(new Error("JSONP load error (check /exec + access)"));
-      }};
-
-      document.body.appendChild(script);
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {{
+      qs.set(k, String(v ?? ""));
     }});
+
+    const query = qs.toString();
+    if (query) url += "?" + query;
+
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (!resp.ok) {{
+      throw new Error(data.error || `HTTP ${{resp.status}}`);
+    }}
+
+    return data;
   }}
 
   function baseUrl_() {{
@@ -1024,6 +1011,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
     entity_name = project_config["entityName"]
     sheet_name = project_config["sheetName"]
+    project_slug = project_config.get("projectSlug", "horror-movie")
 
     return f'''<!doctype html>
 <html lang="it">
@@ -1098,7 +1086,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
 <script>
   const qs = new URLSearchParams(location.search);
-  const WEB_APP_URL = qs.get("webApp");
+  const APP_SLUG = qs.get("app") || {js_string(project_slug)};
   const URL_LIMIT = qs.get("limit") || "50";
 
   const VISIBLE_HEADERS = {visible_cols_js};
@@ -1221,16 +1209,10 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   async function load() {{
     const status = document.getElementById("status");
 
-    if (!WEB_APP_URL) {{
-      status.textContent = "Errore: manca parametro 'webApp' nell'URL.";
-      return;
-    }}
-
+  
     try {{
       const limit = document.getElementById("limitBox").value || URL_LIMIT;
-      const u = new URL(WEB_APP_URL);
-      u.searchParams.set("mode", "view");
-      u.searchParams.set("limit", limit);
+      const resp = await apiCall_("view", {{ limit }});
 
       const resp = await jsonp(u.toString());
       if (!resp || resp.ok !== true) {{
