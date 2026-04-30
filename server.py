@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Any, Dict
@@ -24,16 +25,13 @@ from generators.builder_generators import generate_all
 ROOT = Path(__file__).resolve().parent
 DOCS_DIR = ROOT / "docs"
 WORKDIR = ROOT / "workdir" / "flask_sessions"
+DATA_DIR = ROOT / "data"
+APPS_REGISTRY_PATH = DATA_DIR / "apps_registry.json"
 
 # =========================================================
 # APPS CONFIG (slug -> hidden backend config)
 # =========================================================
-APP_CONFIGS = {
-    "horror-movie": {
-        "web_app_url": "https://script.google.com/macros/s/AKfycbzmP0437k6Mo5ebcAv3N2Kdx_ZG0IqCVnO3x28YKSrBJ2EclnShUgHJJ1s2NH2od0FQ/exec",
-        "api_key": "CHANGE_ME_WRITE_KEY_2026",
-    }
-}
+
 
 PUBLIC_MODES = {"meta", "schema", "view"}
 PROTECTED_MODES = {"insert", "getById", "update", "delete"}
@@ -49,6 +47,46 @@ app = Flask(
 )
 
 WORKDIR.mkdir(parents=True, exist_ok=True)
+
+def slugify_app_name(value: str) -> str:
+    value = str(value or "").strip()
+    value = re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", value)
+    value = value.lower()
+    value = re.sub(r"[^a-z0-9]+", "-", value)
+    value = value.strip("-")
+    return value or "generated-app"
+
+def load_apps_registry() -> Dict[str, Dict[str, str]]:
+    if not APPS_REGISTRY_PATH.exists():
+        return {}
+
+    raw = APPS_REGISTRY_PATH.read_text(encoding="utf-8").strip()
+
+    if not raw:
+        return {}
+
+    return json.loads(raw)
+
+
+def save_apps_registry(registry: Dict[str, Dict[str, str]]) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    APPS_REGISTRY_PATH.write_text(
+        json.dumps(registry, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def register_app_config(slug: str, web_app_url: str, api_key: str) -> Dict[str, str]:
+    safe_slug = slugify_app_name(slug)
+
+    registry = load_apps_registry()
+    registry[safe_slug] = {
+        "web_app_url": web_app_url.strip(),
+        "api_key": api_key.strip(),
+    }
+
+    save_apps_registry(registry)
+    return registry[safe_slug]
 
 
 # =========================================================
@@ -140,8 +178,9 @@ def get_session_dir(session_id: str) -> Path:
 # PROXY HELPERS
 # =========================================================
 def get_app_config(slug: str) -> Dict[str, str]:
-    safe_slug = secure_filename(slug)
-    config = APP_CONFIGS.get(safe_slug)
+    safe_slug = slugify_app_name(slug)
+    registry = load_apps_registry()
+    config = registry.get(safe_slug)
 
     if not config:
         raise FileNotFoundError(f"Unknown app slug: {slug}")
@@ -255,15 +294,12 @@ def api_parse():
 
         builder_state = build_builder_state(parsed_schema)
 
+        project_slug = slugify_app_name(sheet_name)
+
         builder_state["project"]["sheetName"] = sheet_name
-
-        if not builder_state["project"].get("projectName"):
-            builder_state["project"]["projectName"] = sheet_name
-
-        if not builder_state["project"].get("projectSlug"):
-            builder_state["project"]["projectSlug"] = (
-                sheet_name.strip().lower().replace(" ", "-")
-            )
+        builder_state["project"]["projectName"] = sheet_name
+        builder_state["project"]["projectSlug"] = project_slug
+        builder_state["project"]["backendName"] = f"{project_slug}-backend"
 
         write_json(builder_state_path, builder_state)
 
@@ -389,6 +425,42 @@ def api_download(session_id: str, filename: str):
 # ---------------------------------------------------------
 # NEW PROXY ROUTE (SAFE CRUD)
 # ---------------------------------------------------------
+@app.post("/api/apps/register")
+def api_register_app():
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        slug = (payload.get("slug") or "").strip()
+        web_app_url = (payload.get("web_app_url") or "").strip()
+        api_key = (payload.get("api_key") or "").strip()
+
+        if not slug:
+            return jsonify({"ok": False, "error": "Missing slug"}), 400
+
+        if not web_app_url:
+            return jsonify({"ok": False, "error": "Missing web_app_url"}), 400
+
+        if not api_key:
+            return jsonify({"ok": False, "error": "Missing api_key"}), 400
+
+        safe_slug = slugify_app_name(slug)
+        config = register_app_config(
+            slug=safe_slug,
+            web_app_url=web_app_url,
+            api_key=api_key,
+        )
+
+        return jsonify({
+            "ok": True,
+            "slug": safe_slug,
+            "registered": True,
+            "web_app_url_present": bool(config.get("web_app_url")),
+            "api_key_present": bool(config.get("api_key")),
+        })
+
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    
 @app.route("/api/apps/<slug>/<mode>", methods=["GET", "POST"])
 def api_app_proxy(slug: str, mode: str):
     try:

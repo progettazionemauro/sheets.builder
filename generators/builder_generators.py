@@ -754,6 +754,10 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 <script>
   const APP_SLUG = {js_string(project_slug)};
 
+    <script>
+  const qs = new URLSearchParams(window.location.search);
+  const APP_SLUG = qs.get("app") || {js_string(project_slug)};
+
   function setMsg(el, msg, cls) {{
     el.className = cls || "muted";
     el.textContent = msg;

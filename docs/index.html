@@ -116,6 +116,10 @@
 <script>
   const APP_SLUG = "generated-app";
 
+    <script>
+  const qs = new URLSearchParams(window.location.search);
+  const APP_SLUG = qs.get("app") || "generated-app";
+
   function setMsg(el, msg, cls) {
     el.className = cls || "muted";
     el.textContent = msg;
