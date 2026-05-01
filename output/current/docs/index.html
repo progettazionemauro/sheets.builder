@@ -31,11 +31,11 @@
     <br>Read e write passano dal proxy sicuro del Builder.
   </p>
 
-    <div class="card">
-    <h3 style="margin:0 0 10px;">Backend</h3>
+    <div id="debugPanel" class="card" style="display:none;">
+    <h3 style="margin:0 0 10px;">Developer tools</h3>
 
     <p class="muted">
-      Questa app usa il proxy sicuro del Builder. Il frontend non espone Web App URL né API key.
+      Technical checks for backend connection and schema validation.
     </p>
 
     <div class="actions">
@@ -79,7 +79,10 @@
   </div>
 
   <div class="card">
-    <h3 style="margin:0 0 10px;">CRUD by id</h3>
+    <h3 style="margin:0 0 10px;">Find, update or delete an existing record</h3>
+      <p class="muted">
+    Enter a record id, load the record into the form, then update or delete it.
+      </p>
     <div class="row">
       <div>
         <label for="crud_id">id</label>
@@ -88,7 +91,7 @@
       <div>
         <label>&nbsp;</label>
         <div class="actions" style="margin-top:0;">
-          <button id="getBtn" type="button" class="secondary">getById</button>
+          <button id="getBtn" type="button" class="secondary">Load record</button>
           <button id="updateBtn" type="button">update</button>
           <button id="deleteBtn" type="button" class="secondary">delete</button>
         </div>
@@ -108,14 +111,15 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="muted">Response</div>
-    <pre id="out"></pre>
-  </div>
+<div id="responsePanel" class="card" style="display:none;">
+  <div class="muted">Developer response</div>
+  <pre id="out"></pre>
+</div>
 
 <script>
   
   const qs = new URLSearchParams(window.location.search);
+  const DEBUG_MODE = qs.get("debug") === "1";
   const APP_SLUG = qs.get("app") || "generated-app";
 
   function setMsg(el, msg, cls) {
@@ -192,12 +196,39 @@
   }
 
   const out = document.getElementById("out");
-  const viewer = document.getElementById("viewer");
+const viewer = document.getElementById("viewer");
 
-    async function call_(mode, params = {}, needsKey = false) {
-    const method = needsKey ? "POST" : "GET";
-    return await apiCall_(mode, params, method);
+const actionButtons = [
+  "insertBtn",
+  "getBtn",
+  "updateBtn",
+  "deleteBtn",
+  "pingBtn",
+  "schemaBtn"
+]
+  .map(id => document.getElementById(id))
+  .filter(Boolean);
+
+const formControls = Array.from(document.querySelectorAll("input, select, button"));
+
+function setBusy(isBusy, message = "") {
+  formControls.forEach(el => {
+    el.disabled = isBusy;
+  });
+
+  if (message) {
+    const insertStatus = document.getElementById("insertStatus");
+    const crudStatus = document.getElementById("crudStatus");
+
+    if (insertStatus) setMsg(insertStatus, message, "muted");
+    if (crudStatus) setMsg(crudStatus, message, "muted");
   }
+}
+
+async function call_(mode, params = {}, needsKey = false) {
+  const method = needsKey ? "POST" : "GET";
+  return await apiCall_(mode, params, method);
+}
 
     function loadViewer(cacheBust) {
     viewer.src = viewerUrl_(cacheBust);
@@ -237,11 +268,12 @@
   });
 
   document.getElementById("insertBtn").addEventListener("click", async () => {
-    const st = document.getElementById("insertStatus");
-    try {
-      setMsg(st, "Inserting…");
+  const st = document.getElementById("insertStatus");
+  try {
+    setBusy(true, "Operation in progress. Please wait…");
+    setMsg(st, "Inserting…");
 
-      const payload = {
+    const payload = {
         "year": document.getElementById("year").value.trim(),
         "title": document.getElementById("title").value.trim(),
         "url": document.getElementById("url").value.trim(),
@@ -249,105 +281,126 @@
         "rating": document.getElementById("rating").value
       };
 
-      const r = await call_("insert", payload, true);
+    const r = await call_("insert", payload, true);
 
-      if (r.ok) {
-        setMsg(st, `OK inserted id=${r.id}`, "ok");
-        refreshViewerSoon();
-      } else {
-        setMsg(st, "ERR: " + (r.error || "Unknown error"), "err");
-      }
-
-    } catch (e) {
-      setMsg(st, "ERR: " + e.message, "err");
+    if (r.ok) {
+      setMsg(st, `OK inserted id=${r.id}`, "ok");
+      refreshViewerSoon();
+    } else {
+      setMsg(st, "ERR: " + (r.error || "Unknown error"), "err");
     }
-  });
+
+  } catch (e) {
+    setMsg(st, "ERR: " + e.message, "err");
+  } finally {
+    setTimeout(() => setBusy(false), 900);
+  }
+});
 
   document.getElementById("getBtn").addEventListener("click", async () => {
-    const st = document.getElementById("crudStatus");
-    try {
-      const id = document.getElementById("crud_id").value.trim();
-      setMsg(st, "Loading…");
+  const st = document.getElementById("crudStatus");
+  try {
+    setBusy(true, "Operation in progress. Please wait…");
 
-      const r = await call_("getById", { id }, true);
+    const id = document.getElementById("crud_id").value.trim();
+    setMsg(st, "Loading record…");
 
-      setMsg(
-        st,
-        r.ok ? `OK loaded id=${id}` : ("ERR: " + (r.error || "")),
-        r.ok ? "ok" : "err"
-      );
+    const r = await call_("getById", { id }, true);
 
-      if (r.ok && r.record) {
+    setMsg(
+      st,
+      r.ok ? `OK loaded id=${id}` : ("ERR: " + (r.error || "")),
+      r.ok ? "ok" : "err"
+    );
+
+    if (r.ok && r.record) {
         document.getElementById("year").value = r.record["year"] || "";
         document.getElementById("title").value = r.record["title"] || "";
         document.getElementById("url").value = r.record["url"] || "";
         document.getElementById("nation").value = r.record["nation"] || "";
         document.getElementById("rating").value = r.record["rating"] || "";
-      }
-    } catch (e) {
-      setMsg(st, "ERR: " + e.message, "err");
     }
-  });
+  } catch (e) {
+    setMsg(st, "ERR: " + e.message, "err");
+  } finally {
+    setBusy(false);
+  }
+});
 
   document.getElementById("updateBtn").addEventListener("click", async () => {
-    const st = document.getElementById("crudStatus");
-    try {
-      const id = document.getElementById("crud_id").value.trim();
-      setMsg(st, "Updating…");
+  const st = document.getElementById("crudStatus");
+  try {
+    setBusy(true, "Operation in progress. Please wait…");
 
-      const payload = {
+    const id = document.getElementById("crud_id").value.trim();
+    setMsg(st, "Updating record…");
+
+    const payload = {
         "year": document.getElementById("year").value.trim(),
         "title": document.getElementById("title").value.trim(),
         "url": document.getElementById("url").value.trim(),
         "nation": document.getElementById("nation").value.trim(),
         "rating": document.getElementById("rating").value
       };
-      payload.id = id;
+    payload.id = id;
 
-      const r = await call_("update", payload, true);
+    const r = await call_("update", payload, true);
 
-      setMsg(
-        st,
-        r.ok ? `OK updated id=${id}` : ("ERR: " + (r.error || "")),
-        r.ok ? "ok" : "err"
-      );
+    setMsg(
+      st,
+      r.ok ? `OK updated id=${id}` : ("ERR: " + (r.error || "")),
+      r.ok ? "ok" : "err"
+    );
 
-      if (r.ok) {
-        refreshViewerSoon();
-      }
-
-    } catch (e) {
-      setMsg(st, "ERR: " + e.message, "err");
+    if (r.ok) {
+      refreshViewerSoon();
     }
-  });
+
+  } catch (e) {
+    setMsg(st, "ERR: " + e.message, "err");
+  } finally {
+    setTimeout(() => setBusy(false), 900);
+  }
+});
 
   document.getElementById("deleteBtn").addEventListener("click", async () => {
-    const st = document.getElementById("crudStatus");
-    try {
-      const id = document.getElementById("crud_id").value.trim();
-      if (!id) throw new Error("Missing id");
-      if (!confirm(`Delete id=${id}?`)) return;
+  const st = document.getElementById("crudStatus");
+  try {
+    const id = document.getElementById("crud_id").value.trim();
+    if (!id) throw new Error("Missing id");
+    if (!confirm(`Delete id=${id}?`)) return;
 
-      setMsg(st, "Deleting…");
+    setBusy(true, "Operation in progress. Please wait…");
+    setMsg(st, "Deleting record…");
 
-      const r = await call_("delete", { id }, true);
+    const r = await call_("delete", { id }, true);
 
-      setMsg(
-        st,
-        r.ok ? `OK deleted id=${id}` : ("ERR: " + (r.error || "")),
-        r.ok ? "ok" : "err"
-      );
+    setMsg(
+      st,
+      r.ok ? `OK deleted id=${id}` : ("ERR: " + (r.error || "")),
+      r.ok ? "ok" : "err"
+    );
 
-      if (r.ok) {
-        refreshViewerSoon();
-      }
-
-    } catch (e) {
-      setMsg(st, "ERR: " + e.message, "err");
+    if (r.ok) {
+      refreshViewerSoon();
     }
-  });
 
-  loadViewer(false);
+  } catch (e) {
+    setMsg(st, "ERR: " + e.message, "err");
+  } finally {
+    setTimeout(() => setBusy(false), 900);
+  }
+});
+  
+  if (DEBUG_MODE) {
+  const debugPanel = document.getElementById("debugPanel");
+  const responsePanel = document.getElementById("responsePanel");
+
+  if (debugPanel) debugPanel.style.display = "block";
+  if (responsePanel) responsePanel.style.display = "block";
+}
+
+loadViewer(false);
 </script>
 
 </body>
