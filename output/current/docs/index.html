@@ -5,6 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Generated App</title>
   <style>
+    button {
+  padding:8px 10px;
+  border:0;
+  border-radius:8px;
+  background:#111;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+
+button.secondary {
+  background:#666;
+}
+
+.custom-row {
+  display:grid;
+  grid-template-columns: 90px 1fr 90px;
+  gap:8px;
+  align-items:center;
+  padding:8px 0;
+  border-bottom:1px solid #eee;
+}
+
+.custom-row input[type="text"] {
+  width:100%;
+  box-sizing:border-box;
+  padding:7px;
+  border:1px solid #ccc;
+  border-radius:7px;
+}
+
+.enum-color-row {
+  display:grid;
+  grid-template-columns: 120px 90px 90px;
+  gap:8px;
+  align-items:center;
+  margin:5px 0 5px 98px;
+}
+
+.enum-color-row input {
+  width:80px;
+}
     body { font-family: Arial, sans-serif; max-width: 1100px; margin: 28px auto; padding: 0 16px; }
     h1 { margin: 0 0 6px; }
     .muted { color:#666; }
@@ -21,6 +63,7 @@
     iframe { width:100%; height:560px; border:1px solid #ddd; border-radius:10px; background:#fff; }
     small { display:block; margin-top:8px; color:#666; }
     pre { background:#0b0b0b; color:#d6ffd6; border-radius:10px; padding:12px; overflow:auto; }
+    
   </style>
 </head>
 <body>
@@ -370,7 +413,7 @@ async function call_(mode, params = {}, needsKey = false) {
     if (!id) throw new Error("Missing id");
     if (!confirm(`Delete id=${id}?`)) return;
 
-    setBusy(true, "Operation in progress. Please wait…");
+    setBusy(true, "Operation in progress. Please wait…");generate_viewer_html()
     setMsg(st, "Deleting record…");
 
     const r = await call_("delete", { id }, true);
