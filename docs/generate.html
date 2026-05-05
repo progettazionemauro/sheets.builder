@@ -135,6 +135,25 @@
       Il nome del foglio è obbligatorio perché viene usato nella configurazione del progetto.
     </p>
 
+    <div class="card">
+  <h2>2. Open an existing app</h2>
+  <p class="muted">
+    If your Apps Script backend is already published, enter the sheet name and Web App URL.
+    The app slug will be generated automatically from the sheet name.
+  </p>
+
+  <label for="existingSheetName">Sheet name *</label>
+  <input id="existingSheetName" type="text" placeholder="Es. HorrorMovie" />
+
+  <label for="existingWebAppUrl">Apps Script Web App URL *</label>
+  <input id="existingWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
+
+  <div class="actions">
+    <button id="openExistingBtn" type="button">Connect and open existing app</button>
+    <span id="existingStatus" class="muted"></span>
+  </div>
+</div>
+
     <div class="grid">
       <div>
         <label for="xlsxFile">Google Sheets export (.xlsx) *</label>
@@ -274,6 +293,70 @@
   let currentSessionId = null;
   let currentBuilderState = null;
   let currentDownloads = null;
+
+  const existingSheetName = document.getElementById("existingSheetName");
+const existingWebAppUrl = document.getElementById("existingWebAppUrl");
+const existingStatus = document.getElementById("existingStatus");
+const openExistingBtn = document.getElementById("openExistingBtn");
+
+const DEFAULT_API_KEY = "CHANGE_ME_WRITE_KEY_2026";
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "generated-app";
+}
+
+function setExistingStatus(msg, cls = "muted") {
+  existingStatus.textContent = msg;
+  existingStatus.className = cls;
+}
+
+openExistingBtn.addEventListener("click", async () => {
+  const sheet = existingSheetName.value.trim();
+  const webApp = existingWebAppUrl.value.trim();
+
+  if (!sheet || !webApp) {
+    setExistingStatus("Insert sheet name and Web App URL.", "err");
+    return;
+  }
+
+  const slug = slugify(sheet);
+
+  try {
+    setExistingStatus("Connecting backend...", "muted");
+
+    const resp = await fetch("/api/apps/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug,
+        web_app_url: webApp,
+        api_key: DEFAULT_API_KEY
+      })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.error || "Connection failed");
+    }
+
+    setExistingStatus("Backend connected. Opening app...", "ok");
+
+    const url = new URL("index.html", window.location.origin);
+    url.searchParams.set("app", slug);
+    window.open(url.toString(), "_blank", "noopener");
+
+  } catch (err) {
+    setExistingStatus("Error: " + err.message, "err");
+  }
+});
 
   function fileInfo(file) {
     if (!file) return null;
