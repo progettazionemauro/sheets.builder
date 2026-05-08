@@ -169,76 +169,38 @@ a.button.secondary {
   </p>
 
   <div class="card">
-    <h2>1. Load parsed configuration</h2>
-    <p class="muted">
-      Questa schermata usa una configurazione già generata dal parser interno.
-      Nel flusso finale del prodotto, questa configurazione verrà costruita direttamente a partire dai file spreadsheet caricati.
-    </p>
+  <h2>1. App summary</h2>
 
-    <label for="fileInput">Parsed configuration file</label>
-    <input id="fileInput" type="file" accept=".json,application/json" />
+  <p class="muted">
+    Review the detected spreadsheet structure before generating the final app.
+  </p>
 
-    <div class="actions">
-      <button id="loadSampleBtn" type="button" class="secondary">Load pasted parsed configuration</button>
-      <span id="loadStatus" class="muted"></span>
+  <div class="grid">
+    <div>
+      <label for="sheetName">Sheet name</label>
+      <input id="sheetName" readonly />
     </div>
 
-    <label for="rawJsonInput">Optional pasted parsed configuration</label>
-    <textarea id="rawJsonInput" rows="10" placeholder="Incolla qui la configurazione parsata se preferisci"></textarea>
-  </div>
-
-  <div class="card">
-    <h2>2. App summary</h2>
-    <p class="muted">
-      Qui puoi controllare le informazioni principali dell’app che verrà generata.
-    </p>
-
-    <div class="grid">
-      <div>
-        <label for="projectName">App name</label>
-        <input id="projectName" />
-
-        <label for="entityName">Main entity name</label>
-        <input id="entityName" />
-
-        <label for="entityLabelLower">Main entity label</label>
-        <input id="entityLabelLower" />
-      </div>
-
-      <div>
-        <label for="sheetName">Source sheet name</label>
-        <input id="sheetName" />
-
-        <label for="projectSlug">App slug</label>
-        <input id="projectSlug" />
-      </div>
+    <div>
+      <label for="projectName">App name</label>
+      <input id="projectName" readonly />
     </div>
   </div>
 
-  <div class="card">
-    <h2>2b. Advanced settings</h2>
-    <p class="muted">
-      Queste impostazioni sono tecniche e di solito non richiedono modifiche per un utilizzo standard.
-    </p>
-
-    <div class="grid">
-      <div>
-        <label for="backendName">Backend name</label>
-        <input id="backendName" />
-
-        <label for="buildMarker">Build marker</label>
-        <input id="buildMarker" />
-      </div>
-
-      <div>
-        <label for="adminPassword">Backend write key</label>
-        <input id="adminPassword" />
-      </div>
-    </div>
-  </div>
+  <input id="entityName" type="hidden" />
+  <input id="entityLabelLower" type="hidden" />
+  <input id="projectSlug" type="hidden" />
+  <input id="backendName" type="hidden" />
+  <input id="buildMarker" type="hidden" />
+  <input id="adminPassword" type="hidden" />
+  <input id="fileInput" type="file" accept=".json,application/json" style="display:none;" />
+  <textarea id="rawJsonInput" style="display:none;"></textarea>
+  <button id="loadSampleBtn" type="button" style="display:none;">Load</button>
+  <span id="loadStatus" style="display:none;"></span>
+</div>
 
   <div class="card">
-    <h2>3. Detected fields</h2>
+    <h2>2. Detected fields</h2>
     <p class="muted">
       Qui puoi controllare i nomi visualizzati dei campi e decidere se devono comparire nel form o nel viewer finale.
       I tipi rilevati dal parser restano non modificabili in questa fase.
@@ -261,7 +223,7 @@ a.button.secondary {
   </div>
 
   <div class="card">
-    <h2>4. Special value colors</h2>
+    <h2>3. Special value colors</h2>
     <p class="muted">
       Per i campi con valori predefiniti puoi controllare i colori visualizzati nel viewer finale.
     </p>
@@ -272,7 +234,7 @@ a.button.secondary {
   
 
  <div class="card">
-  <h2>5. Generate final app</h2>
+  <h2>4. Generate final app</h2>
   <p class="muted">
     Review fields, labels and colors. When everything is correct, generate the final CRUD app and continue to the delivery page.
   </p>
