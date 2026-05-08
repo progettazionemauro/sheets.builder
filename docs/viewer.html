@@ -73,6 +73,7 @@
   const qs = new URLSearchParams(location.search);
   const APP_SLUG = qs.get("app") || "generated-app";
   const URL_LIMIT = qs.get("limit") || "50";
+  const EMBEDDED_MODE = qs.get("embedded") === "1";
 
   const VISIBLE_HEADERS = [
   "id",
@@ -250,6 +251,14 @@
       status.textContent = "Errore: " + e.message;
     }
   }
+  
+  if (EMBEDDED_MODE) {
+  const toolbar = document.querySelector(".toolbar");
+  if (toolbar) toolbar.style.display = "none";
+
+  const topLabel = document.querySelector(".muted");
+  if (topLabel) topLabel.style.display = "none";
+}
 
   document.getElementById("searchBox").addEventListener("input", renderTable);
   document.getElementById("limitBox").value = URL_LIMIT;

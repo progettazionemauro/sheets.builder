@@ -742,8 +742,18 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   </div>
 
   <div class="card">
-    <h3 style="margin:0 0 10px;">Viewer (read-only)</h3>
-    <iframe id="viewer" loading="lazy"></iframe>
+    <h3 style="margin:0 0 10px;">Data preview</h3>
+<p class="muted">
+  View the current spreadsheet records. To change labels, visible columns or colors, use the configuration editor.
+</p>
+
+<div class="actions">
+  <a class="button secondary" href="review.html?autoload=1" target="_blank" rel="noopener">
+    Customize labels and colors
+  </a>
+</div>
+
+<iframe id="viewer" loading="lazy"></iframe>
     <div class="actions">
       <span class="muted">Il viewer si aggiorna automaticamente dopo insert/update/delete.</span>
     </div>
@@ -825,13 +835,14 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   }}
 
   function viewerUrl_(cacheBust) {{
-    const basePath = window.location.pathname.replace(/[^\\/]*$/, "");
-    const u = new URL(basePath + "viewer.html", window.location.origin);
-    u.searchParams.set("app", APP_SLUG);
-    u.searchParams.set("limit", "50");
-    if (cacheBust) u.searchParams.set("_", Date.now().toString());
-    return u.toString();
-  }}
+  const basePath = window.location.pathname.replace(/[^\\/]*$/, "");
+  const u = new URL(basePath + "viewer.html", window.location.origin);
+  u.searchParams.set("app", APP_SLUG);
+  u.searchParams.set("limit", "50");
+  u.searchParams.set("embedded", "1");
+  if (cacheBust) u.searchParams.set("_", Date.now().toString());
+  return u.toString();
+}}
 
   const out = document.getElementById("out");
 const viewer = document.getElementById("viewer");
@@ -1134,6 +1145,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const qs = new URLSearchParams(location.search);
   const APP_SLUG = qs.get("app") || {js_string(project_slug)};
   const URL_LIMIT = qs.get("limit") || "50";
+  const EMBEDDED_MODE = qs.get("embedded") === "1";
 
   const VISIBLE_HEADERS = {visible_cols_js};
   const ENUMS = {enum_map_js};
@@ -1259,6 +1271,14 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       status.textContent = "Errore: " + e.message;
     }}
   }}
+  
+  if (EMBEDDED_MODE) {{
+  const toolbar = document.querySelector(".toolbar");
+  if (toolbar) toolbar.style.display = "none";
+
+  const topLabel = document.querySelector(".muted");
+  if (topLabel) topLabel.style.display = "none";
+}}
 
   document.getElementById("searchBox").addEventListener("input", renderTable);
   document.getElementById("limitBox").value = URL_LIMIT;
