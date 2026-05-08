@@ -82,14 +82,13 @@
 
   <h1>Your app is ready</h1>
   <p class="muted">
-    I file finali sono pronti. Ora registra il backend Apps Script nel proxy sicuro del Builder
-    e apri il database finale senza esporre Web App URL e API key nel browser.
+    The final files are ready. Connect the published Apps Script backend and open the generated CRUD app.
   </p>
 
   <div class="card">
     <h2>1. Download final files</h2>
     <p class="muted">
-      Scarica i tre file finali generati.
+      Download the generated frontend and backend files.
     </p>
 
     <div class="actions">
@@ -100,28 +99,24 @@
   </div>
 
   <div class="card">
-    <h2>2. Register backend in secure proxy</h2>
+    <h2>2. Connect backend</h2>
     <p class="muted">
-      Dopo aver pubblicato <code>codice.gs</code> come Web App Apps Script, registra qui la tua app.
-      Il browser userà solo lo slug; Web App URL e API key resteranno lato server.
+      After publishing <code>codice.gs</code> as an Apps Script Web App, enter the sheet name and the Web App URL.
+      The app identifier is generated automatically from the sheet name.
     </p>
 
-    <label for="appSlug">App slug</label>
-    <input id="appSlug" type="text" placeholder="horror-movie" />
+    <label for="sheetName">Sheet name</label>
+    <input id="sheetName" type="text" placeholder="HorrorMovie" />
 
     <label for="webAppUrl">Apps Script Web App URL</label>
     <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
-
-    <label for="apiKey">API key</label>
-    <input id="apiKey" type="text" placeholder="CHANGE_ME_WRITE_KEY_2026" />
 
     <label for="crudEndpoint">Database endpoint</label>
     <input id="crudEndpoint" type="text" readonly />
 
     <div class="actions">
-      <button id="registerBtn" type="button">Register app</button>
-      <button id="buildEndpointBtn" type="button" class="secondary">Build database endpoint</button>
-      <button id="openDatabaseBtn" type="button" class="secondary">Open database</button>
+      <button id="connectBtn" type="button">Connect backend and open CRUD app</button>
+      <button id="buildEndpointBtn" type="button" class="secondary">Prepare link only</button>
       <span id="status" class="muted"></span>
     </div>
   </div>
@@ -129,29 +124,29 @@
   <div class="card">
     <h2>3. Minimal deployment steps</h2>
     <ol>
-      <li>Apri Google Apps Script e incolla <code>codice.gs</code>.</li>
-      <li>Pubblica o aggiorna la Web App.</li>
-      <li>Copia l’URL finale della Web App.</li>
-      <li>Inserisci slug, Web App URL e API key nella sezione sopra.</li>
-      <li>Premi <b>Register app</b>.</li>
-      <li>Premi <b>Open database</b>.</li>
+      <li>Open Google Apps Script and paste <code>codice.gs</code>.</li>
+      <li>Publish or update the Web App.</li>
+      <li>Copy the final Web App URL.</li>
+      <li>Enter the sheet name and the Web App URL above.</li>
+      <li>Click <b>Connect backend and open CRUD app</b>.</li>
     </ol>
   </div>
 
   <div class="card">
     <h2>Djungo principle</h2>
     <p class="muted">
-      Il progetto resta portabile: i file generati sono tuoi, il codice è leggibile,
-      e il proxy evita di esporre chiavi sensibili nel frontend.
+      The generated app remains portable: the code is readable, the data stays in your spreadsheet,
+      and the browser does not expose the Apps Script URL or write key.
     </p>
   </div>
 
 <script>
-  const appSlug = document.getElementById("appSlug");
+  const sheetName = document.getElementById("sheetName");
   const webAppUrl = document.getElementById("webAppUrl");
-  const apiKey = document.getElementById("apiKey");
   const crudEndpoint = document.getElementById("crudEndpoint");
   const statusEl = document.getElementById("status");
+
+  const DEFAULT_API_KEY = "CHANGE_ME_WRITE_KEY_2026";
 
   function setStatus(msg, cls = "muted") {
     statusEl.textContent = msg;
@@ -167,44 +162,45 @@
       .replace(/^-+|-+$/g, "") || "generated-app";
   }
 
+  function currentSlug() {
+    return slugify(sheetName.value);
+  }
+
   function buildCrudUrl() {
     const basePath = window.location.pathname.replace(/[^\/]*$/, "");
     const url = new URL(basePath + "index.html", window.location.origin);
-    url.searchParams.set("app", slugify(appSlug.value));
+    url.searchParams.set("app", currentSlug());
     return url.toString();
   }
 
   function saveDeploymentData() {
-    sessionStorage.setItem("DJUNGO_APP_SLUG", appSlug.value.trim());
+    sessionStorage.setItem("DJUNGO_SHEET_NAME", sheetName.value.trim());
     sessionStorage.setItem("DJUNGO_WEB_APP_URL", webAppUrl.value.trim());
-    sessionStorage.setItem("DJUNGO_API_KEY", apiKey.value.trim());
+    sessionStorage.setItem("DJUNGO_APP_SLUG", currentSlug());
   }
 
   function restoreDeploymentData() {
-    const savedSlug = sessionStorage.getItem("DJUNGO_APP_SLUG");
+    const savedSheet = sessionStorage.getItem("DJUNGO_SHEET_NAME");
     const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
-    const savedKey = sessionStorage.getItem("DJUNGO_API_KEY");
 
-    if (savedSlug) appSlug.value = savedSlug;
+    if (savedSheet) sheetName.value = savedSheet;
     if (savedWebApp) webAppUrl.value = savedWebApp;
-    if (savedKey) apiKey.value = savedKey;
 
-    if (appSlug.value.trim()) {
+    if (sheetName.value.trim()) {
       crudEndpoint.value = buildCrudUrl();
     }
   }
 
   async function registerApp() {
-    const slug = slugify(appSlug.value);
+    const slug = currentSlug();
     const webApp = webAppUrl.value.trim();
-    const key = apiKey.value.trim();
 
-    if (!slug || !webApp || !key) {
-      setStatus("Inserisci slug, Web App URL e API key.", "err");
-      return;
+    if (!sheetName.value.trim() || !webApp) {
+      setStatus("Insert sheet name and Apps Script Web App URL.", "err");
+      return null;
     }
 
-    setStatus("Registering app...", "muted");
+    setStatus("Connecting backend...", "muted");
 
     const resp = await fetch("/api/apps/register", {
       method: "POST",
@@ -214,61 +210,52 @@
       body: JSON.stringify({
         slug,
         web_app_url: webApp,
-        api_key: key
+        api_key: DEFAULT_API_KEY
       })
     });
 
     const data = await resp.json();
 
     if (!resp.ok || !data.ok) {
-      throw new Error(data.error || "Registration failed");
+      throw new Error(data.error || "Backend connection failed");
     }
 
-    appSlug.value = data.slug || slug;
     saveDeploymentData();
     crudEndpoint.value = buildCrudUrl();
 
-    setStatus("App registered successfully. You can now open the database.", "ok");
+    return slug;
   }
 
-  document.getElementById("registerBtn").addEventListener("click", async () => {
+  document.getElementById("connectBtn").addEventListener("click", async () => {
     try {
-      await registerApp();
+      const slug = await registerApp();
+      if (!slug) return;
+
+      setStatus("Backend connected. Opening CRUD app...", "ok");
+      window.open(buildCrudUrl(), "_blank", "noopener");
+
     } catch (err) {
-      setStatus("Errore: " + err.message, "err");
+      setStatus("Error: " + err.message, "err");
     }
   });
 
   document.getElementById("buildEndpointBtn").addEventListener("click", () => {
-    if (!appSlug.value.trim()) {
-      setStatus("Inserisci lo slug dell'app.", "err");
+    if (!sheetName.value.trim()) {
+      setStatus("Insert sheet name.", "err");
       return;
     }
 
     saveDeploymentData();
     crudEndpoint.value = buildCrudUrl();
-    setStatus("Database endpoint generated successfully.", "ok");
+    setStatus("Database link prepared.", "ok");
   });
 
-  document.getElementById("openDatabaseBtn").addEventListener("click", () => {
-    if (!appSlug.value.trim()) {
-      setStatus("Inserisci lo slug dell'app.", "err");
-      return;
-    }
-
-    saveDeploymentData();
-    const endpoint = buildCrudUrl();
-    crudEndpoint.value = endpoint;
-    window.open(endpoint, "_blank", "noopener");
-  });
-
-  appSlug.addEventListener("input", () => {
+  sheetName.addEventListener("input", () => {
     crudEndpoint.value = buildCrudUrl();
     saveDeploymentData();
   });
 
   webAppUrl.addEventListener("input", saveDeploymentData);
-  apiKey.addEventListener("input", saveDeploymentData);
 
   restoreDeploymentData();
 </script>

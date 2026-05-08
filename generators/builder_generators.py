@@ -663,48 +663,6 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{escape_html(project_name)}</title>
   <style>
-    button {{
-  padding:8px 10px;
-  border:0;
-  border-radius:8px;
-  background:#111;
-  color:#fff;
-  font-weight:700;
-  cursor:pointer;
-}}
-
-button.secondary {{
-  background:#666;
-}}
-
-.custom-row {{
-  display:grid;
-  grid-template-columns: 90px 1fr 90px;
-  gap:8px;
-  align-items:center;
-  padding:8px 0;
-  border-bottom:1px solid #eee;
-}}
-
-.custom-row input[type="text"] {{
-  width:100%;
-  box-sizing:border-box;
-  padding:7px;
-  border:1px solid #ccc;
-  border-radius:7px;
-}}
-
-.enum-color-row {{
-  display:grid;
-  grid-template-columns: 120px 90px 90px;
-  gap:8px;
-  align-items:center;
-  margin:5px 0 5px 98px;
-}}
-
-.enum-color-row input {{
-  width:80px;
-}}
     body {{ font-family: Arial, sans-serif; max-width: 1100px; margin: 28px auto; padding: 0 16px; }}
     h1 {{ margin: 0 0 6px; }}
     .muted {{ color:#666; }}
@@ -721,7 +679,6 @@ button.secondary {{
     iframe {{ width:100%; height:560px; border:1px solid #ddd; border-radius:10px; background:#fff; }}
     small {{ display:block; margin-top:8px; color:#666; }}
     pre {{ background:#0b0b0b; color:#d6ffd6; border-radius:10px; padding:12px; overflow:auto; }}
-    
   </style>
 </head>
 <body>
@@ -1035,7 +992,7 @@ async function call_(mode, params = {{}}, needsKey = false) {{
     if (!id) throw new Error("Missing id");
     if (!confirm(`Delete id=${{id}}?`)) return;
 
-    setBusy(true, "Operation in progress. Please wait…");generate_viewer_html()
+    setBusy(true, "Operation in progress. Please wait…");
     setMsg(st, "Deleting record…");
 
     const r = await call_("delete", {{ id }}, true);
@@ -1167,20 +1124,6 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         <option>100</option>
         <option>200</option>
       </select>
-      <div>
-    <label>&nbsp;</label>
-      <button id="customizeBtn" type="button">Customize view</button>
-    </div>
-    </div>
-  </div>
-
-   <div id="customizePanel" style="display:none; margin:12px 0; padding:12px; border:1px solid #ddd; border-radius:10px; background:#fff;">
-    <h3 style="margin:0 0 8px;">Customize view</h3>
-    <p class="muted">Edit labels, visible columns and enum colors. Changes are saved in this browser only.</p>
-    <div id="customizeFields"></div>
-    <div style="margin-top:12px;">
-      <button id="saveCustomizeBtn" type="button">Save customization</button>
-      <button id="resetCustomizeBtn" type="button">Reset customization</button>
     </div>
   </div>
 
@@ -1318,31 +1261,10 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   }}
 
   document.getElementById("searchBox").addEventListener("input", renderTable);
-document.getElementById("limitBox").value = URL_LIMIT;
-document.getElementById("limitBox").addEventListener("change", load);
+  document.getElementById("limitBox").value = URL_LIMIT;
+  document.getElementById("limitBox").addEventListener("change", load);
 
-document.getElementById("customizeBtn").addEventListener("click", () => {{
-  const panel = document.getElementById("customizePanel");
-  const isHidden = panel.style.display === "none";
-  panel.style.display = isHidden ? "block" : "none";
-
-  if (isHidden) {{
-    renderCustomizePanel();
-  }}
-}});
-
-document.getElementById("saveCustomizeBtn").addEventListener("click", () => {{
-  const custom = collectCustomizationFromPanel();
-  saveViewCustomization(custom);
-  location.reload();
-}});
-
-document.getElementById("resetCustomizeBtn").addEventListener("click", () => {{
-  localStorage.removeItem(CUSTOMIZATION_KEY);
-  location.reload();
-}});
-
-load();
+  load();
 </script>
 
 </body>

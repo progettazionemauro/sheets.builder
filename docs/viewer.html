@@ -63,20 +63,6 @@
         <option>100</option>
         <option>200</option>
       </select>
-      <div>
-    <label>&nbsp;</label>
-      <button id="customizeBtn" type="button">Customize view</button>
-    </div>
-    </div>
-  </div>
-
-   <div id="customizePanel" style="display:none; margin:12px 0; padding:12px; border:1px solid #ddd; border-radius:10px; background:#fff;">
-    <h3 style="margin:0 0 8px;">Customize view</h3>
-    <p class="muted">Edit labels, visible columns and enum colors. Changes are saved in this browser only.</p>
-    <div id="customizeFields"></div>
-    <div style="margin-top:12px;">
-      <button id="saveCustomizeBtn" type="button">Save customization</button>
-      <button id="resetCustomizeBtn" type="button">Reset customization</button>
     </div>
   </div>
 
@@ -266,31 +252,10 @@
   }
 
   document.getElementById("searchBox").addEventListener("input", renderTable);
-document.getElementById("limitBox").value = URL_LIMIT;
-document.getElementById("limitBox").addEventListener("change", load);
+  document.getElementById("limitBox").value = URL_LIMIT;
+  document.getElementById("limitBox").addEventListener("change", load);
 
-document.getElementById("customizeBtn").addEventListener("click", () => {
-  const panel = document.getElementById("customizePanel");
-  const isHidden = panel.style.display === "none";
-  panel.style.display = isHidden ? "block" : "none";
-
-  if (isHidden) {
-    renderCustomizePanel();
-  }
-});
-
-document.getElementById("saveCustomizeBtn").addEventListener("click", () => {
-  const custom = collectCustomizationFromPanel();
-  saveViewCustomization(custom);
-  location.reload();
-});
-
-document.getElementById("resetCustomizeBtn").addEventListener("click", () => {
-  localStorage.removeItem(CUSTOMIZATION_KEY);
-  location.reload();
-});
-
-load();
+  load();
 </script>
 
 </body>

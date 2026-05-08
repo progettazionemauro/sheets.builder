@@ -126,6 +126,18 @@
     In questa fase il parser e il generatore reali continuano a essere gestiti dalla pipeline Python,
     ma questa pagina rappresenta il flusso cliente corretto.
   </p>
+  
+  <div id="resumeBlock" class="card" style="display:none;">
+  <h2>Resume your last app</h2>
+  <p class="muted">
+    You recently used this app. You can open it directly.
+  </p>
+
+  <div class="actions">
+    <button id="resumeBtn" type="button">Open last app</button>
+    <button id="clearLastBtn" type="button" class="secondary">Forget</button>
+  </div>
+</div>
 
   <div class="card">
     <h2>1. Source files</h2>
@@ -301,6 +313,27 @@ const openExistingBtn = document.getElementById("openExistingBtn");
 
 const DEFAULT_API_KEY = "CHANGE_ME_WRITE_KEY_2026";
 
+const resumeBlock = document.getElementById("resumeBlock");
+const resumeBtn = document.getElementById("resumeBtn");
+const clearLastBtn = document.getElementById("clearLastBtn");
+
+const lastApp = localStorage.getItem("DJUNGO_LAST_APP");
+
+if (lastApp) {
+  resumeBlock.style.display = "block";
+
+  resumeBtn.addEventListener("click", () => {
+    const url = new URL("index.html", window.location.origin);
+    url.searchParams.set("app", lastApp);
+    window.open(url.toString(), "_blank", "noopener");
+  });
+
+  clearLastBtn.addEventListener("click", () => {
+    localStorage.removeItem("DJUNGO_LAST_APP");
+    location.reload();
+  });
+}
+
 function slugify(value) {
   return String(value || "")
     .trim()
@@ -351,6 +384,7 @@ openExistingBtn.addEventListener("click", async () => {
 
     const url = new URL("index.html", window.location.origin);
     url.searchParams.set("app", slug);
+    localStorage.setItem("DJUNGO_LAST_APP", slug);
     window.open(url.toString(), "_blank", "noopener");
 
   } catch (err) {
