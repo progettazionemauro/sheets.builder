@@ -748,9 +748,9 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 </p>
 
 <div class="actions">
-  <a class="button secondary" href="review.html?autoload=1" target="_blank" rel="noopener">
-    Customize labels and colors
-  </a>
+<button id="customizeConfigBtn" type="button" class="secondary">
+  Customize labels and colors
+</button>
 </div>
 
 <iframe id="viewer" loading="lazy"></iframe>
@@ -994,6 +994,11 @@ async function call_(mode, params = {{}}, needsKey = false) {{
   }} finally {{
     setTimeout(() => setBusy(false), 900);
   }}
+}});
+
+  document.getElementById("customizeConfigBtn").addEventListener("click", () => {{
+  window.location.href =
+    `review.html?autoload=1&returnApp=${{encodeURIComponent(APP_SLUG)}}`;
 }});
 
   document.getElementById("deleteBtn").addEventListener("click", async () => {{

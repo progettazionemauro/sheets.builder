@@ -225,7 +225,7 @@ def call_apps_script_proxy(
     resp = requests.get(
         config["web_app_url"],
         params=outbound,
-        timeout=20,
+        timeout=45,
     )
 
     resp.raise_for_status()
@@ -359,6 +359,13 @@ def api_generate():
 
         for relative_path, content in generated.items():
             target = generated_root / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+        
+        # Also publish generated runtime files to the Flask static folder.
+        # This makes the updated CRUD/viewer immediately visible in the browser.
+        for relative_path, content in generated.items():
+            target = ROOT / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
 

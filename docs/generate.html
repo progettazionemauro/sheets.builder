@@ -325,7 +325,7 @@ if (lastApp) {
   resumeBtn.addEventListener("click", () => {
     const url = new URL("index.html", window.location.origin);
     url.searchParams.set("app", lastApp);
-    window.open(url.toString(), "_blank", "noopener");
+    window.location.href = url.toString();
   });
 
   clearLastBtn.addEventListener("click", () => {
@@ -385,7 +385,7 @@ openExistingBtn.addEventListener("click", async () => {
     const url = new URL("index.html", window.location.origin);
     url.searchParams.set("app", slug);
     localStorage.setItem("DJUNGO_LAST_APP", slug);
-    window.open(url.toString(), "_blank", "noopener");
+    window.location.href = url.toString();
 
   } catch (err) {
     setExistingStatus("Error: " + err.message, "err");
@@ -489,7 +489,7 @@ openExistingBtn.addEventListener("click", async () => {
 
     localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId || "");
     localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(currentBuilderState));
-    window.open("review.html?autoload=1", "_blank", "noopener");
+    window.location.href = "review.html?autoload=1";
   });
 
   generateBtn.addEventListener("click", async () => {
@@ -582,7 +582,7 @@ openExistingBtn.addEventListener("click", async () => {
 
     const endpoint = buildCrudUrl();
     crudEndpoint.value = endpoint;
-    window.open(endpoint, "_blank", "noopener");
+    window.location.href = endpoint;
   });
 </script>
 

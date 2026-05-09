@@ -239,24 +239,22 @@ a.button.secondary {
     Review fields, labels and colors. When everything is correct, generate the final CRUD app and continue to the delivery page.
   </p>
 
-  <div class="actions">
-    <button id="downloadBtn" type="button">Generate final app</button>
-    <a class="button secondary" href="app_ready.html">Open delivery page</a>
-  </div>
+  
+ <div class="actions">
+  <button id="downloadBtn" type="button">
+    Generate final app
+  </button>
 
-  <p class="muted">
-    The generated package includes <code>index.html</code>, <code>viewer.html</code> and <code>codice.gs</code>.
-  </p>
-</div>
+  <a
+    id="openAppReady"
+    class="button secondary"
+    href="app_ready.html"
+    style="display:none;"
+  >
+    Continue to delivery page
+  </a>
 
-  <div class="actions">
-    <button id="downloadBtn" type="button">Approve and generate configuration</button>
-    <span id="downloadStatus" class="muted"></span>
-  <div id="finalDownloads" class="actions hidden" style="margin-top:12px;">
-  <a id="downloadIndex" class="button secondary" href="#">Download index.html</a>
-  <a id="downloadViewer" class="button secondary" href="#">Download viewer.html</a>
-  <a id="downloadGas" class="button secondary" href="#">Download codice.gs</a>
-  <a id="openAppReady" class="button" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
+  <span id="downloadStatus" class="muted"></span>
 </div>
   </div>
 
@@ -267,7 +265,6 @@ a.button.secondary {
   Dopo aver scaricato la configurazione approvata, il motore Python genera i file finali del progetto.
   Una volta completata la generazione, puoi aprire la pagina finale di consegna.
 </p>
-</div>
 
 <script>
   let builderState = null;
@@ -404,10 +401,10 @@ a.button.secondary {
     document.getElementById("sheetName").value = p.sheetName || "";
     document.getElementById("buildMarker").value = p.buildMarker || "";
     document.getElementById("adminPassword").value = p.adminPassword || "";
-    const finalDownloads = document.getElementById("finalDownloads");
-    const downloadViewer = document.getElementById("downloadViewer");
-    const downloadIndex = document.getElementById("downloadIndex");
-    const downloadGas = document.getElementById("downloadGas");
+      {{/*  const finalDownloads = document.getElementById("finalDownloads");
+      const downloadViewer = document.getElementById("downloadViewer");
+      const downloadIndex = document.getElementById("downloadIndex");
+      const downloadGas = document.getElementById("downloadGas");  */}}
   }
 
   function renderFieldsTable() {
@@ -769,16 +766,21 @@ a.button.secondary {
 
     setStatus("downloadStatus", "Generating final files...", "muted");
 
-    const resp = await fetch("/api/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        session_id: sessionId,
-        builder_state: builderState
-      })
-    });
+    localStorage.setItem(
+  "DJUNGO_BUILDER_STATE",
+  JSON.stringify(builderState)
+);
+
+const resp = await fetch("/api/generate", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    session_id: sessionId,
+    builder_state: builderState
+  })
+});
 
     const data = await resp.json();
 
@@ -786,22 +788,27 @@ a.button.secondary {
       throw new Error(data.error || "Generation failed");
     }
 
-    downloadIndex.href = data.downloads.index_html;
-    downloadIndex.download = "index.html";
+    const params = new URLSearchParams(window.location.search);
+const returnApp = params.get("returnApp") || sessionStorage.getItem("DJUNGO_APP_SLUG");
 
-    downloadViewer.href = data.downloads.viewer_html;
-    downloadViewer.download = "viewer.html";
-
-    downloadGas.href = data.downloads.codice_gs;
-    downloadGas.download = "codice.gs";
-
-    finalDownloads.classList.remove("hidden");
+if (returnApp) {
+  window.location.href =
+  `index.html?app=${encodeURIComponent(returnApp)}&_=${Date.now()}`;
+} else {
+  window.location.href = "app_ready.html";
+}
 
     setStatus(
   "downloadStatus",
-  "Final files generated successfully. Download the files or continue to the app ready page.",
+  "Final files generated successfully. Continue to the delivery page.",
   "ok"
 );
+
+const openBtn = document.getElementById("openAppReady");
+
+if (openBtn) {
+  openBtn.style.display = "inline-block";
+}
 
   } catch (err) {
     setStatus("downloadStatus", "Errore: " + err.message, "err");
