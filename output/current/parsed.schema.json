@@ -94,7 +94,8 @@
       "enumStyles": {},
       "type": "int",
       "computed": true,
-      "visibleInForm": false
+      "visibleInForm": false,
+      "originalHeader": "id"
     },
     {
       "name": "year",
@@ -108,7 +109,8 @@
       "enumStyles": {},
       "type": "int",
       "computed": false,
-      "visibleInForm": true
+      "visibleInForm": true,
+      "originalHeader": "year"
     },
     {
       "name": "title",
@@ -122,7 +124,8 @@
       "enumStyles": {},
       "type": "string",
       "computed": false,
-      "visibleInForm": true
+      "visibleInForm": true,
+      "originalHeader": "Title"
     },
     {
       "name": "url",
@@ -136,7 +139,8 @@
       "enumStyles": {},
       "type": "string",
       "computed": false,
-      "visibleInForm": true
+      "visibleInForm": true,
+      "originalHeader": "url"
     },
     {
       "name": "link",
@@ -150,7 +154,8 @@
       "enumStyles": {},
       "type": "computed",
       "computed": true,
-      "visibleInForm": false
+      "visibleInForm": false,
+      "originalHeader": "link"
     },
     {
       "name": "nation",
@@ -164,7 +169,8 @@
       "enumStyles": {},
       "type": "string",
       "computed": false,
-      "visibleInForm": true
+      "visibleInForm": true,
+      "originalHeader": "nation"
     },
     {
       "name": "rating",
@@ -210,7 +216,8 @@
       },
       "type": "enum",
       "computed": false,
-      "visibleInForm": true
+      "visibleInForm": true,
+      "originalHeader": "rating"
     }
   ],
   "enumStyles": {

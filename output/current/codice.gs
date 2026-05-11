@@ -20,6 +20,15 @@ const API_KEY = "CHANGE_ME_WRITE_KEY_2026";
 const BUILD_MARKER = "GENERATED_APP_BACKEND_V1";
 const BUILD_TIME = new Date().toISOString();
 
+const SHEET_HEADERS = [
+  "id",
+  "year",
+  "Title",
+  "url",
+  "link",
+  "nation",
+  "rating"
+];
 const HEADERS = [
   "id",
   "year",
@@ -327,19 +336,19 @@ function getSheet_() {
 }
 
 function ensureHeaders_(sh) {
-  const lastCol = Math.max(sh.getLastColumn(), HEADERS.length);
-  const row1 = sh.getRange(1, 1, 1, lastCol).getValues()[0].slice(0, HEADERS.length);
+  const lastCol = Math.max(sh.getLastColumn(), SHEET_HEADERS.length);
+  const row1 = sh.getRange(1, 1, 1, lastCol).getValues()[0].slice(0, SHEET_HEADERS.length);
   const row1Norm = row1.map(x => String(x || "").trim());
 
-  const ok = HEADERS.every((h, i) => row1Norm[i] === h);
+  const ok = SHEET_HEADERS.every((h, i) => row1Norm[i] === h);
 
   if (!ok) {
     const allEmpty = row1Norm.every(x => !x);
     if (allEmpty && sh.getLastRow() === 0) {
-      sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+      sh.getRange(1, 1, 1, SHEET_HEADERS.length).setValues([SHEET_HEADERS]);
       return;
     }
-    throw new Error("Header mismatch in sheet. Expected: " + HEADERS.join(", "));
+    throw new Error("Header mismatch in sheet. Expected: " + SHEET_HEADERS.join(", "));
   }
 }
 

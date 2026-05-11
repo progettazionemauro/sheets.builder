@@ -284,8 +284,10 @@ def import_schema_from_xlsx(
     fields: List[Dict[str, Any]] = []
 
     col_idx = 1
-    while True:
+    while True: 
         cell_value = ws.cell(row=header_row, column=col_idx).value
+
+        original_header = str(cell_value).strip() if cell_value is not None else ""
         header = _norm_header(cell_value)
 
         if not header:
@@ -313,6 +315,8 @@ def import_schema_from_xlsx(
             formula_anchor_row=formula_anchor_row,
             enum_values=enum_values,
         )
+
+        field["originalHeader"] = original_header or header
 
         headers.append(header)
         fields.append(field)

@@ -84,6 +84,7 @@
   "fields": [
     {
       "name": "id",
+      "originalHeader": "id",
       "label": "id",
       "type": "int",
       "required": false,
@@ -95,6 +96,7 @@
     },
     {
       "name": "year",
+      "originalHeader": "year",
       "label": "year",
       "type": "int",
       "required": false,
@@ -106,7 +108,8 @@
     },
     {
       "name": "title",
-      "label": "title",
+      "originalHeader": "Title",
+      "label": "Title",
       "type": "string",
       "required": false,
       "computed": false,
@@ -117,6 +120,7 @@
     },
     {
       "name": "url",
+      "originalHeader": "url",
       "label": "url",
       "type": "string",
       "required": false,
@@ -128,6 +132,7 @@
     },
     {
       "name": "link",
+      "originalHeader": "link",
       "label": "link",
       "type": "computed",
       "required": false,
@@ -142,6 +147,7 @@
     },
     {
       "name": "nation",
+      "originalHeader": "nation",
       "label": "nation",
       "type": "string",
       "required": false,
@@ -153,6 +159,7 @@
     },
     {
       "name": "rating",
+      "originalHeader": "rating",
       "label": "rating",
       "type": "enum",
       "required": false,

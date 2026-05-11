@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 class FieldDef:
     name: str
     label: str
+    original_header: str
     type: str
     required: bool
     computed: bool
@@ -63,6 +64,7 @@ def field_map_from_schema(fields_schema: Dict[str, Any]) -> List[FieldDef]:
                 name=raw["name"],
                 label=raw.get("label", raw["name"]),
                 type=raw.get("type", "string"),
+                original_header=raw.get("originalHeader", raw["name"]),
                 required=bool(raw.get("required", False)),
                 computed=bool(raw.get("computed", False)),
                 visible_in_form=bool(raw.get("visibleInForm", False)),
@@ -268,7 +270,8 @@ def _generate_backend_computed_formula_write(fields: List[FieldDef], mode: str) 
 
 def generate_gas_backend(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> str:
     fields = field_map_from_schema(fields_schema)
-    headers = fields_schema["headers"]
+    api_headers = [f.name for f in fields]
+    sheet_headers = [f.original_header or f.name for f in fields]
     constraints = constraints_from_schema(fields_schema)
 
     backend_name = project_config["backendName"]
@@ -315,7 +318,8 @@ const API_KEY = {js_string(api_key)};
 const BUILD_MARKER = {js_string(build_marker)};
 const BUILD_TIME = new Date().toISOString();
 
-const HEADERS = {js_pretty(headers)};
+const SHEET_HEADERS = {js_pretty(sheet_headers)};
+const HEADERS = {js_pretty(api_headers)};
 const REQUIRED_ON_INSERT = {js_pretty(required)};
 const OPTIONAL_ON_INSERT = {js_pretty(optional)};
 const COMPUTED = {js_pretty(computed)};
@@ -521,19 +525,19 @@ function getSheet_() {{
 }}
 
 function ensureHeaders_(sh) {{
-  const lastCol = Math.max(sh.getLastColumn(), HEADERS.length);
-  const row1 = sh.getRange(1, 1, 1, lastCol).getValues()[0].slice(0, HEADERS.length);
+  const lastCol = Math.max(sh.getLastColumn(), SHEET_HEADERS.length);
+  const row1 = sh.getRange(1, 1, 1, lastCol).getValues()[0].slice(0, SHEET_HEADERS.length);
   const row1Norm = row1.map(x => String(x || "").trim());
 
-  const ok = HEADERS.every((h, i) => row1Norm[i] === h);
+  const ok = SHEET_HEADERS.every((h, i) => row1Norm[i] === h);
 
   if (!ok) {{
     const allEmpty = row1Norm.every(x => !x);
     if (allEmpty && sh.getLastRow() === 0) {{
-      sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+      sh.getRange(1, 1, 1, SHEET_HEADERS.length).setValues([SHEET_HEADERS]);
       return;
     }}
-    throw new Error("Header mismatch in sheet. Expected: " + HEADERS.join(", "));
+    throw new Error("Header mismatch in sheet. Expected: " + SHEET_HEADERS.join(", "));
   }}
 }}
 

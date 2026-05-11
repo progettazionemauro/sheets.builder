@@ -35,7 +35,8 @@ def build_builder_state(parsed_schema: dict[str, Any]) -> dict[str, Any]:
         name = raw.get("name", "")
         field = {
             "name": name,
-            "label": name,
+            "originalHeader": raw.get("originalHeader", name),
+            "label": raw.get("originalHeader", name),
             "type": raw.get("type", "string"),
             "required": bool(raw.get("required", False)),
             "computed": bool(raw.get("computed", False)),
