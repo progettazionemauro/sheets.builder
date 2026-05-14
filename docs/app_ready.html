@@ -94,7 +94,9 @@
     <div class="actions">
       <a class="button secondary" href="index.html" download="index.html">Download index.html</a>
       <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
-      <a class="button secondary" href="codice.gs" download="codice.gs">Download codice.gs</a>
+      <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
+  Download codice.gs
+</a>
     </div>
   </div>
 
@@ -190,6 +192,17 @@
       crudEndpoint.value = buildCrudUrl();
     }
   }
+
+  function restoreDownloadLinks() {
+  const gasUrl = sessionStorage.getItem("DJUNGO_DOWNLOAD_GAS");
+  const gasLink = document.getElementById("downloadGas");
+
+  if (gasUrl && gasLink) {
+    gasLink.href = gasUrl;
+  }
+}
+
+restoreDownloadLinks();
 
   async function registerApp() {
     const slug = currentSlug();

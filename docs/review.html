@@ -787,6 +787,11 @@ const resp = await fetch("/api/generate", {
     if (!resp.ok || !data.ok) {
       throw new Error(data.error || "Generation failed");
     }
+    if (data.downloads) {
+  sessionStorage.setItem("DJUNGO_DOWNLOAD_INDEX", data.downloads.index_html || "");
+  sessionStorage.setItem("DJUNGO_DOWNLOAD_VIEWER", data.downloads.viewer_html || "");
+  sessionStorage.setItem("DJUNGO_DOWNLOAD_GAS", data.downloads.codice_gs || "");
+}
 
     const params = new URLSearchParams(window.location.search);
 const returnApp = params.get("returnApp") || sessionStorage.getItem("DJUNGO_APP_SLUG");
