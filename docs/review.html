@@ -487,9 +487,41 @@ a.button.secondary {
     const enumFields = builderState.fields.filter(field => field.type === "enum");
 
     if (!enumFields.length) {
-      wrap.innerHTML = `<div class="muted">Nessun campo con valori speciali rilevato.</div>`;
-      return;
-    }
+  wrap.innerHTML = `
+    <div class="card">
+      <h3>No dropdown colors detected</h3>
+
+      <p class="muted">
+        This spreadsheet does not currently contain dropdown fields or selectable colored values.
+      </p>
+
+      <p class="muted">
+        If you want to use colored selectable values, go back to Google Sheets and configure a column using
+        <b>Data → Data validation</b>. Then create dropdown values and assign colors to them.
+      </p>
+
+      <p class="muted">
+        After changing the spreadsheet structure, export the source files again as <code>.xlsx</code> and
+        <code>.html</code>, then restart the parser flow.
+      </p>
+
+      <div class="actions">
+        <button id="restartParserBtn" type="button" class="secondary">
+          Restart from source files
+        </button>
+      </div>
+    </div>
+  `;
+
+  const restartBtn = document.getElementById("restartParserBtn");
+  if (restartBtn) {
+    restartBtn.addEventListener("click", () => {
+      window.location.href = "generate.html";
+    });
+  }
+
+  return;
+}
 
     enumFields.forEach(field => {
       const box = document.createElement("div");
