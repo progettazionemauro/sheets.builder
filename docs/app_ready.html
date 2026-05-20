@@ -145,7 +145,7 @@
 </div>
 
   <div class="card">
-    <h2>2. Connect backend</h2>
+    <h2>2. Connect Apps Script backend</h2>
     <p class="muted">
       After publishing <code>codice.gs</code> as an Apps Script Web App, enter the sheet name and the Web App URL.
       The app identifier is generated automatically from the sheet name.
@@ -157,12 +157,14 @@
     <label for="webAppUrl">Apps Script Web App URL</label>
     <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
 
-    <label for="crudEndpoint">Database endpoint</label>
+    <label for="crudEndpoint">
+  Generated app URL
+</label>
     <input id="crudEndpoint" type="text" readonly />
 
     <div class="actions">
       <button id="connectBtn" type="button">Connect and open app</button>
-      <button id="buildEndpointBtn" type="button" class="secondary">Preview app link</button>
+     
       <span id="status" class="muted"></span>
     </div>
   </div>
@@ -174,7 +176,7 @@
       <li>Publish or update the Web App.</li>
       <li>Copy the final Web App URL.</li>
       <li>Enter the sheet name and the Web App URL above.</li>
-      <li>Click <b>Connect backend and open CRUD app</b>.</li>
+      <li>Click <b>Connect Apps Script backend</b>.</li>
     </ol>
   </div>
 
@@ -343,16 +345,7 @@ restoreDownloadLinks();
     }
   });
 
-  document.getElementById("buildEndpointBtn").addEventListener("click", () => {
-    if (!sheetName.value.trim()) {
-      setStatus("Insert sheet name.", "err");
-      return;
-    }
-
-    saveDeploymentData();
-    crudEndpoint.value = buildCrudUrl();
-    setStatus("Database link prepared.", "ok");
-  });
+  
 
   sheetName.addEventListener("input", () => {
     crudEndpoint.value = buildCrudUrl();
