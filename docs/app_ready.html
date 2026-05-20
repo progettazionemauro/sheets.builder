@@ -81,24 +81,68 @@
 <body>
 
   <h1>Your app is ready</h1>
+  <div class="card">
+  <h2>Publishing mode</h2>
+
+  <p class="muted">
+    Choose how you want to publish the generated app.
+  </p>
+
+  <div class="actions">
+    <button id="hostedModeBtn" type="button">Hosted on builder.sgbh.org</button>
+    <button id="githubModeBtn" type="button" class="secondary">Export for GitHub Pages</button>
+  </div>
+
+  <p id="modeStatus" class="muted">
+    Hosted mode is recommended for the simplest setup.
+  </p>
+</div>
   <p class="muted">
     The final files are ready. Connect the published Apps Script backend and open the generated CRUD app.
   </p>
 
-  <div class="card">
-    <h2>1. Download final files</h2>
-    <p class="muted">
-      Download the generated frontend and backend files.
-    </p>
+ <div class="card">
+  <div id="hostedPanel" class="card"></div>
+  <div id="githubPanel" class="card" style="display:none;">
+  <h2>Export for GitHub Pages</h2>
 
-    <div class="actions">
-      <a class="button secondary" href="index.html" download="index.html">Download index.html</a>
-      <a class="button secondary" href="viewer.html" download="viewer.html">Download viewer.html</a>
-      <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
-  Download codice.gs
-</a>
-    </div>
+  <p class="muted">
+    Use this mode if you want to publish the generated frontend on your own GitHub Pages site.
+    The frontend can still use the secure Djungo proxy on <code>builder.sgbh.org</code>.
+  </p>
+
+  <div class="actions">
+    <a id="downloadIndex" class="button secondary" href="index.html" download="index.html">
+      Download index.html
+    </a>
+
+    <a id="downloadViewer" class="button secondary" href="viewer.html" download="viewer.html">
+      Download viewer.html
+    </a>
+
+    <a id="downloadGasGithub" class="button secondary" href="codice.gs" download="codice.gs">
+      Download codice.gs
+    </a>
   </div>
+
+  <p class="muted">
+    After downloading the files, upload <code>index.html</code> and <code>viewer.html</code>
+    to your GitHub Pages repository. Then deploy <code>codice.gs</code> as Apps Script Web App
+    and register the backend connection using the section below.
+  </p>
+</div>
+
+  <p class="muted">
+    Download the generated <code>codice.gs</code>, paste it into Google Apps Script,
+    then publish it as a Web App.
+  </p>
+
+  <div class="actions">
+    <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
+      Download codice.gs
+    </a>
+  </div>
+</div>
 
   <div class="card">
     <h2>2. Connect backend</h2>
@@ -107,8 +151,8 @@
       The app identifier is generated automatically from the sheet name.
     </p>
 
-    <label for="sheetName">Sheet name</label>
-    <input id="sheetName" type="text" placeholder="HorrorMovie" />
+    
+    <input id="sheetName" type="hidden" />
 
     <label for="webAppUrl">Apps Script Web App URL</label>
     <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
@@ -117,8 +161,8 @@
     <input id="crudEndpoint" type="text" readonly />
 
     <div class="actions">
-      <button id="connectBtn" type="button">Connect backend and open CRUD app</button>
-      <button id="buildEndpointBtn" type="button" class="secondary">Prepare link only</button>
+      <button id="connectBtn" type="button">Connect and open app</button>
+      <button id="buildEndpointBtn" type="button" class="secondary">Preview app link</button>
       <span id="status" class="muted"></span>
     </div>
   </div>
@@ -150,6 +194,42 @@
 
   const DEFAULT_API_KEY = "CHANGE_ME_WRITE_KEY_2026";
 
+  const hostedPanel = document.getElementById("hostedPanel");
+const githubPanel = document.getElementById("githubPanel");
+
+const hostedModeBtn = document.getElementById("hostedModeBtn");
+const githubModeBtn = document.getElementById("githubModeBtn");
+
+const modeStatus = document.getElementById("modeStatus");
+
+let publishingMode =
+  sessionStorage.getItem("DJUNGO_PUBLISHING_MODE") || "hosted";
+
+function setPublishingMode(mode) {
+  publishingMode = mode;
+
+  sessionStorage.setItem(
+    "DJUNGO_PUBLISHING_MODE",
+    mode
+  );
+
+  if (mode === "hosted") {
+    hostedPanel.style.display = "block";
+    githubPanel.style.display = "none";
+
+    modeStatus.textContent =
+      "Hosted mode selected. Only codice.gs is required.";
+
+  } else {
+
+    hostedPanel.style.display = "block";
+    githubPanel.style.display = "block";
+
+    modeStatus.textContent =
+      "GitHub Pages mode selected. Download frontend files and codice.gs.";
+  }
+}
+
   function setStatus(msg, cls = "muted") {
     statusEl.textContent = msg;
     statusEl.className = cls;
@@ -169,8 +249,15 @@
   }
 
   function buildCrudUrl() {
-    const basePath = window.location.pathname.replace(/[^\/]*$/, "");
-    const url = new URL(basePath + "index.html", window.location.origin);
+    const sessionId =
+      sessionStorage.getItem("DJUNGO_SESSION_ID") ||
+      new URLSearchParams(window.location.search).get("session_id");
+
+    if (!sessionId) {
+      throw new Error("Missing session_id. Generate the app again from review page.");
+    }
+
+    const url = new URL(`/run/${sessionId}/index.html`, window.location.origin);
     url.searchParams.set("app", currentSlug());
     return url.toString();
   }
@@ -182,11 +269,15 @@
   }
 
   function restoreDeploymentData() {
-    const savedSheet = sessionStorage.getItem("DJUNGO_SHEET_NAME");
-    const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
+    const savedSheet =
+  sessionStorage.getItem("DJUNGO_SHEET_NAME") ||
+  sessionStorage.getItem("DJUNGO_CURRENT_SHEET_NAME") ||
+  "";
 
-    if (savedSheet) sheetName.value = savedSheet;
-    if (savedWebApp) webAppUrl.value = savedWebApp;
+const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
+
+if (savedSheet) sheetName.value = savedSheet;
+if (savedWebApp) webAppUrl.value = savedWebApp;
 
     if (sheetName.value.trim()) {
       crudEndpoint.value = buildCrudUrl();
@@ -268,9 +359,18 @@ restoreDownloadLinks();
     saveDeploymentData();
   });
 
+  hostedModeBtn.addEventListener("click", () => {
+  setPublishingMode("hosted");
+});
+
+githubModeBtn.addEventListener("click", () => {
+  setPublishingMode("github");
+});
+
   webAppUrl.addEventListener("input", saveDeploymentData);
 
   restoreDeploymentData();
+  setPublishingMode(publishingMode);
 </script>
 
 </body>

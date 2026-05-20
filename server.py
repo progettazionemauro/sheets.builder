@@ -428,7 +428,33 @@ def api_download(session_id: str, filename: str):
             "error": str(exc),
         }), 500
 
+@app.get("/run/<session_id>/<filename>")
+def run_generated_app(session_id: str, filename: str):
+    try:
+        session_dir = get_session_dir(session_id)
+        generated_root = session_dir / "generated"
 
+        mapping = {
+            "index.html": generated_root / "docs" / "index.html",
+            "viewer.html": generated_root / "docs" / "viewer.html",
+        }
+
+        if filename not in mapping:
+            return jsonify({"ok": False, "error": "Invalid filename"}), 400
+
+        file_path = mapping[filename]
+        if not file_path.exists():
+            return jsonify({"ok": False, "error": "Generated file not found"}), 404
+
+        return send_file(file_path, as_attachment=False)
+
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+        
+        
 # ---------------------------------------------------------
 # NEW PROXY ROUTE (SAFE CRUD)
 # ---------------------------------------------------------

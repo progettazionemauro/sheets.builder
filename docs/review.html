@@ -791,6 +791,7 @@ const resp = await fetch("/api/generate", {
   sessionStorage.setItem("DJUNGO_DOWNLOAD_INDEX", data.downloads.index_html || "");
   sessionStorage.setItem("DJUNGO_DOWNLOAD_VIEWER", data.downloads.viewer_html || "");
   sessionStorage.setItem("DJUNGO_DOWNLOAD_GAS", data.downloads.codice_gs || "");
+  sessionStorage.setItem("DJUNGO_SESSION_ID", data.session_id || sessionId || "");
 }
 
     const params = new URLSearchParams(window.location.search);
