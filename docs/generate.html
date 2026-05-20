@@ -134,9 +134,18 @@
   </p>
 
   <div class="actions">
-    <button id="resumeBtn" type="button">Open last app</button>
-    <button id="clearLastBtn" type="button" class="secondary">Forget</button>
-  </div>
+  <button id="resumeBtn" type="button">
+    Open last app
+  </button>
+
+  <button id="clearLastBtn" type="button" class="secondary">
+    Forget
+  </button>
+</div>
+
+<p class="muted" style="margin-top:8px;">
+  Use this only if the spreadsheet structure has NOT changed.
+</p>
 </div>
 
   <div class="card">
@@ -206,11 +215,11 @@
   </div>
 
   <div id="generatePanel" class="card hidden">
-    <h2>3. Generate final files</h2>
+    <h2>3. Prepare Apps Script backend</h2>
     <p class="muted">
-      Dopo il parser, la pipeline genera i tre file finali del progetto:
-      <code>index.html</code>, <code>viewer.html</code> e <code>codice.gs</code>.
-    </p>
+  Hosted mode only requires <code>codice.gs</code>.
+  Frontend files are already managed by builder.sgbh.org.
+</p>
 
     <div class="actions">
       <button id="generateBtn" type="button">Generate index.html, viewer.html and codice.gs</button>
