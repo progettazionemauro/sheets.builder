@@ -336,7 +336,7 @@ restoreDownloadLinks();
       if (!slug) return;
 
       setStatus("Backend connected. Opening CRUD app...", "ok");
-      window.open(buildCrudUrl(), "_blank", "noopener");
+      window.location.href = buildCrudUrl();
 
     } catch (err) {
       setStatus("Error: " + err.message, "err");
