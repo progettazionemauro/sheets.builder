@@ -239,7 +239,24 @@ a.button.secondary {
     Review fields, labels and colors. When everything is correct, generate the final CRUD app and continue to the delivery page.
   </p>
 
-  
+  <div id="idWarning" class="card" style="display:none; border-color:#f0b429; background:#fff8e1;">
+  <h3 style="margin-top:0;">No ID column detected</h3>
+
+  <p class="muted">
+    The generated CRUD app needs a unique record identifier to load, update and delete existing rows safely.
+  </p>
+
+  <p class="muted">
+    Add an <code>id</code> column to the spreadsheet, then export the source files again and restart the parser flow.
+  </p>
+
+  <div class="actions">
+    <button id="restartForIdBtn" type="button" class="secondary">
+      Restart from source files
+    </button>
+  </div>
+</div>
+
  <div class="actions">
   <button id="downloadBtn" type="button">
     Generate final app
@@ -614,6 +631,25 @@ a.button.secondary {
   function renderEnumStyles() {
     renderEnumStylesEditor();
   }
+  function renderIdWarning() {
+  const box = document.getElementById("idWarning");
+  const btn = document.getElementById("downloadBtn");
+
+  if (!box || !btn || !builderState || !Array.isArray(builderState.fields)) {
+    return;
+  }
+
+  const hasIdField = builderState.fields.some(field => field.name === "id");
+
+  if (hasIdField) {
+    box.style.display = "none";
+    btn.disabled = false;
+    return;
+  }
+
+  box.style.display = "block";
+  btn.disabled = true;
+}
 
   function bindFieldEvents() {
     document.querySelectorAll("[data-key]").forEach(el => {
@@ -726,6 +762,7 @@ a.button.secondary {
     renderFieldsTable();
     renderEnumStyles();
     renderPreviewOnly();
+    renderIdWarning();
   }
   function autoloadFromLocalStorageIfRequested() {
   const qs = new URLSearchParams(window.location.search);
@@ -774,6 +811,14 @@ a.button.secondary {
     }
   });
 
+  const restartForIdBtn = document.getElementById("restartForIdBtn");
+
+if (restartForIdBtn) {
+  restartForIdBtn.addEventListener("click", () => {
+    window.location.href = "generate.html";
+  });
+}
+
   document.getElementById("loadSampleBtn").addEventListener("click", () => {
     try {
       const raw = document.getElementById("rawJsonInput").value.trim();
@@ -792,6 +837,26 @@ a.button.secondary {
   document.getElementById("downloadBtn").addEventListener("click", async () => {
   try {
     if (!builderState) throw new Error("No parsed configuration loaded");
+    document.getElementById("downloadBtn").addEventListener("click", async () => {
+  try {
+    if (!builderState) throw new Error("No parsed configuration loaded");
+
+    const hasIdField =
+      builderState.fields.some(field => field.name === "id");
+
+    if (!hasIdField) {
+      setStatus(
+        "downloadStatus",
+        "Missing ID column. Add an id column or choose a unique field before generating the CRUD app.",
+        "err"
+      );
+      return;
+    }
+
+    const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
+    if (!sessionId) throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
+
+    setStatus("downloadStatus", "Generating final files...", "muted");
 
     const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
     if (!sessionId) throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
