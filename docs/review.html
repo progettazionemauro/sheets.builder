@@ -235,25 +235,44 @@ a.button.secondary {
 
  <div class="card">
   <h2>4. Generate final app</h2>
+
   <p class="muted">
-    Review fields, labels and colors. When everything is correct, generate the final CRUD app and continue to the delivery page.
+    Review fields, labels and colors. When everything is correct, generate the final CRUD app.
   </p>
 
   <div id="idWarning" class="card" style="display:none; border-color:#f0b429; background:#fff8e1;">
-  <h3 style="margin-top:0;">No ID column detected</h3>
+    <h3 style="margin-top:0;">No ID column detected</h3>
 
-  <p class="muted">
-    The generated CRUD app needs a unique record identifier to load, update and delete existing rows safely.
-  </p>
+    <p class="muted">
+      The generated CRUD app needs a unique record identifier to load, update and delete existing rows safely.
+    </p>
 
-  <p class="muted">
-    Add an <code>id</code> column to the spreadsheet, then export the source files again and restart the parser flow.
-  </p>
+    <p class="muted">
+      Add an <code>id</code> column to the spreadsheet, then export the source files again and restart the parser flow.
+    </p>
+
+    <div class="actions">
+      <button id="restartForIdBtn" type="button" class="secondary">
+        Restart from source files
+      </button>
+    </div>
+  </div>
 
   <div class="actions">
-    <button id="restartForIdBtn" type="button" class="secondary">
-      Restart from source files
+    <button id="downloadBtn" type="button">
+      Generate final app
     </button>
+
+    <a
+      id="openAppReady"
+      class="button secondary"
+      href="app_ready.html"
+      style="display:none;"
+    >
+      Continue to delivery page
+    </a>
+
+    <span id="downloadStatus" class="muted"></span>
   </div>
 </div>
 
@@ -275,13 +294,6 @@ a.button.secondary {
 </div>
   </div>
 
-<div class="actions" style="margin-top:10px;">
-  <a class="button secondary" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
-</div>
- <p class="muted" style="margin-top:12px;">
-  Dopo aver scaricato la configurazione approvata, il motore Python genera i file finali del progetto.
-  Una volta completata la generazione, puoi aprire la pagina finale di consegna.
-</p>
 
 <script>
   let builderState = null;
