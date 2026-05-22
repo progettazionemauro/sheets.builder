@@ -746,9 +746,9 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   </div>
 
   <div class="card">
-    <h3 style="margin:0 0 10px;">Data preview</h3>
+ <h3 style="margin:0 0 10px;">Data viewer</h3>
 <p class="muted">
-  View the current spreadsheet records. To change labels, visible columns or colors, use the configuration editor.
+  Browse the current records stored in the connected spreadsheet.
 </p>
 
 <div class="actions">
@@ -1256,7 +1256,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
     html += "</tbody></table>";
     tbl.innerHTML = html;
-    status.textContent = `OK | headers=${{LAST_HEADERS.length}} | rows=${{rows.length}}`;
+    status.textContent = `${{rows.length}} records loaded`;
   }}
 
     async function load() {{

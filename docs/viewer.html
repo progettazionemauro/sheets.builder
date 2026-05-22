@@ -227,7 +227,7 @@
 
     html += "</tbody></table>";
     tbl.innerHTML = html;
-    status.textContent = `OK | headers=${LAST_HEADERS.length} | rows=${rows.length}`;
+    status.textContent = `${rows.length} records loaded`;
   }
 
     async function load() {
