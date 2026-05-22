@@ -98,12 +98,25 @@
   </p>
 </div>
   <p class="muted">
-    The final files are ready. Connect the published Apps Script backend and open the generated CRUD app.
+  Connect the generated app to its Apps Script backend.
+</p>
+
+<div id="hostedPanel" class="card">
+  <h2>1. Publish Apps Script backend</h2>
+
+  <p class="muted">
+    Download the generated <code>codice.gs</code>, paste it into Google Apps Script,
+    then publish it as a Web App.
   </p>
 
- <div class="card">
-  <div id="hostedPanel" class="card"></div>
-  <div id="githubPanel" class="card" style="display:none;">
+  <div class="actions">
+    <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
+      Download codice.gs
+    </a>
+  </div>
+</div>
+
+<div id="githubPanel" class="card" style="display:none;">
   <h2>Export for GitHub Pages</h2>
 
   <p class="muted">
@@ -130,8 +143,7 @@
     to your GitHub Pages repository. Then deploy <code>codice.gs</code> as Apps Script Web App
     and register the backend connection using the section below.
   </p>
-</div>
-
+<div id="hostedPanel" class="card">
   <p class="muted">
     Download the generated <code>codice.gs</code>, paste it into Google Apps Script,
     then publish it as a Web App.
@@ -271,12 +283,46 @@ function setPublishingMode(mode) {
   }
 
   function restoreDeploymentData() {
-    const savedSheet =
-  sessionStorage.getItem("DJUNGO_SHEET_NAME") ||
-  sessionStorage.getItem("DJUNGO_CURRENT_SHEET_NAME") ||
-  "";
+  let fallbackSheet = "";
+
+  try {
+    const rawState = localStorage.getItem("DJUNGO_BUILDER_STATE");
+    if (rawState) {
+      const parsed = JSON.parse(rawState);
+      fallbackSheet = parsed?.project?.sheetName || "";
+    }
+  } catch (_) {
+    fallbackSheet = "";
+  }
+
+  const savedSheet =
+    sessionStorage.getItem("DJUNGO_SHEET_NAME") ||
+    sessionStorage.getItem("DJUNGO_CURRENT_SHEET_NAME") ||
+    fallbackSheet ||
+    "";
+
+  const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
+
+  if (savedSheet) sheetName.value = savedSheet;
+  if (savedWebApp) webAppUrl.value = savedWebApp;
+
+  if (sheetName.value.trim()) {
+    crudEndpoint.value = buildCrudUrl();
+  }
+}
 
 const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
+let fallbackSheet = "";
+
+try {
+  const rawState = localStorage.getItem("DJUNGO_BUILDER_STATE");
+  if (rawState) {
+    const parsed = JSON.parse(rawState);
+    fallbackSheet = parsed?.project?.sheetName || "";
+  }
+} catch (_) {
+  fallbackSheet = "";
+}
 
 if (savedSheet) sheetName.value = savedSheet;
 if (savedWebApp) webAppUrl.value = savedWebApp;
@@ -301,9 +347,9 @@ restoreDownloadLinks();
     const slug = currentSlug();
     const webApp = webAppUrl.value.trim();
 
-    if (!sheetName.value.trim() || !webApp) {
-      setStatus("Insert sheet name and Apps Script Web App URL.", "err");
-      return null;
+    if (!webApp) {
+      setStatus("Insert Apps Script Web App URL.", "err");
+    return null;
     }
 
     setStatus("Connecting backend...", "muted");

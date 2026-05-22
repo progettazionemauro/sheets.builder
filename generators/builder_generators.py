@@ -687,11 +687,11 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 </head>
 <body>
 
-  <h1>{escape_html(project_name)} <span class="muted">— generated</span></h1>
-  <p class="muted">
-    Backend: Google Apps Script (JSONP) → tab <b>{escape_html(sheet_name)}</b>.
-    <br>Read e write passano dal proxy sicuro del Builder.
-  </p>
+  <h1>{escape_html(project_name)} database</h1>
+
+<p class="muted">
+  Manage records, update data and browse the current spreadsheet table.
+</p>
 
     <div id="debugPanel" class="card" style="display:none;">
     <h3 style="margin:0 0 10px;">Developer tools</h3>

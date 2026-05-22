@@ -49,7 +49,12 @@ const OPTIONAL_ON_INSERT = [
   "saldo prog.vo"
 ];
 const COMPUTED = [];
-const ENUMS = {};
+const ENUMS = {
+  "conto": [
+    "Ing Direct NV",
+    "BANCOPOSTA"
+  ]
+};
 const CONSTRAINTS = {
   "cliente/fornitore": {
     "maxLen": 255,
@@ -57,9 +62,8 @@ const CONSTRAINTS = {
     "type": "string"
   },
   "conto": {
-    "maxLen": 255,
     "required": false,
-    "type": "string"
+    "type": "enum"
   },
   "data": {
     "format": "dd/mm/yyyy",
@@ -88,7 +92,10 @@ const CONSTRAINTS = {
   }
 };
 
-
+const ENUM_CONTO = [
+  "Ing Direct NV",
+  "BANCOPOSTA"
+];
 
 /***************
  * ENTRY POINT
@@ -216,7 +223,7 @@ function insert_(p, debug) {
   const missing = [];
   if (missing.length) return { ok: false, error: "Missing required fields", missing };
 
-  if (conto && conto.length > 255) return { ok: false, error: "conto too long (max 255)" };
+  if (conto && ENUM_CONTO.indexOf(conto) === -1) return { ok: false, error: "conto not allowed", allowed: ENUM_CONTO };
   if (descrizione && descrizione.length > 255) return { ok: false, error: "descrizione too long (max 255)" };
   if (clientefornitore && clientefornitore.length > 255) return { ok: false, error: "cliente/fornitore too long (max 255)" };
   if (entrate && entrate.length > 255) return { ok: false, error: "entrate too long (max 255)" };
@@ -277,7 +284,7 @@ function update_(id, p, debug) {
   const missing = [];
   if (missing.length) return { ok: false, error: "Missing required fields", missing };
 
-  if (conto && conto.length > 255) return { ok: false, error: "conto too long (max 255)" };
+  if (conto && ENUM_CONTO.indexOf(conto) === -1) return { ok: false, error: "conto not allowed", allowed: ENUM_CONTO };
   if (descrizione && descrizione.length > 255) return { ok: false, error: "descrizione too long (max 255)" };
   if (clientefornitore && clientefornitore.length > 255) return { ok: false, error: "cliente/fornitore too long (max 255)" };
   if (entrate && entrate.length > 255) return { ok: false, error: "entrate too long (max 255)" };
