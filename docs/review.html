@@ -848,12 +848,11 @@ if (restartForIdBtn) {
 
   document.getElementById("downloadBtn").addEventListener("click", async () => {
   try {
-    if (!builderState) throw new Error("No parsed configuration loaded");
-    document.getElementById("downloadBtn").addEventListener("click", async () => {
-  try {
-    if (!builderState) throw new Error("No parsed configuration loaded");
+    if (!builderState) {
+      throw new Error("No parsed configuration loaded");
+    }
 
-    const hasIdField =
+    {{/*  const hasIdField =
       builderState.fields.some(field => field.name === "id");
 
     if (!hasIdField) {
@@ -863,73 +862,63 @@ if (restartForIdBtn) {
         "err"
       );
       return;
+    }  */}}
+
+    const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
+
+    if (!sessionId) {
+      throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
     }
-
-    const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
-    if (!sessionId) throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
-
-    setStatus("downloadStatus", "Generating final files...", "muted");
-
-    const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
-    if (!sessionId) throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
 
     setStatus("downloadStatus", "Generating final files...", "muted");
 
     localStorage.setItem(
-  "DJUNGO_BUILDER_STATE",
-  JSON.stringify(builderState)
-);
+      "DJUNGO_BUILDER_STATE",
+      JSON.stringify(builderState)
+    );
 
-const resp = await fetch("/api/generate", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    session_id: sessionId,
-    builder_state: builderState
-  })
-});
+    const resp = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        builder_state: builderState
+      })
+    });
 
     const data = await resp.json();
 
     if (!resp.ok || !data.ok) {
       throw new Error(data.error || "Generation failed");
     }
+
     if (data.downloads) {
-  sessionStorage.setItem("DJUNGO_DOWNLOAD_INDEX", data.downloads.index_html || "");
-  sessionStorage.setItem("DJUNGO_DOWNLOAD_VIEWER", data.downloads.viewer_html || "");
-  sessionStorage.setItem("DJUNGO_DOWNLOAD_GAS", data.downloads.codice_gs || "");
-  sessionStorage.setItem("DJUNGO_SESSION_ID", data.session_id || sessionId || "");
-}
+      sessionStorage.setItem("DJUNGO_DOWNLOAD_INDEX", data.downloads.index_html || "");
+      sessionStorage.setItem("DJUNGO_DOWNLOAD_VIEWER", data.downloads.viewer_html || "");
+      sessionStorage.setItem("DJUNGO_DOWNLOAD_GAS", data.downloads.codice_gs || "");
+      sessionStorage.setItem("DJUNGO_SESSION_ID", data.session_id || sessionId || "");
+    }
 
     const params = new URLSearchParams(window.location.search);
-const returnApp = params.get("returnApp") || sessionStorage.getItem("DJUNGO_APP_SLUG");
+    const returnApp =
+      params.get("returnApp") ||
+      sessionStorage.getItem("DJUNGO_APP_SLUG");
 
-if (returnApp) {
-  window.location.href =
-  `index.html?app=${encodeURIComponent(returnApp)}&_=${Date.now()}`;
-} else {
-  window.location.href = "app_ready.html";
-}
-
-    setStatus(
-  "downloadStatus",
-  "Final files generated successfully. Continue to the delivery page.",
-  "ok"
-);
-
-const openBtn = document.getElementById("openAppReady");
-
-if (openBtn) {
-  openBtn.style.display = "inline-block";
-}
+    if (returnApp) {
+      window.location.href =
+        `index.html?app=${encodeURIComponent(returnApp)}&_=${Date.now()}`;
+    } else {
+      window.location.href = "app_ready.html";
+    }
 
   } catch (err) {
     setStatus("downloadStatus", "Errore: " + err.message, "err");
     console.error(err);
   }
 });
+
 
   bindProjectEvents();
   autoloadFromLocalStorageIfRequested();

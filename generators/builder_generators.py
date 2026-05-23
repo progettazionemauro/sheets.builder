@@ -1095,6 +1095,8 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{escape_html(entity_name)} Viewer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4.0/dist/css/tabulator.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4.0/dist/js/tabulator.min.js"></script>
   <style>
     body {{ font-family: Arial, sans-serif; margin: 12px; }}
     .muted {{ color:#666; }}
@@ -1158,7 +1160,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   </div>
 
   <div id="status" class="muted" style="margin:6px 0;">Caricamento…</div>
-  <div id="tbl"></div>
+  <div id="dataTable"></div>
 
 <script>
   const qs = new URLSearchParams(location.search);
@@ -1217,17 +1219,99 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   let LAST_HEADERS = [];
   let LAST_ROWS = [];
 
+    let DATA_TABLE = null;
+
+  function rowsToObjects(headers, rows) {{
+    return rows.map(row => {{
+      const obj = {{}};
+
+      headers.forEach((h, i) => {{
+        obj[h] = row[i];
+      }});
+
+      return obj;
+    }});
+  }}
+
+  function buildColumns(headers) {{
+    return headers
+      .filter(h => VISIBLE_HEADERS.includes(h))
+      .map(h => {{
+        return {{
+          title: LABELS[h] || h,
+          field: h,
+          headerFilter: "input",
+          sorter: "string",
+          resizable: true,
+          formatter: function(cell) {{
+            const value = cell.getValue();
+            const style = styleAttrForEnum(h, value);
+
+            if (style) {{
+              const el = cell.getElement();
+
+              style.split(";").forEach(rule => {{
+                const parts = rule.split(":");
+
+                if (parts.length === 2) {{
+                  el.style[parts[0].trim()] = parts[1].trim();
+                }}
+              }});
+            }}
+
+            return esc(value);
+          }}
+        }};
+      }});
+  }}
+
   function renderTable() {{
     const status = document.getElementById("status");
-    const tbl = document.getElementById("tbl");
     const search = document.getElementById("searchBox").value.trim().toLowerCase();
 
     if (!LAST_HEADERS.length) {{
-      tbl.innerHTML = "";
-      status.textContent = "Nessun dato";
+      status.textContent = "No data loaded";
       return;
     }}
 
+    const visibleHeaders = LAST_HEADERS.filter(h => VISIBLE_HEADERS.includes(h));
+
+    const visibleIndexes = LAST_HEADERS
+      .map((h, i) => (visibleHeaders.includes(h) ? i : -1))
+      .filter(i => i >= 0);
+
+    let rows = LAST_ROWS.slice();
+
+    if (search) {{
+      rows = rows.filter(r =>
+        visibleIndexes.some(i =>
+          String(r[i] ?? "").toLowerCase().includes(search)
+        )
+      );
+    }}
+
+    const tableData = rowsToObjects(LAST_HEADERS, rows);
+    const columns = buildColumns(LAST_HEADERS);
+
+    if (DATA_TABLE) {{
+      DATA_TABLE.setColumns(columns);
+      DATA_TABLE.setData(tableData);
+    }} else {{
+      DATA_TABLE = new Tabulator("#dataTable", {{
+        data: tableData,
+        columns: columns,
+        layout: "fitDataStretch",
+        height: "520px",
+        movableColumns: true,
+        pagination: "local",
+        paginationSize: 25,
+        paginationSizeSelector: [10, 25, 50, 100],
+        placeholder: "No records found"
+      }});
+    }}
+
+    status.textContent = `${{rows.length}} records loaded`;
+  }}
     const visibleIndexes = LAST_HEADERS
       .map((h, i) => (VISIBLE_HEADERS.includes(h) ? i : -1))
       .filter(i => i >= 0);
