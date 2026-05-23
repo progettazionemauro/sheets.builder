@@ -312,27 +312,43 @@ function setPublishingMode(mode) {
 }
 
 const savedWebApp = sessionStorage.getItem("DJUNGO_WEB_APP_URL");
-let fallbackSheet = "";
+function restoreDeploymentData() {
+  let fallbackSheet = "";
 
-try {
-  const rawState = localStorage.getItem("DJUNGO_BUILDER_STATE");
-  if (rawState) {
-    const parsed = JSON.parse(rawState);
-    fallbackSheet = parsed?.project?.sheetName || "";
+  try {
+    const rawState = localStorage.getItem("DJUNGO_BUILDER_STATE");
+
+    if (rawState) {
+      const parsed = JSON.parse(rawState);
+      fallbackSheet = parsed?.project?.sheetName || "";
+    }
+  } catch (_) {
+    fallbackSheet = "";
   }
-} catch (_) {
-  fallbackSheet = "";
+
+  const savedSheet =
+    sessionStorage.getItem("DJUNGO_SHEET_NAME") ||
+    sessionStorage.getItem("DJUNGO_CURRENT_SHEET_NAME") ||
+    fallbackSheet ||
+    "";
+
+  const savedWebApp =
+    sessionStorage.getItem("DJUNGO_WEB_APP_URL") || "";
+
+  if (savedSheet) {
+    sheetName.value = savedSheet;
+  }
+
+  if (savedWebApp) {
+    webAppUrl.value = savedWebApp;
+  }
+
+  if (sheetName.value.trim()) {
+    crudEndpoint.value = buildCrudUrl();
+  }
 }
 
-if (savedSheet) sheetName.value = savedSheet;
-if (savedWebApp) webAppUrl.value = savedWebApp;
-
-    if (sheetName.value.trim()) {
-      crudEndpoint.value = buildCrudUrl();
-    }
-  }
-
-  function restoreDownloadLinks() {
+function restoreDownloadLinks() {
   const gasUrl = sessionStorage.getItem("DJUNGO_DOWNLOAD_GAS");
   const gasLink = document.getElementById("downloadGas");
 
@@ -341,6 +357,7 @@ if (savedWebApp) webAppUrl.value = savedWebApp;
   }
 }
 
+restoreDeploymentData();
 restoreDownloadLinks();
 
   async function registerApp() {
