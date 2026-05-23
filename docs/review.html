@@ -276,11 +276,7 @@ a.button.secondary {
   </div>
 </div>
 
- <div class="actions">
-  <button id="downloadBtn" type="button">
-    Generate final app
-  </button>
-
+ 
   <a
     id="openAppReady"
     class="button secondary"
@@ -765,9 +761,12 @@ a.button.secondary {
   }
 
   function renderPreviewOnly() {
-    document.getElementById("stateOut").textContent =
-      JSON.stringify(builderState, null, 2);
+  const stateOut = document.getElementById("stateOut");
+
+  if (stateOut) {
+    stateOut.textContent = JSON.stringify(builderState, null, 2);
   }
+}
 
   function renderAll() {
     renderProject();
