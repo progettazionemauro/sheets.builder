@@ -101,18 +101,53 @@
   Connect the generated app to its Apps Script backend.
 </p>
 
-<div id="hostedPanel" class="card">
-  <h2>1. Publish Apps Script backend</h2>
+<div id="hostedPanel">
+  <div class="card">
+    <h2>1. Publish Apps Script backend</h2>
 
-  <p class="muted">
-    Download the generated <code>codice.gs</code>, paste it into Google Apps Script,
-    then publish it as a Web App.
-  </p>
+    <p class="muted">
+      Download the generated <code>codice.gs</code>, paste it into Google Apps Script,
+      then publish it as a Web App.
+    </p>
 
-  <div class="actions">
-    <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
-      Download codice.gs
-    </a>
+    <div class="actions">
+      <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
+        Download codice.gs
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Connect Apps Script backend</h2>
+
+    <p class="muted">
+      After publishing <code>codice.gs</code> as an Apps Script Web App, paste the Web App URL below.
+      The app identifier is generated automatically from the saved sheet name.
+    </p>
+
+    <input id="sheetName" type="hidden" />
+
+    <label for="webAppUrl">Apps Script Web App URL</label>
+    <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
+
+    <label for="crudEndpoint">Generated app URL</label>
+    <input id="crudEndpoint" type="text" readonly />
+
+    <div class="actions">
+      <button id="connectBtn" type="button">Connect and open app</button>
+      <span id="status" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Minimal deployment steps</h2>
+    <ol>
+      <li>Open Google Apps Script and paste <code>codice.gs</code>.</li>
+      <li>Publish or update the Web App.</li>
+      <li>Copy the final Web App URL.</li>
+      <li>Paste the Web App URL above.</li>
+      <li>Click <b>Connect and open app</b>.</li>
+    </ol>
   </div>
 </div>
 
@@ -140,65 +175,18 @@
 
   <p class="muted">
     After downloading the files, upload <code>index.html</code> and <code>viewer.html</code>
-    to your GitHub Pages repository. Then deploy <code>codice.gs</code> as Apps Script Web App
-    and register the backend connection using the section below.
+    to your GitHub Pages repository. Then deploy <code>codice.gs</code> as an Apps Script Web App
+    and register the backend connection using the hosted connection section.
   </p>
-<div id="hostedPanel" class="card">
-  <p class="muted">
-    Download the generated <code>codice.gs</code>, paste it into Google Apps Script,
-    then publish it as a Web App.
-  </p>
-
-  <div class="actions">
-    <a id="downloadGas" class="button secondary" href="codice.gs" download="codice.gs">
-      Download codice.gs
-    </a>
-  </div>
 </div>
 
-  <div class="card">
-    <h2>2. Connect Apps Script backend</h2>
-    <p class="muted">
-      After publishing <code>codice.gs</code> as an Apps Script Web App, enter the sheet name and the Web App URL.
-      The app identifier is generated automatically from the sheet name.
-    </p>
-
-    
-    <input id="sheetName" type="hidden" />
-
-    <label for="webAppUrl">Apps Script Web App URL</label>
-    <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
-
-    <label for="crudEndpoint">
-  Generated app URL
-</label>
-    <input id="crudEndpoint" type="text" readonly />
-
-    <div class="actions">
-      <button id="connectBtn" type="button">Connect and open app</button>
-     
-      <span id="status" class="muted"></span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>3. Minimal deployment steps</h2>
-    <ol>
-      <li>Open Google Apps Script and paste <code>codice.gs</code>.</li>
-      <li>Publish or update the Web App.</li>
-      <li>Copy the final Web App URL.</li>
-      <li>Enter the sheet name and the Web App URL above.</li>
-      <li>Click <b>Connect Apps Script backend</b>.</li>
-    </ol>
-  </div>
-
-  <div class="card">
-    <h2>Djungo principle</h2>
-    <p class="muted">
-      The generated app remains portable: the code is readable, the data stays in your spreadsheet,
-      and the browser does not expose the Apps Script URL or write key.
-    </p>
-  </div>
+<div class="card">
+  <h2>Djungo principle</h2>
+  <p class="muted">
+    The generated app remains portable: the code is readable, the data stays in your spreadsheet,
+    and the browser does not expose the Apps Script URL or write key.
+  </p>
+</div>
 
 <script>
   const sheetName = document.getElementById("sheetName");
