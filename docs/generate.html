@@ -157,7 +157,7 @@
     </p>
 
     <div class="card">
-  <h2>2. Open an existing app</h2>
+  <h2>2. Connect an already deployed Apps Script backend</h2>
   <p class="muted">
     If your Apps Script backend is already published, enter the sheet name and Web App URL.
     The app slug will be generated automatically from the sheet name.
@@ -170,7 +170,7 @@
   <input id="existingWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
 
   <div class="actions">
-    <button id="openExistingBtn" type="button">Connect and open existing app</button>
+    <button id="openExistingBtn" type="button">Connect backend and open app</button>
     <span id="existingStatus" class="muted"></span>
   </div>
 </div>
@@ -326,7 +326,10 @@ const resumeBlock = document.getElementById("resumeBlock");
 const resumeBtn = document.getElementById("resumeBtn");
 const clearLastBtn = document.getElementById("clearLastBtn");
 
-const lastApp = localStorage.getItem("DJUNGO_LAST_APP");
+const lastApp =
+  sessionStorage.getItem("DJUNGO_APP_SLUG") ||
+  localStorage.getItem("DJUNGO_LAST_APP") ||
+  "";
 
 if (lastApp) {
   resumeBlock.style.display = "block";
@@ -338,9 +341,12 @@ if (lastApp) {
   });
 
   clearLastBtn.addEventListener("click", () => {
+    sessionStorage.removeItem("DJUNGO_APP_SLUG");
     localStorage.removeItem("DJUNGO_LAST_APP");
     location.reload();
   });
+} else {
+  resumeBlock.style.display = "none";
 }
 
 function slugify(value) {
@@ -393,6 +399,7 @@ openExistingBtn.addEventListener("click", async () => {
 
     const url = new URL("index.html", window.location.origin);
     url.searchParams.set("app", slug);
+    sessionStorage.setItem("DJUNGO_APP_SLUG", slug);
     localStorage.setItem("DJUNGO_LAST_APP", slug);
     window.location.href = url.toString();
 

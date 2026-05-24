@@ -1312,46 +1312,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
     status.textContent = `${{rows.length}} records loaded`;
   }}
-    const visibleIndexes = LAST_HEADERS
-      .map((h, i) => (VISIBLE_HEADERS.includes(h) ? i : -1))
-      .filter(i => i >= 0);
 
-    let rows = LAST_ROWS.slice();
-
-    if (search) {{
-      rows = rows.filter(r =>
-        visibleIndexes.some(i => String(r[i] ?? "").toLowerCase().includes(search))
-      );
-    }}
-
-    let html = "<table><thead><tr>";
-    for (const i of visibleIndexes) {{
-      const rawHeader = LAST_HEADERS[i];
-      const shownHeader = LABELS[rawHeader] || rawHeader;
-      html += `<th>${{esc(shownHeader)}}</th>`;
-    }}
-    html += "</tr></thead><tbody>";
-
-    for (let rI = 0; rI < rows.length; rI++) {{
-      const r = rows[rI];
-      const trClass = (rI === 0) ? "first-row" : "";
-      html += `<tr class="${{trClass}}">`;
-
-      for (const i of visibleIndexes) {{
-        const rawHeader = LAST_HEADERS[i];
-        const cellVal = r[i];
-        const styleAttr = styleAttrForEnum(rawHeader, cellVal);
-        const styleHtml = styleAttr ? ` style="${{esc(styleAttr)}}"` : "";
-        html += `<td${{styleHtml}}>${{esc(cellVal)}}</td>`;
-      }}
-
-      html += "</tr>";
-    }}
-
-    html += "</tbody></table>";
-    tbl.innerHTML = html;
-    status.textContent = `${{rows.length}} records loaded`;
-  }}
 
     async function load() {{
     const status = document.getElementById("status");
