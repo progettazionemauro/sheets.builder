@@ -26,4 +26,4 @@ Thumbs.db
 *.bak
 
 # Logs
-*.log
+*.logdata/apps_registry.json
