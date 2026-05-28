@@ -118,164 +118,171 @@
     }
   </style>
 </head>
-
 <body>
 
   <h1>Generate your app</h1>
   <p class="muted">
-    Choose the safest path for your current situation. Djungo can reopen the last app,
-    connect an existing Apps Script backend, or build a new app from Google Sheets exports.
+    Carica i file esportati da Google Sheets e prepara la generazione del progetto finale.
+    In questa fase il parser e il generatore reali continuano a essere gestiti dalla pipeline Python,
+    ma questa pagina rappresenta il flusso cliente corretto.
+  </p>
+  
+  <div id="resumeBlock" class="card" style="display:none;">
+  <h2>Resume your last app</h2>
+  <p class="muted">
+    You recently used this app. You can open it directly.
   </p>
 
+  <div class="actions">
+  <button id="resumeBtn" type="button">
+    Open last app
+  </button>
+
+  <button id="clearLastBtn" type="button" class="secondary">
+    Forget
+  </button>
+</div>
+
+<p class="muted" style="margin-top:8px;">
+  Use this only if the spreadsheet structure has NOT changed.
+</p>
+</div>
+
   <div class="card">
-    <h2>Start here</h2>
+    <h2>1. Source files</h2>
     <p class="muted">
-      Select one option. Only the controls needed for that path will be shown.
+      I tre input logici di partenza sono:
+      <code>.xlsx</code>, <code>.html</code> e <code>sheet name</code>.
+      Il nome del foglio è obbligatorio perché viene usato nella configurazione del progetto.
     </p>
 
+    <div class="card">
+  <h2>2. Connect an already deployed Apps Script backend</h2>
+  <p class="muted">
+    If your Apps Script backend is already published, enter the sheet name and Web App URL.
+    The app slug will be generated automatically from the sheet name.
+  </p>
+
+  <label for="existingSheetName">Sheet name *</label>
+  <input id="existingSheetName" type="text" placeholder="Es. HorrorMovie" />
+
+  <label for="existingWebAppUrl">Apps Script Web App URL *</label>
+  <input id="existingWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
+
+  <div class="actions">
+    <button id="openExistingBtn" type="button">Connect backend and open app</button>
+    <span id="existingStatus" class="muted"></span>
+  </div>
+</div>
+
+    <div class="grid">
+      <div>
+        <label for="xlsxFile">Google Sheets export (.xlsx) *</label>
+        <input id="xlsxFile" type="file" accept=".xlsx" />
+      </div>
+      <div>
+        <label for="htmlFile">Google Sheets export (.html) *</label>
+        <input id="htmlFile" type="file" accept=".html,text/html" />
+      </div>
+    </div>
+
+    <label for="sheetName">Sheet name *</label>
+    <input id="sheetName" type="text" placeholder="Es. HorrorMovie" />
+
     <div class="actions">
-      <button id="chooseResumeBtn" type="button">1A. Continue last app</button>
-      <button id="chooseExistingBtn" type="button" class="secondary">1B. Connect existing backend</button>
-      <button id="chooseNewBtn" type="button" class="secondary">2. Build new app from exports</button>
+      <button id="parserBtn" type="button">Start parser</button>
+      <span id="parserStatus" class="muted"></span>
     </div>
   </div>
 
-  <div id="existingBackendPanel" class="hidden">
-    <div class="card">
-      <h2>1B. Connect an already deployed Apps Script backend</h2>
-      <p class="muted">
-        Use this option when <code>codice.gs</code> is already published as a Google Apps Script Web App.
-        Enter the sheet name and the Apps Script Web App URL.
-      </p>
+  <div id="parserPanel" class="card hidden">
+    <h2>2. Parser status</h2>
+    <p class="muted">
+      Il parser legge la struttura del database, i campi, le formule rilevate, gli enum e i colori.
+      In questa fase intermedia, il controllo tecnico dettagliato può ancora essere rifinito nella pipeline interna.
+    </p>
 
-      <label for="existingSheetName">Sheet name *</label>
-      <input id="existingSheetName" type="text" placeholder="Es. HorrorMovie" />
+    <ul>
+      <li>Campi rilevati dal foglio</li>
+      <li>Formule trovate nei campi calcolati</li>
+      <li>Enum e colori visuali</li>
+      <li>Configurazione di base del frontend</li>
+    </ul>
 
-      <label for="existingWebAppUrl">Apps Script Web App URL *</label>
-      <input id="existingWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
-
-      <div class="actions">
-        <button id="openExistingBtn" type="button">Connect backend and open app</button>
-        <span id="existingStatus" class="muted"></span>
-      </div>
+    <div class="actions">
+     <button id="openReviewBtn" type="button" class="secondary">Open internal review page</button>
     </div>
   </div>
 
-  <div id="newAppPanel" class="hidden">
-    <div class="card">
-      <h2>2. Build a new app from Google Sheets exports</h2>
-      <p class="muted">
-        Use this option when you are starting from source files. Required inputs are:
-        <code>.xlsx</code>, <code>.html</code>, and <code>sheet name</code>.
-      </p>
+  <div id="generatePanel" class="card hidden">
+    <h2>3. Prepare Apps Script backend</h2>
+    <p class="muted">
+  Hosted mode only requires <code>codice.gs</code>.
+  Frontend files are already managed by builder.sgbh.org.
+</p>
 
-      <div class="grid">
-        <div>
-          <label for="xlsxFile">Google Sheets export (.xlsx) *</label>
-          <input id="xlsxFile" type="file" accept=".xlsx" />
-        </div>
-        <div>
-          <label for="htmlFile">Google Sheets export (.html) *</label>
-          <input id="htmlFile" type="file" accept=".html,text/html" />
-        </div>
-      </div>
-
-      <label for="sheetName">Sheet name *</label>
-      <input id="sheetName" type="text" placeholder="Es. HorrorMovie" />
-
-      <div class="actions">
-        <button id="parserBtn" type="button">Start parser</button>
-        <span id="parserStatus" class="muted"></span>
-      </div>
+    <div class="actions">
+      <button id="generateBtn" type="button">Generate index.html, viewer.html and codice.gs</button>
+      <span id="generateStatus" class="muted"></span>
     </div>
 
-    <div id="parserPanel" class="card hidden">
-      <h2>Parser status</h2>
-      <p class="muted">
-        The parser reads database structure, fields, formulas, enums and visual colors.
-      </p>
-
+    <div id="generatedFilesBox" class="hidden" style="margin-top:14px;">
+      <p class="ok">Final package prepared</p>
       <ul>
-        <li>Campi rilevati dal foglio</li>
-        <li>Formule trovate nei campi calcolati</li>
-        <li>Enum e colori visuali</li>
-        <li>Configurazione di base del frontend</li>
+        <li><code>index.html</code> — home page del database e CRUD finale</li>
+        <li><code>viewer.html</code> — viewer tabellare</li>
+        <li><code>codice.gs</code> — backend Google Apps Script</li>
       </ul>
 
       <div class="actions">
-        <button id="openReviewBtn" type="button" class="secondary">Open internal review page</button>
-      </div>
+        <a id="downloadIndex" class="button secondary hidden" href="#">Download index.html</a>
+<a id="downloadViewer" class="button secondary hidden" href="#">Download viewer.html</a>
+<a id="downloadGas" class="button secondary hidden" href="#">Download codice.gs</a>
     </div>
+  </div>
 
-    <div id="generatePanel" class="card hidden">
-      <h2>Prepare Apps Script backend</h2>
-      <p class="muted">
-        Hosted mode only requires <code>codice.gs</code>.
-        Frontend files are already managed by builder.sgbh.org.
-      </p>
+  <div id="deployPanel" class="card hidden">
+    <h2>4. Deployment data</h2>
+    <p class="muted">
+      Dopo aver generato e pubblicato i file, inserisci i dati necessari per aprire direttamente
+      la pagina finale del database. Questi valori devono essere chiari anche al cliente finale.
+    </p>
 
-      <div class="actions">
-        <button id="generateBtn" type="button">Generate index.html, viewer.html and codice.gs</button>
-        <span id="generateStatus" class="muted"></span>
-      </div>
+    <label for="webAppUrl">Apps Script Web App URL *</label>
+    <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
 
-      <div id="generatedFilesBox" class="hidden" style="margin-top:14px;">
-        <p class="ok">Final package prepared</p>
-        <ul>
-          <li><code>index.html</code> — home page del database e CRUD finale</li>
-          <li><code>viewer.html</code> — viewer tabellare</li>
-          <li><code>codice.gs</code> — backend Google Apps Script</li>
-        </ul>
+    <label for="apiKey">API key *</label>
+    <input id="apiKey" type="text" placeholder="CHANGE_ME_WRITE_KEY_2026" />
 
-        <div class="actions">
-          <a id="downloadIndex" class="button secondary hidden" href="#">Download index.html</a>
-          <a id="downloadViewer" class="button secondary hidden" href="#">Download viewer.html</a>
-          <a id="downloadGas" class="button secondary hidden" href="#">Download codice.gs</a>
-        </div>
-      </div>
+    <label for="crudEndpoint">CRUD endpoint</label>
+    <input id="crudEndpoint" type="text" readonly />
+
+    <div class="actions">
+      <button id="buildEndpointBtn" type="button">Build CRUD endpoint</button>
+      <button id="openCrudBtn" type="button" class="secondary">Open database</button>
+      <span id="deployStatus" class="muted"></span>
     </div>
+  </div>
 
-    <div id="deployPanel" class="card hidden">
-      <h2>Deployment data</h2>
-      <p class="muted">
-        After publishing the generated backend, enter the data needed to open the final database page.
-      </p>
+  <div id="nextPanel" class="card hidden">
+    <h2>5. Continue</h2>
+    <p class="muted">
+      Una volta che i file finali sono pronti e il deploy è stato configurato, puoi usare anche la pagina finale
+      di consegna per il cliente.
+    </p>
 
-      <label for="webAppUrl">Apps Script Web App URL *</label>
-      <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
-
-      <label for="apiKey">API key *</label>
-      <input id="apiKey" type="text" placeholder="CHANGE_ME_WRITE_KEY_2026" />
-
-      <label for="crudEndpoint">CRUD endpoint</label>
-      <input id="crudEndpoint" type="text" readonly />
-
-      <div class="actions">
-        <button id="buildEndpointBtn" type="button">Build CRUD endpoint</button>
-        <button id="openCrudBtn" type="button" class="secondary">Open database</button>
-        <span id="deployStatus" class="muted"></span>
-      </div>
-    </div>
-
-    <div id="nextPanel" class="card hidden">
-      <h2>Continue</h2>
-      <p class="muted">
-        Once the final files are ready and deployment is configured, use the final delivery page.
-      </p>
-
-      <div class="actions">
-        <a class="button" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
-      </div>
+    <div class="actions">
+      <a class="button" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
     </div>
   </div>
 
   <div class="card">
     <h2>Current stage</h2>
-    <pre id="debugOut">Choose one option to start…</pre>
+    <pre id="debugOut">Waiting for source files…</pre>
   </div>
 
   <script>
-const xlsxFile = document.getElementById("xlsxFile");
+  const xlsxFile = document.getElementById("xlsxFile");
   const htmlFile = document.getElementById("htmlFile");
   const sheetName = document.getElementById("sheetName");
 
@@ -304,11 +311,7 @@ const xlsxFile = document.getElementById("xlsxFile");
   const downloadGas = document.getElementById("downloadGas");
   const openReviewBtn = document.getElementById("openReviewBtn");
 
-  const chooseResumeBtn = document.getElementById("chooseResumeBtn");
-  const chooseExistingBtn = document.getElementById("chooseExistingBtn");
-  const chooseNewBtn = document.getElementById("chooseNewBtn");
-  const existingBackendPanel = document.getElementById("existingBackendPanel");
-
+  let currentSessionId = null;
   let currentBuilderState = null;
   let currentDownloads = null;
 
@@ -319,45 +322,32 @@ const openExistingBtn = document.getElementById("openExistingBtn");
 
 const DEFAULT_API_KEY = "CHANGE_ME_WRITE_KEY_2026";
 
+const resumeBlock = document.getElementById("resumeBlock");
+const resumeBtn = document.getElementById("resumeBtn");
+const clearLastBtn = document.getElementById("clearLastBtn");
+
 const lastApp =
   sessionStorage.getItem("DJUNGO_APP_SLUG") ||
   localStorage.getItem("DJUNGO_LAST_APP") ||
   "";
 
-chooseResumeBtn.addEventListener("click", () => {
-  if (!lastApp) {
-    updateDebug({
-      stage: "resume-unavailable",
-      message: "No previous app found"
-    });
-    return;
-  }
+if (lastApp) {
+  resumeBlock.style.display = "block";
 
-  const url = new URL("index.html", window.location.origin);
-  url.searchParams.set("app", lastApp);
-  window.location.href = url.toString();
-});
+  resumeBtn.addEventListener("click", () => {
+    const url = new URL("index.html", window.location.origin);
+    url.searchParams.set("app", lastApp);
+    window.location.href = url.toString();
+  });
 
-function hideAllChoicePanels() {
-  if (existingBackendPanel) existingBackendPanel.classList.add("hidden");
-  if (newAppPanel) newAppPanel.classList.add("hidden");
+  clearLastBtn.addEventListener("click", () => {
+    sessionStorage.removeItem("DJUNGO_APP_SLUG");
+    localStorage.removeItem("DJUNGO_LAST_APP");
+    location.reload();
+  });
+} else {
+  resumeBlock.style.display = "none";
 }
-
-chooseExistingBtn.addEventListener("click", () => {
-  hideAllChoicePanels();
-  existingBackendPanel.classList.remove("hidden");
-  updateDebug({
-    stage: "choice-existing-backend"
-  });
-});
-
-chooseNewBtn.addEventListener("click", () => {
-  hideAllChoicePanels();
-  newAppPanel.classList.remove("hidden");
-  updateDebug({
-    stage: "choice-new-app"
-  });
-});
 
 function slugify(value) {
   return String(value || "")
@@ -610,7 +600,7 @@ openExistingBtn.addEventListener("click", async () => {
     crudEndpoint.value = endpoint;
     window.location.href = endpoint;
   });
-  </script>
+</script>
 
 </body>
 </html>
