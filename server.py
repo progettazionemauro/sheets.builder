@@ -289,6 +289,7 @@ def api_parse():
             input_dir=input_dir,
             output_json_path=parsed_schema_path,
             enum_field_name="rating",
+            sheet_name=sheet_name,
             debug=True,
         )
 
@@ -342,6 +343,21 @@ def api_generate():
                 "ok": False,
                 "error": "Missing or invalid builder_state",
             }), 400
+
+        validation_errors = validate_builder_state_for_generation(
+            builder_state
+        )
+
+        if validation_errors:
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Cannot generate Apps Script because the "
+                    "configuration is invalid."
+                ),
+                "validation_errors": validation_errors,
+            }), 400
+            
 
         session_dir = get_session_dir(session_id)
 
@@ -454,6 +470,35 @@ def run_generated_app(session_id: str, filename: str):
             "error": str(exc),
         }), 500
         
+def validate_builder_state_for_generation(builder_state: dict) -> list[str]:
+    errors = []
+
+    fields = builder_state.get("fields", [])
+    if not isinstance(fields, list):
+        return ["Invalid builder_state: fields must be a list."]
+
+    seen = {}
+    for index, field in enumerate(fields, start=1):
+        if not isinstance(field, dict):
+            continue
+
+        name = str(field.get("name") or "").strip()
+        label = str(field.get("label") or field.get("originalHeader") or name).strip()
+
+        if not name:
+            errors.append(f"Field #{index} has empty normalized name.")
+            continue
+
+        if name in seen:
+            errors.append(
+                f'Duplicate normalized field "{name}" detected. '
+                f'Columns "{seen[name]}" and "{label}" generate the same Apps Script identifier. '
+                f'Rename one of the duplicate columns in the source sheet and export again.'
+            )
+        else:
+            seen[name] = label
+
+    return errors
         
 # ---------------------------------------------------------
 # NEW PROXY ROUTE (SAFE CRUD)

@@ -294,6 +294,15 @@ a.button.secondary {
 <script>
   let builderState = null;
 
+  function slugify(value) {
+  return String(value || "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "generated-app";
+}
+
   function setStatus(id, msg, cls = "muted") {
     const el = document.getElementById(id);
     el.textContent = msg;
@@ -900,16 +909,25 @@ if (restartForIdBtn) {
       sessionStorage.setItem("DJUNGO_SESSION_ID", data.session_id || sessionId || "");
     }
 
+    const generatedSheetName =
+  builderState?.project?.sheetName || "";
+
+if (generatedSheetName) {
+  sessionStorage.setItem("DJUNGO_SHEET_NAME", generatedSheetName);
+  sessionStorage.setItem("DJUNGO_APP_SLUG", slugify(generatedSheetName));
+  localStorage.setItem("DJUNGO_LAST_APP", slugify(generatedSheetName));
+}
+
     const params = new URLSearchParams(window.location.search);
-    const returnApp =
-      params.get("returnApp") ||
-      sessionStorage.getItem("DJUNGO_APP_SLUG");
+    const returnApp = params.get("returnApp");
+    const finalSessionId = data.session_id || sessionId;
 
     if (returnApp) {
       window.location.href =
         `index.html?app=${encodeURIComponent(returnApp)}&_=${Date.now()}`;
     } else {
-      window.location.href = "app_ready.html";
+      window.location.href =
+        `app_ready.html?session_id=${encodeURIComponent(finalSessionId)}`;
     }
 
   } catch (err) {

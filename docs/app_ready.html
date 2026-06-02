@@ -336,12 +336,31 @@ function restoreDeploymentData() {
   }
 }
 
-function restoreDownloadLinks() {
-  const gasUrl = sessionStorage.getItem("DJUNGO_DOWNLOAD_GAS");
-  const gasLink = document.getElementById("downloadGas");
+function currentSessionId() {
+  return (
+    new URLSearchParams(window.location.search).get("session_id") ||
+    sessionStorage.getItem("DJUNGO_SESSION_ID") ||
+    ""
+  );
+}
 
-  if (gasUrl && gasLink) {
+function restoreDownloadLinks() {
+  const sessionId = currentSessionId();
+  const gasLink = document.getElementById("downloadGas");
+  const gasGithubLink = document.getElementById("downloadGasGithub");
+
+  if (!sessionId) {
+    return;
+  }
+
+  const gasUrl = `/run/${encodeURIComponent(sessionId)}/codice.gs`;
+
+  if (gasLink) {
     gasLink.href = gasUrl;
+  }
+
+  if (gasGithubLink) {
+    gasGithubLink.href = gasUrl;
   }
 }
 
