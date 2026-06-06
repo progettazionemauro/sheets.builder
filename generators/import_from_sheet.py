@@ -362,14 +362,13 @@ def import_schema_from_xlsx(
     }
 
 
-def save_schema_from_xlsx(
-    xlsx_path: str | Path,
-    output_json_path: str | Path | None,
-    sheet_name: Optional[str] = None,
-    header_row: int = 1,
-    sample_row: int = 2,
+def build_schema_from_directory(
+    input_dir: str | Path,
+    output_json_path: str | Path,
+    enum_field_name: str = "rating",
+    sheet_name: str | None = None,
     debug: bool = False,
-) -> Dict[str, Any]:
+) -> dict:
     schema = import_schema_from_xlsx(
         xlsx_path=xlsx_path,
         sheet_name=sheet_name,

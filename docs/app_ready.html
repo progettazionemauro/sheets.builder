@@ -250,14 +250,22 @@ function setPublishingMode(mode) {
     return slugify(sheetName.value);
   }
 
-  function buildCrudUrl() {
-    const sessionId =
+    function currentSessionId() {
+    return (
+      new URLSearchParams(window.location.search).get("session_id") ||
       sessionStorage.getItem("DJUNGO_SESSION_ID") ||
-      new URLSearchParams(window.location.search).get("session_id");
+      ""
+    );
+  }
+
+  function buildCrudUrl() {
+    const sessionId = currentSessionId();
 
     if (!sessionId) {
       throw new Error("Missing session_id. Generate the app again from review page.");
     }
+
+    sessionStorage.setItem("DJUNGO_SESSION_ID", sessionId);
 
     const url = new URL(`/run/${sessionId}/index.html`, window.location.origin);
     url.searchParams.set("app", currentSlug());
@@ -336,13 +344,7 @@ function restoreDeploymentData() {
   }
 }
 
-function currentSessionId() {
-  return (
-    new URLSearchParams(window.location.search).get("session_id") ||
-    sessionStorage.getItem("DJUNGO_SESSION_ID") ||
-    ""
-  );
-}
+
 
 function restoreDownloadLinks() {
   const sessionId = currentSessionId();

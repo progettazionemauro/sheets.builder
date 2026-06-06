@@ -4,7 +4,35 @@
     "api_key": "CHANGE_ME_WRITE_KEY_2026"
   },
   "export": {
-    "web_app_url": "https://script.google.com/macros/s/AKfycbzmP0437k6Mo5ebcAv3N2Kdx_ZG0IqCVnO3x28YKSrBJ2EclnShUgHJJ1s2NH2od0FQ/exec",
+    "web_app_url": "https://script.google.com/macros/s/AKfycbxf2-Ndj7A-Vj3W5evfFZMHk_AxPQl6sTr9SpNMxi6XJt_OBEBGulGg4pCkx7w87jOhag/exec",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "anagrafica-aziende": {
+    "web_app_url": "https://script.google.com/macros/s/AKfycbzUkQmHNO61HAw4sqDXGIOo3tH0Ut8AAIwWt4t7-wdM_Qtyao5izRh6wRvifSA3a4CdUw/exec",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "isi-2013": {
+    "web_app_url": "URL_EXEC_NUOVO",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "isi2013": {
+    "web_app_url": "https://script.google.com/macros/s/AKfycbzZ_CQr8krp9zohxf4YHkcKAM-NH5db6970R27rXQpW36InR3fJr5tR9FjUF9NpZmCp6A/exec",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "agroalimentare": {
+    "web_app_url": "https://script.google.com/macros/s/AKfycbxQii4gPSofs-3hPSu4ZxNOC93nHxma4gtENIkHCBxOfIjdCSx5xK86854mdxvqDUl8QQ/exec",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "sheet1": {
+    "web_app_url": "https://script.google.com/macros/s/AKfycby00A4LLGDkAAhuJdNtNBp0huU5yhET9gTObC9SLuJykrRGc8BJXoPTYVjmxGlmJuvsbw/exec",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "movie-database": {
+    "web_app_url": "https://script.google.com/macros/s/AKfycbzNygXZwvznVaF9uemwY-2zfVPuEgJqLBv1MtfwZy_nVl7fvk0vhfc6BoOC4VD2759qsA/exec",
+    "api_key": "CHANGE_ME_WRITE_KEY_2026"
+  },
+  "adult4": {
+    "web_app_url": "https://script.google.com/macros/s/AKfycbxtBKmYAQzjRRlkddYud_X14Z3gRNm9pf7egVVuqASxsJfTf-vgZV4TbkjHHrvZXu5Tkw/exec",
     "api_key": "CHANGE_ME_WRITE_KEY_2026"
   }
 }

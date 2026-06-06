@@ -346,7 +346,33 @@ chooseNewBtn.addEventListener("click", () => {
     url.searchParams.set("apiKey", apiKey.value.trim());
     return url.toString();
   }
+function replaceActiveSession(data) {
+  const sessionId = data.session_id || "";
+  const builderState = data.builder_state || null;
 
+  if (!sessionId || !builderState) {
+    throw new Error("Parser response missing session_id or builder_state");
+  }
+
+  localStorage.removeItem("DJUNGO_SESSION_ID");
+  sessionStorage.removeItem("DJUNGO_SESSION_ID");
+  localStorage.removeItem("DJUNGO_BUILDER_STATE");
+
+  localStorage.setItem("DJUNGO_SESSION_ID", sessionId);
+  sessionStorage.setItem("DJUNGO_SESSION_ID", sessionId);
+  localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(builderState));
+
+  const project = builderState.project || {};
+
+  if (project.sheetName) {
+    sessionStorage.setItem("DJUNGO_SHEET_NAME", project.sheetName);
+  }
+
+  if (project.projectSlug) {
+    sessionStorage.setItem("DJUNGO_APP_SLUG", project.projectSlug);
+    localStorage.setItem("DJUNGO_LAST_APP", project.projectSlug);
+  }
+}
   parserBtn.addEventListener("click", async () => {
     const xlsx = xlsxFile.files[0];
     const html = htmlFile.files[0];
@@ -380,8 +406,7 @@ chooseNewBtn.addEventListener("click", () => {
       currentSessionId = data.session_id;
       currentBuilderState = data.builder_state;
 
-      localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId);
-      localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(currentBuilderState));
+      replaceActiveSession(data);
 
       setStatus(parserStatus, "Parser completed successfully.", "ok");
 
@@ -416,8 +441,10 @@ chooseNewBtn.addEventListener("click", () => {
       return;
     }
 
-    localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId || "");
-    localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(currentBuilderState));
+    replaceActiveSession({
+  session_id: currentSessionId,
+  builder_state: currentBuilderState
+});
     window.location.href = "review.html?autoload=1";
   });
 

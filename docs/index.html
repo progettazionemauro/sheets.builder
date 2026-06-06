@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Generated App</title>
+  <title>adult4</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 1100px; margin: 28px auto; padding: 0 16px; }
     h1 { margin: 0 0 6px; }
@@ -25,7 +25,7 @@
 </head>
 <body>
 
-  <h1>Generated App database</h1>
+  <h1>adult4 database</h1>
 
 <p class="muted">
   Manage records, update data and browse the current spreadsheet table.
@@ -44,32 +44,20 @@
       <span id="cfgStatus" class="muted"></span>
     </div>
 
-    <small>Slug app: <code>generated-app</code></small>
+    <small>Slug app: <code>adult4</code></small>
   </div>
 
   <div class="card">
     <h3 style="margin:0 0 10px;">Insert (Item)</h3>
 
 
-    <label for="year">year <span class="muted">(optional)</span></label>
-    <input id="year" type="number" min="0" placeholder="year" />
+    <label for="link">link <span class="muted">(optional)</span></label>
+    <input id="link" placeholder="link" />
 
 
-    <label for="title">Title <span class="muted">(optional)</span></label>
-    <input id="title" placeholder="Title" />
-
-
-    <label for="url">url <span class="muted">(optional)</span></label>
-    <input id="url" placeholder="url" />
-
-
-    <label for="nation">nation <span class="muted">(optional)</span></label>
-    <input id="nation" placeholder="nation" />
-
-
-    <label for="rating">rating <span class="muted">(optional)</span></label>
-    <select id="rating">
-      <option value="" selected>—</option><option>Mediocre</option><option>Medio</option><option>Buono</option><option>Ottimo</option><option>Capolavoro</option><option>Pessimo</option>
+    <label for="hs">H/S <span class="muted">(optional)</span></label>
+    <select id="hs">
+      <option value="" selected>—</option><option>H</option><option>H/S</option><option>S</option>
     </select>
 
     <div class="actions">
@@ -140,7 +128,7 @@
   
   const qs = new URLSearchParams(window.location.search);
   const DEBUG_MODE = qs.get("debug") === "1";
-  const APP_SLUG = qs.get("app") || "generated-app";
+  const APP_SLUG = qs.get("app") || "adult4";
 
   function setMsg(el, msg, cls) {
     el.className = cls || "muted";
@@ -295,11 +283,8 @@ async function call_(mode, params = {}, needsKey = false) {
     setMsg(st, "Inserting…");
 
     const payload = {
-        "year": document.getElementById("year").value.trim(),
-        "title": document.getElementById("title").value.trim(),
-        "url": document.getElementById("url").value.trim(),
-        "nation": document.getElementById("nation").value.trim(),
-        "rating": document.getElementById("rating").value
+        "link": document.getElementById("link").value.trim(),
+        "h/s": document.getElementById("hs").value
       };
 
     const r = await call_("insert", payload, true);
@@ -335,11 +320,8 @@ async function call_(mode, params = {}, needsKey = false) {
     );
 
     if (r.ok && r.record) {
-        document.getElementById("year").value = r.record["year"] || "";
-        document.getElementById("title").value = r.record["title"] || "";
-        document.getElementById("url").value = r.record["url"] || "";
-        document.getElementById("nation").value = r.record["nation"] || "";
-        document.getElementById("rating").value = r.record["rating"] || "";
+        document.getElementById("link").value = r.record["link"] || "";
+        document.getElementById("hs").value = r.record["h/s"] || "";
     }
   } catch (e) {
     setMsg(st, "ERR: " + e.message, "err");
@@ -357,11 +339,8 @@ async function call_(mode, params = {}, needsKey = false) {
     setMsg(st, "Updating record…");
 
     const payload = {
-        "year": document.getElementById("year").value.trim(),
-        "title": document.getElementById("title").value.trim(),
-        "url": document.getElementById("url").value.trim(),
-        "nation": document.getElementById("nation").value.trim(),
-        "rating": document.getElementById("rating").value
+        "link": document.getElementById("link").value.trim(),
+        "h/s": document.getElementById("hs").value
       };
     payload.id = id;
 

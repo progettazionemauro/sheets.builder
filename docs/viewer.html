@@ -50,7 +50,7 @@
 </head>
 <body>
 
-  <div class="muted">Viewer read-only — tab <b>Sheet1</b></div>
+  <div class="muted">Viewer read-only — tab <b>adult4</b></div>
 
   <div class="toolbar">
     <div>
@@ -73,63 +73,40 @@
 
 <script>
   const qs = new URLSearchParams(location.search);
-  const APP_SLUG = qs.get("app") || "generated-app";
+  const APP_SLUG = qs.get("app") || "adult4";
   const URL_LIMIT = qs.get("limit") || "50";
   const EMBEDDED_MODE = qs.get("embedded") === "1";
 
   const VISIBLE_HEADERS = [
   "id",
-  "year",
-  "title",
-  "url",
   "link",
-  "nation",
-  "rating"
+  "h/s"
 ];
   const ENUMS = {
-  "rating": [
-    "Mediocre",
-    "Medio",
-    "Buono",
-    "Ottimo",
-    "Capolavoro",
-    "Pessimo"
+  "h/s": [
+    "H",
+    "H/S",
+    "S"
   ]
 };
   const LABELS = {
-  "id": "id",
-  "year": "year",
-  "title": "Title",
-  "url": "url",
+  "id": "ID",
   "link": "link",
-  "nation": "nation",
-  "rating": "rating"
+  "h/s": "H/S"
 };
   const ENUM_STYLES = {
-  "rating": {
-    "Capolavoro": {
-      "bg": "#215a6c",
-      "fg": "#c6dbe1"
+  "h/s": {
+    "H": {
+      "bg": "#d71d1d",
+      "fg": ""
     },
-    "Ottimo": {
-      "bg": "#d4edbc",
-      "fg": "#11734b"
+    "H/S": {
+      "bg": "",
+      "fg": ""
     },
-    "Buono": {
-      "bg": "#ffe5a0",
-      "fg": "#473821"
-    },
-    "Medio": {
-      "bg": "#ffc8aa",
-      "fg": "#753800"
-    },
-    "Mediocre": {
-      "bg": "#ffcfc9",
-      "fg": "#b10202"
-    },
-    "Pessimo": {
-      "bg": "#e8eaed",
-      "fg": "#000000"
+    "S": {
+      "bg": "#19be34",
+      "fg": ""
     }
   }
 };
