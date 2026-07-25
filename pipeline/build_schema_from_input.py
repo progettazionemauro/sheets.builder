@@ -11,7 +11,7 @@ import json
 from typing import Dict, Optional
 
 from generators.import_from_html import import_visuals_from_html
-from generators.import_from_sheet import save_schema_from_xlsx
+from generators.import_from_sheet import import_schema_from_xlsx
 from generators.merge_schema import merge_schema_with_visuals
 from app.builder_state import build_builder_state
 
@@ -60,14 +60,14 @@ def build_schema_from_directory(
     input_dir: str | Path,
     output_json_path: str | Path,
     enum_field_name: str = "rating",
+    sheet_name: str | None = None,
     debug: bool = False,
 ) -> dict:
     paths = find_input_files(input_dir)
 
-    sheet_schema = save_schema_from_xlsx(
+    sheet_schema = import_schema_from_xlsx(
         xlsx_path=paths["xlsx"],
-        output_json_path=None,
-        sheet_name=None,
+        sheet_name=sheet_name,
         header_row=1,
         sample_row=2,
         debug=debug,
