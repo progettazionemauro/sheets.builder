@@ -342,8 +342,17 @@ chooseNewBtn.addEventListener("click", () => {
   function buildCrudUrl() {
     const basePath = window.location.pathname.replace(/[^\/]*$/, "");
     const url = new URL(basePath + "index.html", window.location.origin);
+
+    const slug = currentBuilderState?.project?.projectSlug;
+
+    if (!slug) {
+      throw new Error("Current app slug is missing");
+    }
+
+    url.searchParams.set("app", slug);
     url.searchParams.set("webApp", webAppUrl.value.trim());
     url.searchParams.set("apiKey", apiKey.value.trim());
+
     return url.toString();
   }
 
