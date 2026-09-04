@@ -285,7 +285,7 @@ def api_parse():
         parsed_schema_path = session_dir / "parsed.schema.json"
         builder_state_path = session_dir / "builder_state.json"
 
-        build_schema_from_directory(
+        parsed_schema = build_schema_from_directory(
             input_dir=input_dir,
             output_json_path=parsed_schema_path,
             enum_field_name="rating",
