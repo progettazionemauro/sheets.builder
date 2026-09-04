@@ -133,6 +133,18 @@
       Select one option. Only the controls needed for that path will be shown.
     </p>
 
+    <div id="googleSheetPanel" class="hidden" style="margin-bottom:16px;">
+      <p class="ok">Google Sheet detected</p>
+      <p>
+        <strong>Spreadsheet:</strong> <span id="googleSpreadsheetName"></span><br>
+        <strong>Selected sheet:</strong> <span id="googleSheetName"></span><br>
+        <strong>Sheet ID:</strong> <span id="googleSheetId"></span>
+      </p>
+      <div class="actions">
+        <button id="chooseGoogleSheetBtn" type="button">Continue from Google Sheet</button>
+      </div>
+    </div>
+
     <div class="actions">
       <button id="chooseResumeBtn" type="button">1A. Continue last app</button>
       <button id="chooseNewBtn" type="button" class="secondary">1B. Build new app from exports</button>
@@ -284,6 +296,44 @@ const xlsxFile = document.getElementById("xlsxFile");
 
   const chooseResumeBtn = document.getElementById("chooseResumeBtn");
   const chooseNewBtn = document.getElementById("chooseNewBtn");
+
+  const googleSheetPanel = document.getElementById("googleSheetPanel");
+  const chooseGoogleSheetBtn = document.getElementById("chooseGoogleSheetBtn");
+  const googleSpreadsheetName = document.getElementById("googleSpreadsheetName");
+  const googleSheetName = document.getElementById("googleSheetName");
+  const googleSheetId = document.getElementById("googleSheetId");
+
+  const queryParams = new URLSearchParams(window.location.search);
+
+  const googleSheetContext = {
+    spreadsheetId: queryParams.get("spreadsheetId"),
+    spreadsheetName: queryParams.get("spreadsheetName"),
+    sheetName: queryParams.get("sheetName"),
+    sheetId: queryParams.get("sheetId")
+  };
+
+  const hasGoogleSheetContext =
+    Boolean(googleSheetContext.spreadsheetId && googleSheetContext.sheetName);
+
+  if (hasGoogleSheetContext) {
+    googleSpreadsheetName.textContent = googleSheetContext.spreadsheetName || "(unnamed)";
+    googleSheetName.textContent = googleSheetContext.sheetName;
+    googleSheetId.textContent = googleSheetContext.sheetId || "(not available)";
+    googleSheetPanel.classList.remove("hidden");
+
+    debugOut.textContent =
+      "Google Sheet received successfully.\n" +
+      "Spreadsheet: " + (googleSheetContext.spreadsheetName || "(unnamed)") + "\n" +
+      "Selected sheet: " + googleSheetContext.sheetName + "\n" +
+      "Ready to continue.";
+  }
+
+  chooseGoogleSheetBtn.addEventListener("click", () => {
+    updateDebug({
+      stage: "google-sheet-context-received",
+      source: googleSheetContext
+    });
+  });
 
   let currentBuilderState = null;
   let currentDownloads = null;
