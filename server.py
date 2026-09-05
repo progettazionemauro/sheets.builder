@@ -174,6 +174,36 @@ def get_session_dir(session_id: str) -> Path:
     return path
 
 
+def process_builder_input(
+    session_dir: Path,
+    input_dir: Path,
+    sheet_name: str,
+) -> tuple[Dict[str, Any], Path, Path]:
+    parsed_schema_path = session_dir / "parsed.schema.json"
+    builder_state_path = session_dir / "builder_state.json"
+
+    parsed_schema = build_schema_from_directory(
+        input_dir=input_dir,
+        output_json_path=parsed_schema_path,
+        enum_field_name="rating",
+        sheet_name=sheet_name,
+        debug=True,
+    )
+
+    builder_state = build_builder_state(parsed_schema)
+
+    project_slug = slugify_app_name(sheet_name)
+
+    builder_state["project"]["sheetName"] = sheet_name
+    builder_state["project"]["projectName"] = sheet_name
+    builder_state["project"]["projectSlug"] = project_slug
+    builder_state["project"]["backendName"] = f"{project_slug}-backend"
+
+    write_json(builder_state_path, builder_state)
+
+    return builder_state, parsed_schema_path, builder_state_path
+
+
 # =========================================================
 # PROXY HELPERS
 # =========================================================
@@ -282,27 +312,11 @@ def api_parse():
         xlsx_file.save(xlsx_path)
         html_file.save(html_path)
 
-        parsed_schema_path = session_dir / "parsed.schema.json"
-        builder_state_path = session_dir / "builder_state.json"
-
-        parsed_schema = build_schema_from_directory(
+        builder_state, parsed_schema_path, builder_state_path = process_builder_input(
+            session_dir=session_dir,
             input_dir=input_dir,
-            output_json_path=parsed_schema_path,
-            enum_field_name="rating",
             sheet_name=sheet_name,
-            debug=True,
         )
-
-        builder_state = build_builder_state(parsed_schema)
-
-        project_slug = slugify_app_name(sheet_name)
-
-        builder_state["project"]["sheetName"] = sheet_name
-        builder_state["project"]["projectName"] = sheet_name
-        builder_state["project"]["projectSlug"] = project_slug
-        builder_state["project"]["backendName"] = f"{project_slug}-backend"
-
-        write_json(builder_state_path, builder_state)
 
         return jsonify({
             "ok": True,
