@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Any, Dict
 
@@ -178,15 +179,18 @@ def process_builder_input(
     session_dir: Path,
     input_dir: Path,
     sheet_name: str,
+    xlsx_sheet_name: str | None = None,
 ) -> tuple[Dict[str, Any], Path, Path]:
     parsed_schema_path = session_dir / "parsed.schema.json"
     builder_state_path = session_dir / "builder_state.json"
+
+    effective_xlsx_sheet_name = xlsx_sheet_name or sheet_name
 
     parsed_schema = build_schema_from_directory(
         input_dir=input_dir,
         output_json_path=parsed_schema_path,
         enum_field_name="rating",
-        sheet_name=sheet_name,
+        sheet_name=effective_xlsx_sheet_name,
         debug=True,
     )
 
@@ -327,6 +331,154 @@ def api_parse():
                 "builder_state": str(builder_state_path),
             },
         })
+
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
+# ---------------------------------------------------------
+# IMPORT FROM GOOGLE SHEET
+# ---------------------------------------------------------
+@app.post("/api/google-sheet/import")
+def api_google_sheet_import():
+    try:
+        xlsx_file = request.files.get("xlsx")
+        zip_file = request.files.get("web_export")
+
+        spreadsheet_id = (request.form.get("spreadsheet_id") or "").strip()
+        spreadsheet_name = (request.form.get("spreadsheet_name") or "").strip()
+        sheet_id = (request.form.get("sheet_id") or "").strip()
+        sheet_name = (request.form.get("sheet_name") or "").strip()
+
+        if not xlsx_file:
+            return jsonify({"ok": False, "error": "Missing xlsx file"}), 400
+
+        if not zip_file:
+            return jsonify({"ok": False, "error": "Missing web_export file"}), 400
+
+        if not spreadsheet_id:
+            return jsonify({"ok": False, "error": "Missing spreadsheet_id"}), 400
+
+        if not sheet_id:
+            return jsonify({"ok": False, "error": "Missing sheet_id"}), 400
+
+        if not sheet_name:
+            return jsonify({"ok": False, "error": "Missing sheet_name"}), 400
+
+        session_dir = create_session_dir()
+
+        input_dir = session_dir / "input"
+        input_dir.mkdir(parents=True, exist_ok=True)
+
+        xlsx_path = input_dir / "input.xlsx"
+        zip_path = session_dir / "google-web-export.zip"
+
+        xlsx_file.save(xlsx_path)
+        zip_file.save(zip_path)
+
+        extract_dir = session_dir / "web_export"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+
+        with zipfile.ZipFile(zip_path, "r") as archive:
+            for member in archive.infolist():
+                member_path = Path(member.filename)
+
+                if member_path.is_absolute() or ".." in member_path.parts:
+                    raise ValueError(
+                        f"Unsafe ZIP member path: {member.filename}"
+                    )
+
+                target_path = extract_dir / member_path
+
+                if member.is_dir():
+                    target_path.mkdir(parents=True, exist_ok=True)
+                    continue
+
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                with archive.open(member, "r") as source:
+                    with target_path.open("wb") as target:
+                        target.write(source.read())
+
+        html_candidates = [
+            path
+            for path in extract_dir.rglob("*.html")
+            if path.stem == sheet_name
+        ]
+
+        if len(html_candidates) != 1:
+            raise ValueError(
+                "Could not uniquely identify HTML for selected sheet "
+                f"{sheet_name!r}; found {len(html_candidates)} matches"
+            )
+
+        selected_html = html_candidates[0]
+        html_path = input_dir / "input.html"
+        html_path.write_bytes(selected_html.read_bytes())
+
+        from openpyxl import load_workbook
+
+        wb = load_workbook(
+            filename=xlsx_path,
+            read_only=True,
+            data_only=False,
+        )
+
+        try:
+            if sheet_name in wb.sheetnames:
+                xlsx_sheet_name = sheet_name
+            elif sheet_name[:31] in wb.sheetnames:
+                xlsx_sheet_name = sheet_name[:31]
+            else:
+                raise ValueError(
+                    "Could not identify selected sheet inside XLSX. "
+                    f"Google sheet name: {sheet_name!r}; "
+                    f"XLSX worksheets: {wb.sheetnames!r}"
+                )
+        finally:
+            wb.close()
+
+        builder_state, parsed_schema_path, builder_state_path = process_builder_input(
+            session_dir=session_dir,
+            input_dir=input_dir,
+            sheet_name=sheet_name,
+            xlsx_sheet_name=xlsx_sheet_name,
+        )
+
+        builder_state["project"]["source"] = {
+            "type": "google_sheet",
+            "spreadsheetId": spreadsheet_id,
+            "spreadsheetName": spreadsheet_name,
+            "sheetId": sheet_id,
+            "sheetName": sheet_name,
+        }
+
+        write_json(builder_state_path, builder_state)
+
+        return jsonify({
+            "ok": True,
+            "session_id": session_dir.name,
+            "builder_state": builder_state,
+            "google_source": {
+                "spreadsheet_id": spreadsheet_id,
+                "spreadsheet_name": spreadsheet_name,
+                "sheet_id": sheet_id,
+                "sheet_name": sheet_name,
+            },
+            "paths": {
+                "parsed_schema": str(parsed_schema_path),
+                "builder_state": str(builder_state_path),
+            },
+        })
+
+    except zipfile.BadZipFile:
+        return jsonify({
+            "ok": False,
+            "error": "Invalid Google web export ZIP",
+        }), 400
 
     except Exception as exc:
         return jsonify({
