@@ -25,6 +25,7 @@ function onOpen() {
     .addItem('TEST — Esporta XLSX', 'testDjungoXlsxExport')
     .addItem('TEST — Esporta HTML ZIP', 'testDjungoHtmlExport')
     .addItem('TEST — Mostra contenuto ZIP', 'testDjungoZipContents')
+    .addItem('TEST — Hosted import', 'testDjungoHostedImport')
     .addToUi();
 }
 
@@ -310,6 +311,151 @@ function testDjungoZipContents() {
 
     SpreadsheetApp.getUi().alert(
       'Djungo ZIP inspection — ERRORE',
+      String(error),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
+}
+
+
+/**
+ * A4.4a — TEST HOSTED IMPORT
+ *
+ * Esporta automaticamente:
+ * - Spreadsheet completo in XLSX
+ * - Web export completo in ZIP
+ *
+ * e li invia a Djungo Builder tramite HTTPS multipart/form-data.
+ *
+ * Non modifica ancora il flusso principale del menu.
+ */
+function testDjungoHostedImport() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getActiveSheet();
+
+  const spreadsheetId = spreadsheet.getId();
+  const spreadsheetName = spreadsheet.getName();
+  const sheetId = String(sheet.getSheetId());
+  const sheetName = sheet.getName();
+
+  const xlsxUrl =
+    'https://docs.google.com/spreadsheets/d/' +
+    encodeURIComponent(spreadsheetId) +
+    '/export?format=xlsx';
+
+  const zipUrl =
+    'https://docs.google.com/spreadsheets/d/' +
+    encodeURIComponent(spreadsheetId) +
+    '/export?format=zip';
+
+  const authHeaders = {
+    Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
+  };
+
+  try {
+
+    /*
+     * 1. Export XLSX
+     */
+    const xlsxResponse = UrlFetchApp.fetch(xlsxUrl, {
+      headers: authHeaders,
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+
+    const xlsxStatus = xlsxResponse.getResponseCode();
+
+    if (xlsxStatus !== 200) {
+      throw new Error(
+        'XLSX export failed. HTTP ' +
+        xlsxStatus +
+        '\n\n' +
+        xlsxResponse.getContentText().substring(0, 2000)
+      );
+    }
+
+    const xlsxBlob = xlsxResponse
+      .getBlob()
+      .setName(spreadsheetName + '.xlsx');
+
+    /*
+     * 2. Export Web ZIP
+     */
+    const zipResponse = UrlFetchApp.fetch(zipUrl, {
+      headers: authHeaders,
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+
+    const zipStatus = zipResponse.getResponseCode();
+
+    if (zipStatus !== 200) {
+      throw new Error(
+        'Web ZIP export failed. HTTP ' +
+        zipStatus +
+        '\n\n' +
+        zipResponse.getContentText().substring(0, 2000)
+      );
+    }
+
+    const zipBlob = zipResponse
+      .getBlob()
+      .setName(spreadsheetName + '.zip');
+
+    /*
+     * 3. POST multipart a Djungo Builder
+     */
+    const builderResponse = UrlFetchApp.fetch(
+      'https://builder.sgbh.org/api/google-sheet/import',
+      {
+        method: 'post',
+
+        payload: {
+          spreadsheet_id: spreadsheetId,
+          spreadsheet_name: spreadsheetName,
+          sheet_id: sheetId,
+          sheet_name: sheetName,
+          xlsx: xlsxBlob,
+          web_export: zipBlob
+        },
+
+        muteHttpExceptions: true,
+        followRedirects: true
+      }
+    );
+
+    /*
+     * 4. Leggiamo risposta Djungo
+     */
+    const builderStatus = builderResponse.getResponseCode();
+    const builderBody = builderResponse.getContentText();
+
+    const result =
+      'Spreadsheet: ' + spreadsheetName + '\n' +
+      'Foglio: ' + sheetName + '\n' +
+      'Sheet ID: ' + sheetId + '\n\n' +
+      'XLSX: ' +
+      xlsxBlob.getBytes().length +
+      ' bytes\n' +
+      'ZIP: ' +
+      zipBlob.getBytes().length +
+      ' bytes\n\n' +
+      'Djungo HTTP status: ' +
+      builderStatus +
+      '\n\n' +
+      '--- DJUNGO RESPONSE ---\n\n' +
+      builderBody.substring(0, 6000);
+
+    SpreadsheetApp.getUi().alert(
+      'Djungo hosted import test',
+      result,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+
+  } catch (error) {
+
+    SpreadsheetApp.getUi().alert(
+      'Djungo hosted import test — ERRORE',
       String(error),
       SpreadsheetApp.getUi().ButtonSet.OK
     );
