@@ -490,6 +490,50 @@ def api_google_sheet_import():
 # ---------------------------------------------------------
 # GENERATE FINAL FILES
 # ---------------------------------------------------------
+
+@app.get("/api/session/<session_id>")
+def api_get_session(session_id: str):
+    try:
+        safe_session_id = secure_filename(session_id)
+
+        if not safe_session_id or safe_session_id != session_id:
+            return jsonify({
+                "ok": False,
+                "error": "Invalid session_id",
+            }), 400
+
+        session_dir = get_session_dir(session_id)
+        builder_state_path = session_dir / "builder_state.json"
+
+        if not builder_state_path.exists():
+            return jsonify({
+                "ok": False,
+                "error": "Builder state not found",
+            }), 404
+
+        builder_state = json.loads(
+            builder_state_path.read_text(encoding="utf-8")
+        )
+
+        return jsonify({
+            "ok": True,
+            "session_id": session_id,
+            "builder_state": builder_state,
+        })
+
+    except FileNotFoundError as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 404
+
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
 @app.post("/api/generate")
 def api_generate():
     try:

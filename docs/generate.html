@@ -335,8 +335,57 @@ const xlsxFile = document.getElementById("xlsxFile");
     });
   });
 
+  let currentSessionId = null;
   let currentBuilderState = null;
   let currentDownloads = null;
+
+  async function handoffSessionIfRequested() {
+    const handoffSessionId = queryParams.get("session");
+
+    if (!handoffSessionId) {
+      return;
+    }
+
+    try {
+      updateDebug({
+        stage: "session-handoff-loading",
+        session_id: handoffSessionId
+      });
+
+      const resp = await fetch(
+        "/api/session/" + encodeURIComponent(handoffSessionId)
+      );
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || "Session handoff failed");
+      }
+
+      currentSessionId = data.session_id;
+      currentBuilderState = data.builder_state;
+
+      localStorage.setItem(
+        "DJUNGO_SESSION_ID",
+        currentSessionId
+      );
+
+      localStorage.setItem(
+        "DJUNGO_BUILDER_STATE",
+        JSON.stringify(currentBuilderState)
+      );
+
+      window.location.href = "review.html?autoload=1";
+
+    } catch (err) {
+      updateDebug({
+        stage: "session-handoff-error",
+        error: err.message
+      });
+    }
+  }
+
+  handoffSessionIfRequested();
 
 
 
