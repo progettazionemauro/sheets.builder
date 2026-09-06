@@ -329,7 +329,7 @@ function testDjungoZipContents() {
  *
  * Non modifica ancora il flusso principale del menu.
  */
-function testDjungoHostedImport() {
+function djungoHostedImportCurrentSheet() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getActiveSheet();
 
@@ -352,112 +352,185 @@ function testDjungoHostedImport() {
     Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
   };
 
-  try {
+  const xlsxResponse = UrlFetchApp.fetch(xlsxUrl, {
+    headers: authHeaders,
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
 
-    /*
-     * 1. Export XLSX
-     */
-    const xlsxResponse = UrlFetchApp.fetch(xlsxUrl, {
-      headers: authHeaders,
-      muteHttpExceptions: true,
-      followRedirects: true
-    });
+  const xlsxStatus = xlsxResponse.getResponseCode();
 
-    const xlsxStatus = xlsxResponse.getResponseCode();
-
-    if (xlsxStatus !== 200) {
-      throw new Error(
-        'XLSX export failed. HTTP ' +
-        xlsxStatus +
-        '\n\n' +
-        xlsxResponse.getContentText().substring(0, 2000)
-      );
-    }
-
-    const xlsxBlob = xlsxResponse
-      .getBlob()
-      .setName(spreadsheetName + '.xlsx');
-
-    /*
-     * 2. Export Web ZIP
-     */
-    const zipResponse = UrlFetchApp.fetch(zipUrl, {
-      headers: authHeaders,
-      muteHttpExceptions: true,
-      followRedirects: true
-    });
-
-    const zipStatus = zipResponse.getResponseCode();
-
-    if (zipStatus !== 200) {
-      throw new Error(
-        'Web ZIP export failed. HTTP ' +
-        zipStatus +
-        '\n\n' +
-        zipResponse.getContentText().substring(0, 2000)
-      );
-    }
-
-    const zipBlob = zipResponse
-      .getBlob()
-      .setName(spreadsheetName + '.zip');
-
-    /*
-     * 3. POST multipart a Djungo Builder
-     */
-    const builderResponse = UrlFetchApp.fetch(
-      'https://builder.sgbh.org/api/google-sheet/import',
-      {
-        method: 'post',
-
-        payload: {
-          spreadsheet_id: spreadsheetId,
-          spreadsheet_name: spreadsheetName,
-          sheet_id: sheetId,
-          sheet_name: sheetName,
-          xlsx: xlsxBlob,
-          web_export: zipBlob
-        },
-
-        muteHttpExceptions: true,
-        followRedirects: true
-      }
+  if (xlsxStatus !== 200) {
+    throw new Error(
+      'XLSX export failed. HTTP ' +
+      xlsxStatus +
+      '\n\n' +
+      xlsxResponse.getContentText().substring(0, 2000)
     );
+  }
 
-    /*
-     * 4. Leggiamo risposta Djungo
-     */
-    const builderStatus = builderResponse.getResponseCode();
-    const builderBody = builderResponse.getContentText();
+  const xlsxBlob = xlsxResponse
+    .getBlob()
+    .setName(spreadsheetName + '.xlsx');
 
-    const result =
-      'Spreadsheet: ' + spreadsheetName + '\n' +
-      'Foglio: ' + sheetName + '\n' +
-      'Sheet ID: ' + sheetId + '\n\n' +
-      'XLSX: ' +
-      xlsxBlob.getBytes().length +
-      ' bytes\n' +
-      'ZIP: ' +
-      zipBlob.getBytes().length +
-      ' bytes\n\n' +
-      'Djungo HTTP status: ' +
+  const zipResponse = UrlFetchApp.fetch(zipUrl, {
+    headers: authHeaders,
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+
+  const zipStatus = zipResponse.getResponseCode();
+
+  if (zipStatus !== 200) {
+    throw new Error(
+      'Web ZIP export failed. HTTP ' +
+      zipStatus +
+      '\n\n' +
+      zipResponse.getContentText().substring(0, 2000)
+    );
+  }
+
+  const zipBlob = zipResponse
+    .getBlob()
+    .setName(spreadsheetName + '.zip');
+
+  const builderResponse = UrlFetchApp.fetch(
+    'https://builder.sgbh.org/api/google-sheet/import',
+    {
+      method: 'post',
+      payload: {
+        spreadsheet_id: spreadsheetId,
+        spreadsheet_name: spreadsheetName,
+        sheet_id: sheetId,
+        sheet_name: sheetName,
+        xlsx: xlsxBlob,
+        web_export: zipBlob
+      },
+      muteHttpExceptions: true,
+      followRedirects: true
+    }
+  );
+
+  const builderStatus = builderResponse.getResponseCode();
+  const builderBody = builderResponse.getContentText();
+
+  let builderData = null;
+
+  try {
+    builderData = JSON.parse(builderBody);
+  } catch (error) {
+    throw new Error(
+      'Invalid Djungo response. HTTP ' +
       builderStatus +
       '\n\n' +
-      '--- DJUNGO RESPONSE ---\n\n' +
-      builderBody.substring(0, 6000);
+      builderBody.substring(0, 2000)
+    );
+  }
+
+  if (builderStatus !== 200 || !builderData.ok) {
+    throw new Error(
+      builderData.error ||
+      ('Djungo import failed. HTTP ' + builderStatus)
+    );
+  }
+
+  return {
+    spreadsheetId: spreadsheetId,
+    spreadsheetName: spreadsheetName,
+    sheetId: sheetId,
+    sheetName: sheetName,
+    xlsxBytes: xlsxBlob.getBytes().length,
+    zipBytes: zipBlob.getBytes().length,
+    builderStatus: builderStatus,
+    builderData: builderData
+  };
+}
+
+
+function testDjungoHostedImport() {
+  try {
+    const result = djungoHostedImportCurrentSheet();
 
     SpreadsheetApp.getUi().alert(
       'Djungo hosted import test',
-      result,
+      'Spreadsheet: ' + result.spreadsheetName + '\n' +
+      'Foglio: ' + result.sheetName + '\n' +
+      'Sheet ID: ' + result.sheetId + '\n\n' +
+      'XLSX: ' + result.xlsxBytes + ' bytes\n' +
+      'ZIP: ' + result.zipBytes + ' bytes\n\n' +
+      'Djungo HTTP status: ' + result.builderStatus + '\n\n' +
+      'Session ID: ' + result.builderData.session_id,
       SpreadsheetApp.getUi().ButtonSet.OK
     );
 
   } catch (error) {
-
     SpreadsheetApp.getUi().alert(
       'Djungo hosted import test — ERRORE',
       String(error),
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   }
+}
+
+
+function createDjungoAppFromCurrentSheet() {
+  try {
+    const result = djungoHostedImportCurrentSheet();
+
+    const sessionId = result.builderData.session_id;
+
+    if (!sessionId) {
+      throw new Error('Djungo did not return a session_id.');
+    }
+
+    const builderUrl =
+      'https://builder.sgbh.org/generate.html?session=' +
+      encodeURIComponent(sessionId);
+
+    const html = HtmlService
+      .createHtmlOutput(
+        '<div style="font-family:Arial,sans-serif;padding:18px;">' +
+          '<h3>Djungo Builder</h3>' +
+          '<p>Il foglio <strong>' +
+          escapeDjungoHtml(result.sheetName) +
+          '</strong> è stato importato correttamente.</p>' +
+          '<p><a href="' +
+          builderUrl +
+          '" target="_blank" style="' +
+          'display:inline-block;padding:10px 14px;' +
+          'background:#111;color:#fff;text-decoration:none;' +
+          'border-radius:6px;font-weight:bold;">' +
+          'Apri Djungo Builder' +
+          '</a></p>' +
+          '<p style="color:#666;font-size:12px;">' +
+          'Sessione: ' +
+          escapeDjungoHtml(sessionId) +
+          '</p>' +
+        '</div>'
+      )
+      .setWidth(420)
+      .setHeight(220);
+
+    SpreadsheetApp.getUi().showModalDialog(
+      html,
+      'Djungo Builder'
+    );
+
+  } catch (error) {
+    SpreadsheetApp.getUi().alert(
+      'Djungo Builder — ERRORE',
+      String(error),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
+}
+
+
+function escapeDjungoHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
