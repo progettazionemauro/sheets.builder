@@ -20,7 +20,7 @@ function onOpen() {
     .createMenu('Djungo Builder')
     .addItem('Mostra informazioni foglio', 'showDjungoSheetInfo')
     .addSeparator()
-    .addItem('Crea app dal foglio corrente', 'openDjungoBuilder')
+    .addItem('Crea app dal foglio corrente', 'createDjungoAppFromCurrentSheet')
     .addSeparator()
     .addItem('TEST — Esporta XLSX', 'testDjungoXlsxExport')
     .addItem('TEST — Esporta HTML ZIP', 'testDjungoHtmlExport')
