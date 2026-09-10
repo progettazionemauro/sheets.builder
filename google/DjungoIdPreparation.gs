@@ -4,9 +4,26 @@
  * Nessuna modifica al foglio.
  */
 
-function djungoAnalyzeCurrentSheetIds() {
+function djungoAnalyzeCurrentSheetIds(targetSheetId) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = spreadsheet.getActiveSheet();
+
+  let sheet;
+
+  if (targetSheetId !== undefined && targetSheetId !== null) {
+    const numericSheetId = Number(targetSheetId);
+
+    sheet = spreadsheet.getSheets().find(
+      candidate => candidate.getSheetId() === numericSheetId
+    );
+
+    if (!sheet) {
+      throw new Error(
+        'Foglio Djungo non trovato. sheetId=' + targetSheetId
+      );
+    }
+  } else {
+    sheet = spreadsheet.getActiveSheet();
+  }
 
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
@@ -186,7 +203,7 @@ function djungoValidateIdPreparationSnapshot(snapshot) {
     throw new Error('Anteprima ID non valida.');
   }
 
-  const current = djungoAnalyzeCurrentSheetIds();
+  const current = djungoAnalyzeCurrentSheetIds(snapshot.sheetId);
 
   if (
     String(current.spreadsheetId) !== String(snapshot.spreadsheetId) ||
@@ -230,18 +247,18 @@ function djungoValidateIdPreparationSnapshot(snapshot) {
  * Non modifica il foglio.
  */
 function testDjungoIdPreparationSnapshot() {
-  const snapshot = djungoAnalyzeCurrentSheetIds();
+  const snapshot = djungoAnalyzeCurrentSheetIds(784597021);
   const result = djungoValidateIdPreparationSnapshot(snapshot);
 
   Logger.log(JSON.stringify(result, null, 2));
 
-  SpreadsheetApp.getUi().alert(
-    'Djungo — Verifica anteprima',
-    'Anteprima valida.\n' +
-    'Modifiche proposte: ' + result.proposedChanges + '\n' +
-    'Nessuna modifica effettuata.',
-    SpreadsheetApp.getUi().ButtonSet.OK
+  Logger.log(
+    'Anteprima valida. Modifiche proposte: ' +
+    result.proposedChanges +
+    '. Nessuna modifica effettuata.'
   );
+
+  return result;
 }
 
 function testDjungoIdPreparationSnapshotLog() {
@@ -252,6 +269,18 @@ function testDjungoIdPreparationSnapshotLog() {
 
 function djungoCreateSpreadsheetBackup() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+const targetSheetId = Number(snapshot.sheetId);
+
+const sheet = spreadsheet.getSheets().find(
+  candidate => candidate.getSheetId() === targetSheetId
+);
+
+if (!sheet) {
+  throw new Error(
+    'Foglio target non trovato. sheetId=' + snapshot.sheetId
+  );
+}
   const file = DriveApp.getFileById(spreadsheet.getId());
 
   const timestamp = Utilities.formatDate(
@@ -361,4 +390,204 @@ function testDjungoSheetSnapshot() {
   const result = djungoValidateSheetSnapshot(snapshot);
 
   Logger.log(JSON.stringify(result, null, 2));
+}
+
+function djungoApplyStaticIds(snapshot) {
+  if (!snapshot) {
+    throw new Error('Snapshot mancante.');
+  }
+
+  const validation = djungoValidateIdPreparationSnapshot(snapshot);
+
+  if (!validation.ok) {
+    throw new Error('Snapshot non valido.');
+  }
+
+  const report = djungoAnalyzeCurrentSheetIds(snapshot.sheetId);
+
+  if (report.status !== 'formula_based') {
+    throw new Error(
+      'La migrazione richiede uno stato formula_based. Stato attuale: ' +
+      report.status
+    );
+  }
+
+  if (
+    report.missingRows.length ||
+    report.invalidRows.length ||
+    report.duplicateIds.length
+  ) {
+    throw new Error(
+      'Sono presenti anomalie negli ID. Migrazione interrotta.'
+    );
+  }
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (String(spreadsheet.getId()) !== String(snapshot.spreadsheetId)) {
+    throw new Error(
+      'Lo Spreadsheet corrente non corrisponde allo snapshot.'
+    );
+  }
+
+  const targetSheetId = Number(snapshot.sheetId);
+
+  const sheet = spreadsheet.getSheets().find(
+    candidate => candidate.getSheetId() === targetSheetId
+  );
+
+  if (!sheet) {
+    throw new Error(
+      'Foglio target non trovato. sheetId=' + snapshot.sheetId
+    );
+  }
+
+  const changes = report.proposedChanges || [];
+
+  if (!changes.length) {
+    throw new Error(
+      'Nessun ID a formula da convertire.'
+    );
+  }
+
+  /*
+   * PRECHECK
+   * Prima di effettuare qualsiasi scrittura verifichiamo
+   * nuovamente tutte le celle interessate.
+   */
+  changes.forEach(change => {
+    const cell = sheet.getRange(change.row, change.column);
+
+    const currentFormula = cell.getFormula();
+    const currentValue = cell.getValue();
+
+    if (currentFormula !== change.formula) {
+      throw new Error(
+        'Formula ID cambiata alla riga ' + change.row +
+        '. Migrazione interrotta.'
+      );
+    }
+
+    if (Number(currentValue) !== Number(change.currentValue)) {
+      throw new Error(
+        'Valore ID cambiato alla riga ' + change.row +
+        '. Migrazione interrotta.'
+      );
+    }
+  });
+
+  /*
+   * SCRITTURA
+   * Soltanto dopo che TUTTE le celle hanno superato
+   * il precheck convertiamo formula -> valore statico.
+   */
+  changes.forEach(change => {
+    sheet
+      .getRange(change.row, change.column)
+      .setValue(change.proposedValue);
+  });
+
+  SpreadsheetApp.flush();
+
+  /*
+   * POSTCHECK
+   * Analizziamo esplicitamente lo stesso foglio.
+   */
+  const after = djungoAnalyzeCurrentSheetIds(snapshot.sheetId);
+
+  if (after.status !== 'valid') {
+    throw new Error(
+      'Verifica finale fallita. Stato dopo migrazione: ' +
+      after.status
+    );
+  }
+
+  if (after.formulaRows.length !== 0) {
+    throw new Error(
+      'Verifica finale fallita: risultano ancora ID a formula.'
+    );
+  }
+
+  return {
+    ok: true,
+    converted: changes.length,
+    spreadsheetId: spreadsheet.getId(),
+    sheetId: sheet.getSheetId(),
+    sheetName: sheet.getName(),
+    statusAfter: after.status,
+    formulaRowsAfter: after.formulaRows.length
+  };
+}
+
+function testDjungoApplyStaticIds() {
+  const targetSheetId = 784597021; // fixture temporanea SWOT_INPUT
+
+  const snapshot = djungoAnalyzeCurrentSheetIds(targetSheetId);
+  const validation = djungoValidateIdPreparationSnapshot(snapshot);
+
+  const result = {
+    ok: validation.ok,
+    mode: 'DRY_RUN',
+    spreadsheetId: snapshot.spreadsheetId,
+    sheetId: snapshot.sheetId,
+    sheetName: snapshot.sheetName,
+    status: snapshot.status,
+    dataRows: snapshot.dataRows,
+    formulaIds: snapshot.formulaRows.length,
+    staticIds: snapshot.staticRows.length,
+    missingIds: snapshot.missingRows.length,
+    invalidIds: snapshot.invalidRows.length,
+    duplicateIds: snapshot.duplicateIds.length,
+    proposedChanges: snapshot.proposedChanges.length
+  };
+
+  Logger.log(JSON.stringify(result, null, 2));
+  Logger.log('DRY RUN OK — nessuna modifica effettuata.');
+
+  return result;
+}
+
+function testDjungoSheetResolution() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  const uiActiveSheet = ss.getActiveSheet();
+
+  const targetSheetId = 784597021;
+
+  const targetSheet = ss.getSheets().find(
+    sheet => sheet.getSheetId() === targetSheetId
+  );
+
+  Logger.log(JSON.stringify({
+    spreadsheetId: ss.getId(),
+
+    activeSheet: {
+      name: uiActiveSheet.getName(),
+      id: uiActiveSheet.getSheetId()
+    },
+
+    targetSheet: targetSheet ? {
+      name: targetSheet.getName(),
+      id: targetSheet.getSheetId()
+    } : null
+  }, null, 2));
+}
+function testDjungoAnalyzeBySheetId() {
+  const targetSheetId = 784597021;
+
+  const report = djungoAnalyzeCurrentSheetIds(targetSheetId);
+
+  Logger.log(JSON.stringify({
+    status: report.status,
+    spreadsheetId: report.spreadsheetId,
+    sheetId: report.sheetId,
+    sheetName: report.sheetName,
+    dataRows: report.dataRows,
+    formulaRows: report.formulaRows,
+    staticRows: report.staticRows,
+    missingRows: report.missingRows,
+    invalidRows: report.invalidRows,
+    duplicateIds: report.duplicateIds,
+    proposedChanges: report.proposedChanges.length
+  }, null, 2));
 }
