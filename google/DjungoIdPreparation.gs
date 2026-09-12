@@ -168,6 +168,11 @@ function djungoAnalyzeCurrentSheetIds(targetSheetId) {
   };
 }
 
+function testDjungoIdPreparationSnapshotLog() {
+  const snapshot = djungoAnalyzeCurrentSheetIds();
+  const result = djungoValidateIdPreparationSnapshot(snapshot);
+  Logger.log(JSON.stringify(result, null, 2));
+}
 
 /**
  * Test manuale: mostra il rapporto senza modificare il foglio.
@@ -242,45 +247,10 @@ function djungoValidateIdPreparationSnapshot(snapshot) {
 }
 
 
-/**
- * Test B0.3 — analisi e verifica immediata.
- * Non modifica il foglio.
- */
-function testDjungoIdPreparationSnapshot() {
-  const snapshot = djungoAnalyzeCurrentSheetIds(784597021);
-  const result = djungoValidateIdPreparationSnapshot(snapshot);
 
-  Logger.log(JSON.stringify(result, null, 2));
-
-  Logger.log(
-    'Anteprima valida. Modifiche proposte: ' +
-    result.proposedChanges +
-    '. Nessuna modifica effettuata.'
-  );
-
-  return result;
-}
-
-function testDjungoIdPreparationSnapshotLog() {
-  const snapshot = djungoAnalyzeCurrentSheetIds();
-  const result = djungoValidateIdPreparationSnapshot(snapshot);
-  Logger.log(JSON.stringify(result, null, 2));
-}
 
 function djungoCreateSpreadsheetBackup() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-
-const targetSheetId = Number(snapshot.sheetId);
-
-const sheet = spreadsheet.getSheets().find(
-  candidate => candidate.getSheetId() === targetSheetId
-);
-
-if (!sheet) {
-  throw new Error(
-    'Foglio target non trovato. sheetId=' + snapshot.sheetId
-  );
-}
   const file = DriveApp.getFileById(spreadsheet.getId());
 
   const timestamp = Utilities.formatDate(
@@ -320,9 +290,26 @@ function testDjungoCreateSpreadsheetBackup() {
  * B0.3 — Snapshot completo del foglio.
  * Legge valori e formule senza effettuare scritture.
  */
-function djungoCaptureSheetSnapshot() {
+function djungoCaptureSheetSnapshot(targetSheetId) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = spreadsheet.getActiveSheet();
+
+  let sheet;
+
+  if (targetSheetId !== undefined && targetSheetId !== null) {
+    const numericSheetId = Number(targetSheetId);
+
+    sheet = spreadsheet.getSheets().find(
+      candidate => candidate.getSheetId() === numericSheetId
+    );
+
+    if (!sheet) {
+      throw new Error(
+        'Foglio Djungo non trovato. sheetId=' + targetSheetId
+      );
+    }
+  } else {
+    sheet = spreadsheet.getActiveSheet();
+  }
 
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
@@ -353,7 +340,7 @@ function djungoValidateSheetSnapshot(snapshot) {
     throw new Error('Snapshot del foglio non valido.');
   }
 
-  const current = djungoCaptureSheetSnapshot();
+  const current = djungoCaptureSheetSnapshot(snapshot.sheetId);
 
   const fields = [
     'spreadsheetId',
@@ -517,77 +504,4 @@ function djungoApplyStaticIds(snapshot) {
     statusAfter: after.status,
     formulaRowsAfter: after.formulaRows.length
   };
-}
-
-function testDjungoApplyStaticIds() {
-  const targetSheetId = 784597021; // fixture temporanea SWOT_INPUT
-
-  const snapshot = djungoAnalyzeCurrentSheetIds(targetSheetId);
-  const validation = djungoValidateIdPreparationSnapshot(snapshot);
-
-  const result = {
-    ok: validation.ok,
-    mode: 'DRY_RUN',
-    spreadsheetId: snapshot.spreadsheetId,
-    sheetId: snapshot.sheetId,
-    sheetName: snapshot.sheetName,
-    status: snapshot.status,
-    dataRows: snapshot.dataRows,
-    formulaIds: snapshot.formulaRows.length,
-    staticIds: snapshot.staticRows.length,
-    missingIds: snapshot.missingRows.length,
-    invalidIds: snapshot.invalidRows.length,
-    duplicateIds: snapshot.duplicateIds.length,
-    proposedChanges: snapshot.proposedChanges.length
-  };
-
-  Logger.log(JSON.stringify(result, null, 2));
-  Logger.log('DRY RUN OK — nessuna modifica effettuata.');
-
-  return result;
-}
-
-function testDjungoSheetResolution() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  const uiActiveSheet = ss.getActiveSheet();
-
-  const targetSheetId = 784597021;
-
-  const targetSheet = ss.getSheets().find(
-    sheet => sheet.getSheetId() === targetSheetId
-  );
-
-  Logger.log(JSON.stringify({
-    spreadsheetId: ss.getId(),
-
-    activeSheet: {
-      name: uiActiveSheet.getName(),
-      id: uiActiveSheet.getSheetId()
-    },
-
-    targetSheet: targetSheet ? {
-      name: targetSheet.getName(),
-      id: targetSheet.getSheetId()
-    } : null
-  }, null, 2));
-}
-function testDjungoAnalyzeBySheetId() {
-  const targetSheetId = 784597021;
-
-  const report = djungoAnalyzeCurrentSheetIds(targetSheetId);
-
-  Logger.log(JSON.stringify({
-    status: report.status,
-    spreadsheetId: report.spreadsheetId,
-    sheetId: report.sheetId,
-    sheetName: report.sheetName,
-    dataRows: report.dataRows,
-    formulaRows: report.formulaRows,
-    staticRows: report.staticRows,
-    missingRows: report.missingRows,
-    invalidRows: report.invalidRows,
-    duplicateIds: report.duplicateIds,
-    proposedChanges: report.proposedChanges.length
-  }, null, 2));
 }
