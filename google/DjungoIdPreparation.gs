@@ -50,16 +50,49 @@ function djungoAnalyzeCurrentSheetIds(targetSheetId) {
     if (name === 'id') idColumns.push(index);
   });
 
-  if (idColumns.length !== 1) {
-    return {
-      status: idColumns.length === 0 ? 'missing' : 'invalid',
-      reason: idColumns.length === 0 ? 'missing_id_column' : 'multiple_id_columns',
-      spreadsheetId: spreadsheet.getId(),
-      sheetId: sheet.getSheetId(),
-      sheetName: sheet.getName(),
-      idColumns: idColumns.map(index => index + 1)
-    };
+ if (idColumns.length !== 1) {
+  const result = {
+    status: idColumns.length === 0 ? 'missing' : 'invalid',
+    reason: idColumns.length === 0 ? 'missing_id_column' : 'multiple_id_columns',
+    spreadsheetId: spreadsheet.getId(),
+    spreadsheetName: spreadsheet.getName(),
+    sheetId: sheet.getSheetId(),
+    sheetName: sheet.getName(),
+    idColumns: idColumns.map(index => index + 1)
+  };
+
+  if (idColumns.length === 0) {
+    const values = sheet.getRange(1, 1, lastRow, lastColumn).getValues();
+    const occupiedRows = [];
+
+    for (let index = 1; index < values.length; index++) {
+      const occupied = dataColumns.some(col => {
+        const value = values[index][col];
+        return value !== null &&
+          value !== '' &&
+          String(value).trim() !== '';
+      });
+
+      if (occupied) {
+        occupiedRows.push(index + 1);
+      }
+    }
+
+   const proposedChanges = occupiedRows.map((rowNumber, index) => ({
+    row: rowNumber,
+  proposedId: index + 1
+  }));
+
+  result.dataRows = occupiedRows.length;
+  result.occupiedRows = occupiedRows;
+  result.proposedAction = 'create_static_id_column';
+  result.proposedIdColumn = 1;
+  result.proposedIdHeader = 'ID';
+  result.proposedChanges = proposedChanges;
   }
+
+  return result;
+}
 
   const idIndex = idColumns[0];
   const values = sheet.getRange(1, 1, lastRow, lastColumn).getValues();
@@ -132,6 +165,20 @@ function djungoAnalyzeCurrentSheetIds(targetSheetId) {
   const duplicateIds = Object.keys(duplicateMap).map(Number)
     .sort((a, b) => a - b);
 
+  const validIds = Object.keys(seen)
+  .map(Number)
+  .sort((a, b) => a - b);
+
+const maxExistingId = validIds.length
+  ? validIds[validIds.length - 1]
+  : 0;
+
+const proposedMissingIdChanges = missingRows.map(
+  (rowNumber, index) => ({
+    row: rowNumber,
+    proposedId: maxExistingId + index + 1
+  })
+);
   let status = 'valid';
 
   if (missingRows.length || invalidRows.length || duplicateIds.length) {
@@ -164,7 +211,9 @@ function djungoAnalyzeCurrentSheetIds(targetSheetId) {
     duplicateRows: duplicateMap,
     formulaRows: formulaRows,
     staticRows: staticRows,
-    proposedChanges: proposedChanges
+    proposedChanges: proposedChanges,
+    maxExistingId: maxExistingId,
+proposedMissingIdChanges: proposedMissingIdChanges
   };
 }
 
@@ -503,5 +552,294 @@ function djungoApplyStaticIds(snapshot) {
     sheetName: sheet.getName(),
     statusAfter: after.status,
     formulaRowsAfter: after.formulaRows.length
+  };
+}
+
+
+/**
+ * B0.5 — Crea una colonna ID statica quando il foglio ne è privo.
+ *
+ * Richiede:
+ * - piano ID precedentemente analizzato;
+ * - snapshot completo precedentemente acquisito;
+ * - foglio ancora invariato.
+ *
+ * Inserisce ID come prima colonna e assegna valori statici
+ * esclusivamente alle righe occupate individuate dal piano.
+ */
+function djungoApplyMissingIdColumn(idPlan, sheetSnapshot) {
+  if (!idPlan || !sheetSnapshot) {
+    throw new Error('Piano ID o snapshot mancanti.');
+  }
+
+  if (
+    idPlan.status !== 'missing' ||
+    idPlan.reason !== 'missing_id_column'
+  ) {
+    throw new Error(
+      'Migrazione non consentita: stato ID non compatibile.'
+    );
+  }
+
+  if (
+    idPlan.spreadsheetId !== sheetSnapshot.spreadsheetId ||
+    Number(idPlan.sheetId) !== Number(sheetSnapshot.sheetId)
+  ) {
+    throw new Error(
+      'Piano ID e snapshot appartengono a fogli differenti.'
+    );
+  }
+
+  // Il foglio deve essere ancora identico allo snapshot.
+  djungoValidateSheetSnapshot(sheetSnapshot);
+
+  // Anche il piano ID deve essere ancora identico.
+  const currentPlan = djungoAnalyzeCurrentSheetIds(idPlan.sheetId);
+
+  if (JSON.stringify(currentPlan) !== JSON.stringify(idPlan)) {
+    throw new Error(
+      'Il piano ID è cambiato prima della migrazione.'
+    );
+  }
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (spreadsheet.getId() !== idPlan.spreadsheetId) {
+    throw new Error('Spreadsheet diverso da quello analizzato.');
+  }
+
+  const sheet = spreadsheet.getSheets().find(
+    candidate => candidate.getSheetId() === Number(idPlan.sheetId)
+  );
+
+  if (!sheet) {
+    throw new Error(
+      'Foglio Djungo non trovato. sheetId=' + idPlan.sheetId
+    );
+  }
+
+  const changes = idPlan.proposedChanges || [];
+
+  if (!changes.length) {
+    throw new Error('Nessun ID da creare.');
+  }
+
+if (
+  idPlan.proposedIdColumn !== 1 ||
+  idPlan.proposedIdHeader !== 'ID'
+) {
+  throw new Error(
+    'Piano ID non valido: attesa creazione della colonna ID in posizione 1.'
+  );
+}
+
+changes.forEach((change, index) => {
+  if (
+    !Number.isSafeInteger(change.row) ||
+    change.row < 2 ||
+    change.row > sheetSnapshot.lastRow ||
+    change.proposedId !== index + 1
+  ) {
+    throw new Error(
+      'Proposta ID non valida alla posizione ' + index + '.'
+    );
+  }
+});
+
+  // Da questo punto iniziano le scritture.
+  sheet.insertColumnBefore(1);
+  sheet.getRange(1, 1).setValue(idPlan.proposedIdHeader);
+
+  /*
+ * Costruiamo l'intera colonna ID in memoria.
+ * Le righe non occupate rimangono vuote.
+ */
+const idValues = Array.from(
+  { length: sheetSnapshot.lastRow - 1 },
+  () => ['']
+);
+
+changes.forEach(change => {
+  idValues[change.row - 2][0] = change.proposedId;
+});
+
+/*
+ * Una sola scrittura batch.
+ * Riga 1 = header ID
+ * Righe 2:lastRow = ID statici o celle vuote.
+ */
+sheet
+  .getRange(2, 1, idValues.length, 1)
+  .setValues(idValues);
+
+  SpreadsheetApp.flush();
+
+  // Verifica finale tramite l'analizzatore generale.
+  const after = djungoAnalyzeCurrentSheetIds(idPlan.sheetId);
+
+  if (
+    after.status !== 'valid' ||
+    after.missingRows.length ||
+    after.invalidRows.length ||
+    after.duplicateIds.length ||
+    after.formulaRows.length
+  ) {
+    throw new Error(
+      'Verifica post-migrazione ID fallita.'
+    );
+  }
+
+  return {
+    ok: true,
+    spreadsheetId: after.spreadsheetId,
+    sheetId: after.sheetId,
+    sheetName: after.sheetName,
+    createdIdColumn: after.idColumn,
+    assignedIds: changes.length,
+    statusAfter: after.status,
+    formulaRowsAfter: after.formulaRows.length
+  };
+}
+
+
+
+function djungoApplyMissingIds(idPlan, sheetSnapshot) {
+  if (!idPlan || !sheetSnapshot) {
+    throw new Error('Piano ID o snapshot mancanti.');
+  }
+
+  if (
+    idPlan.status !== 'invalid' ||
+    !idPlan.missingRows ||
+    !idPlan.missingRows.length
+  ) {
+    throw new Error(
+      'Migrazione non consentita: nessun ID mancante da assegnare.'
+    );
+  }
+
+  // Non ripariamo più categorie di errore contemporaneamente.
+  if (
+    (idPlan.invalidRows || []).length ||
+    (idPlan.duplicateIds || []).length ||
+    (idPlan.formulaRows || []).length
+  ) {
+    throw new Error(
+      'Migrazione non consentita: sono presenti anomalie ID aggiuntive.'
+    );
+  }
+
+  if (
+    idPlan.spreadsheetId !== sheetSnapshot.spreadsheetId ||
+    Number(idPlan.sheetId) !== Number(sheetSnapshot.sheetId)
+  ) {
+    throw new Error(
+      'Piano ID e snapshot appartengono a fogli differenti.'
+    );
+  }
+
+  djungoValidateSheetSnapshot(sheetSnapshot);
+
+  const currentPlan = djungoAnalyzeCurrentSheetIds(idPlan.sheetId);
+
+  if (JSON.stringify(currentPlan) !== JSON.stringify(idPlan)) {
+    throw new Error(
+      'Il piano ID è cambiato prima della migrazione.'
+    );
+  }
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (spreadsheet.getId() !== idPlan.spreadsheetId) {
+    throw new Error(
+      'Spreadsheet diverso da quello analizzato.'
+    );
+  }
+
+  const sheet = spreadsheet.getSheets().find(
+    candidate => candidate.getSheetId() === Number(idPlan.sheetId)
+  );
+
+  if (!sheet) {
+    throw new Error(
+      'Foglio Djungo non trovato. sheetId=' + idPlan.sheetId
+    );
+  }
+
+  const changes = idPlan.proposedMissingIdChanges || [];
+
+  if (!changes.length) {
+    throw new Error(
+      'Nessuna proposta di ID mancante.'
+    );
+  }
+
+  // Ultimi controlli prima di qualsiasi scrittura.
+  changes.forEach((change, index) => {
+    const expectedId =
+      idPlan.maxExistingId + index + 1;
+
+    if (
+      !Number.isSafeInteger(change.row) ||
+      change.row < 2 ||
+      change.row > sheetSnapshot.lastRow ||
+      change.proposedId !== expectedId
+    ) {
+      throw new Error(
+        'Proposta ID non valida alla posizione ' + index + '.'
+      );
+    }
+
+    const currentValue = sheet
+      .getRange(change.row, idPlan.idColumn)
+      .getValue();
+
+    if (
+      currentValue !== null &&
+      currentValue !== '' &&
+      String(currentValue).trim() !== ''
+    ) {
+      throw new Error(
+        'La cella ID della riga ' +
+        change.row +
+        ' non è più vuota.'
+      );
+    }
+  });
+
+  // Da questo punto iniziano le scritture.
+  changes.forEach(change => {
+    sheet
+      .getRange(change.row, idPlan.idColumn)
+      .setValue(change.proposedId);
+  });
+
+  SpreadsheetApp.flush();
+
+  // Verifica indipendente dello stato risultante.
+  const after =
+    djungoAnalyzeCurrentSheetIds(idPlan.sheetId);
+
+  if (
+    after.status !== 'valid' ||
+    after.missingRows.length ||
+    after.invalidRows.length ||
+    after.duplicateIds.length ||
+    after.formulaRows.length
+  ) {
+    throw new Error(
+      'Verifica post-migrazione degli ID mancanti fallita.'
+    );
+  }
+
+  return {
+    ok: true,
+    spreadsheetId: after.spreadsheetId,
+    sheetId: after.sheetId,
+    sheetName: after.sheetName,
+    assignedIds: changes.length,
+    statusAfter: after.status,
+    maxExistingIdBefore: idPlan.maxExistingId,
+    maxExistingIdAfter: after.maxExistingId
   };
 }
