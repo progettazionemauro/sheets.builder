@@ -336,17 +336,48 @@ def call_apps_script_proxy(
     if mode not in ALL_PROXY_MODES:
         raise ValueError(f"Invalid mode: {mode}")
 
-    config = get_app_config(slug)
+    safe_slug = slugify_app_name(slug)
+
+    # Routing operativo:
+    # appSlug -> Web App URL + API key
+    config = get_app_config(safe_slug)
+
+    # Routing persistente B1:
+    # appSlug -> spreadsheetId + sheetId + schema
+    persistent_registry = load_persistent_apps()
+    persistent_config = persistent_registry.get("apps", {}).get(safe_slug)
 
     outbound = {
-    "mode": mode,
-    "cb": "djungoProxy",
-}
+        "mode": mode,
+        "cb": "djungoProxy",
+    }
+
+    # Parametri tecnici controllati esclusivamente dal server.
+    reserved_params = {
+        "mode",
+        "apiKey",
+        "webApp",
+        "cb",
+        "_",
+        "appSlug",
+        "spreadsheetId",
+        "sheetId",
+    }
 
     for key, value in params.items():
-        if key in {"mode", "apiKey", "webApp", "cb", "_"}:
+        if key in reserved_params:
             continue
         outbound[key] = value
+
+    # Se l'app possiede la configurazione persistente B1,
+    # Flask aggiunge il routing tecnico verso il Sheet.
+    #
+    # Le app precedenti, non ancora migrate a B1/B2,
+    # continuano invece a usare il comportamento esistente.
+    if persistent_config:
+        outbound["appSlug"] = safe_slug
+        outbound["spreadsheetId"] = persistent_config["spreadsheetId"]
+        outbound["sheetId"] = str(persistent_config["sheetId"])
 
     if mode in PROTECTED_MODES:
         outbound["apiKey"] = config["api_key"]
