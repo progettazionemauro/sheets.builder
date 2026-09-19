@@ -6,21 +6,35 @@ generate da fogli dello stesso Spreadsheet.
 
 ## Identità
 - appSlug: identificatore dell'app nel Builder.
-- spreadsheetId + sheetId: identità tecnica del foglio.
-- sheetName: nome descrittivo, non identificatore primario.
+- spreadsheetId + sheetId: identità tecnica stabile del foglio.
+- sheetName: nome descrittivo e modificabile, non identificatore primario.
 
 ## Separazione
 - Motore CRUD comune.
-- Configurazione specifica per app.
-- Schema e stili acquisiti dal parser del Builder.
+- Configurazione specifica per app/Sheet.
+- Schema acquisito dal parser del Builder.
+- Routing Flask separato dalla configurazione persistente.
+
+## Registri
+- data/apps_registry.json:
+  routing appSlug -> Web App URL + API key.
+- data/persistent_apps.json:
+  configurazione appSlug -> Spreadsheet + Sheet + schema.
+
+Più app dello stesso Spreadsheet possono condividere lo stesso
+backend Apps Script pur mantenendo sheetId e schema distinti.
 
 ## Compatibilità
-Il generatore legacy generate_gas_backend() resta invariato
-durante il primo prototipo.
+Il generatore GAS attuale generate_gas_backend() resta invariato
+durante il primo prototipo Level B.
 
-## Da definire
-- Formato completo della configurazione.
-- Rappresentazione di validazioni e formule.
-- Registrazione e aggiornamento delle app.
-- Routing dal proxy Flask.
-- Test con volcano-db e il secondo foglio.
+## Stato B1
+Definito il contratto minimo della configurazione:
+- configVersion
+- appSlug
+- spreadsheetId
+- sheetId
+- sheetName
+- schema
+
+La configurazione viene derivata dal builder_state approvato.

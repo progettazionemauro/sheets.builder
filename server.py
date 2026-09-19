@@ -28,6 +28,7 @@ DOCS_DIR = ROOT / "docs"
 WORKDIR = ROOT / "workdir" / "flask_sessions"
 DATA_DIR = ROOT / "data"
 APPS_REGISTRY_PATH = DATA_DIR / "apps_registry.json"
+PERSISTENT_APPS_PATH = DATA_DIR / "persistent_apps.json"
 
 # =========================================================
 # APPS CONFIG (slug -> hidden backend config)
@@ -156,6 +157,100 @@ def builder_state_to_runtime_data(
     }
 
     return project, fields_schema
+
+
+def load_persistent_apps() -> Dict[str, Any]:
+    if not PERSISTENT_APPS_PATH.exists():
+        return {
+            "configVersion": 1,
+            "apps": {},
+        }
+
+    raw = PERSISTENT_APPS_PATH.read_text(encoding="utf-8").strip()
+
+    if not raw:
+        return {
+            "configVersion": 1,
+            "apps": {},
+        }
+
+    registry = json.loads(raw)
+
+    if registry.get("configVersion") != 1:
+        raise ValueError("Unsupported persistent apps configVersion")
+
+    if not isinstance(registry.get("apps"), dict):
+        raise ValueError("Invalid persistent apps registry")
+
+    return registry
+
+
+def save_persistent_apps(registry: Dict[str, Any]) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    write_json(PERSISTENT_APPS_PATH, registry)
+
+
+def register_persistent_app(
+    app_config: Dict[str, Any],
+) -> Dict[str, Any]:
+    app_slug = slugify_app_name(app_config.get("appSlug"))
+
+    if not app_slug:
+        raise ValueError("Missing appSlug")
+
+    registry = load_persistent_apps()
+
+    stored_config = dict(app_config)
+    stored_config["appSlug"] = app_slug
+
+    registry["apps"][app_slug] = stored_config
+    save_persistent_apps(registry)
+
+    return stored_config
+
+
+def build_persistent_app_config(
+    project_config: Dict[str, Any],
+    fields_schema: Dict[str, Any],
+) -> Dict[str, Any]:
+    source = dict(project_config.get("source", {}) or {})
+
+    if source.get("type") != "google_sheet":
+        raise ValueError(
+            "Persistent backend requires a Google Sheet source"
+        )
+
+    spreadsheet_id = str(source.get("spreadsheetId") or "").strip()
+    sheet_id = str(source.get("sheetId") or "").strip()
+    sheet_name = str(source.get("sheetName") or "").strip()
+
+    if not spreadsheet_id:
+        raise ValueError("Missing source spreadsheetId")
+
+    if not sheet_id:
+        raise ValueError("Missing source sheetId")
+
+    if not sheet_name:
+        raise ValueError("Missing source sheetName")
+
+    try:
+        sheet_id_value = int(sheet_id)
+    except ValueError as exc:
+        raise ValueError("Invalid source sheetId") from exc
+
+    app_slug = slugify_app_name(
+        project_config.get("projectSlug")
+        or project_config.get("projectName")
+    )
+
+    return {
+        "configVersion": 1,
+        "appSlug": app_slug,
+        "spreadsheetId": spreadsheet_id,
+        "sheetId": sheet_id_value,
+        "sheetName": sheet_name,
+        "schema": fields_schema,
+    }
 
 
 def create_session_dir() -> Path:
@@ -562,6 +657,26 @@ def api_generate():
         project_config, fields_schema = builder_state_to_runtime_data(
             builder_state
         )
+
+        source = dict(project_config.get("source", {}) or {})
+
+        if source.get("type") == "google_sheet":
+            persistent_app_config = build_persistent_app_config(
+                project_config,
+                fields_schema,
+            )
+
+            persistent_config_path = (
+                session_dir / "persistent" / "app_config.json"
+            )
+            write_json(
+                persistent_config_path,
+                persistent_app_config,
+            )
+
+            register_persistent_app(
+                persistent_app_config
+            )
 
         generated = generate_all(project_config, fields_schema)
 
