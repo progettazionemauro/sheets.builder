@@ -73,27 +73,6 @@ function djungoTestPersistentRead(sheetId) {
 }
 
 
-/**
- * Test manuale temporaneo B2.1.
- *
- * volcano_db:
- * sheetId = 843771997
- */
-function TEST_djungoPersistentVolcano() {
-  const result = djungoTestPersistentRead(843771997);
-
-  Logger.log(JSON.stringify(result, null, 2));
-
-  return result;
-}
-
-function TEST_djungoPersistentRS101() {
-  const result = djungoTestPersistentRead(977951306);
-
-  Logger.log(JSON.stringify(result, null, 2));
-
-  return result;
-}
 
 /**
  * B2.2 — interpreta il routing tecnico ricevuto da Flask.
@@ -149,18 +128,219 @@ function djungoPersistentRequest_(p) {
 }
 
 
-/**
- * Test B2.2 — simula esattamente il routing
- * che Flask invierà per volcano-db.
- */
-function TEST_djungoPersistentRoutingVolcano() {
-  const result = djungoPersistentRequest_({
-    appSlug: "volcano-db",
-    spreadsheetId: "1W9GWokNp6PSsPNCU35lMx2AAVeFvBqirw22ABT7_cUU",
-    sheetId: "843771997"
+
+
+/*********************************
+ * LEVEL B2.3 — STABLE RECORD ID
+ *********************************/
+
+function djungoFindRowById_(sheet, id) {
+  const targetId = Number(id);
+
+  if (!Number.isInteger(targetId) || targetId < 1) {
+    throw new Error("Invalid record ID: " + id);
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+
+  const ids = sheet
+    .getRange(2, 1, lastRow - 1, 1)
+    .getValues();
+
+  for (let i = 0; i < ids.length; i++) {
+    if (Number(ids[i][0]) === targetId) {
+      return i + 2;
+    }
+  }
+
+  return 0;
+}
+
+
+function djungoComputeNextId_(sheet) {
+  const propertyKey = "DJUNGO_LAST_ID_" + sheet.getSheetId();
+  const properties = PropertiesService.getDocumentProperties();
+
+  const storedValue = Number(properties.getProperty(propertyKey));
+
+  // Legge il massimo ID realmente presente nel foglio.
+  const lastRow = sheet.getLastRow();
+  let maxSheetId = 0;
+
+  if (lastRow >= 2) {
+    const ids = sheet
+      .getRange(2, 1, lastRow - 1, 1)
+      .getValues();
+
+    ids.forEach(function (row) {
+      const id = Number(row[0]);
+
+      if (Number.isInteger(id) && id > maxSheetId) {
+        maxSheetId = id;
+      }
+    });
+  }
+
+  /*
+   * Il contatore persistente e il foglio vengono confrontati.
+   * Questo consente anche di inizializzare B2 su fogli già esistenti.
+   */
+  const lastAssignedId = Math.max(
+    Number.isInteger(storedValue) ? storedValue : 0,
+    maxSheetId
+  );
+
+  return lastAssignedId + 1;
+}
+
+
+
+function djungoGetById_(sheet, id) {
+  const row = djungoFindRowById_(sheet, id);
+
+  if (!row) {
+    return {
+      ok: false,
+      error: "ID not found",
+      id: Number(id)
+    };
+  }
+
+  const lastCol = sheet.getLastColumn();
+
+  const headers = sheet
+    .getRange(1, 1, 1, lastCol)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || "").trim();
+    });
+
+  const values = sheet
+    .getRange(row, 1, 1, lastCol)
+    .getValues()[0];
+
+  const record = {};
+
+  headers.forEach(function (header, index) {
+    record[header] = values[index];
   });
 
-  Logger.log(JSON.stringify(result, null, 2));
+  return {
+    ok: true,
+    id: Number(id),
+    row: row,
+    record: record
+  };
+}
 
-  return result;
+
+
+function djungoInsert_(sheet, data) {
+  const lastCol = sheet.getLastColumn();
+
+  const headers = sheet
+    .getRange(1, 1, 1, lastCol)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || "").trim();
+    });
+
+  if (headers.length < 1 || headers[0].toLowerCase() !== "id") {
+    throw new Error("First column must be the stable ID column");
+  }
+
+  const id = djungoComputeNextId_(sheet);
+  const rowNumber = sheet.getLastRow() + 1;
+
+  const rowValues = [id];
+
+  for (let i = 1; i < headers.length; i++) {
+    const header = headers[i];
+
+    rowValues.push(
+      Object.prototype.hasOwnProperty.call(data, header)
+        ? data[header]
+        : ""
+    );
+  }
+
+  // Prima scriviamo realmente il record.
+  sheet
+    .getRange(rowNumber, 1, 1, rowValues.length)
+    .setValues([rowValues]);
+
+  // Solo dopo una scrittura riuscita l'ID viene considerato consumato.
+  const propertyKey = "DJUNGO_LAST_ID_" + sheet.getSheetId();
+
+  PropertiesService
+    .getDocumentProperties()
+    .setProperty(propertyKey, String(id));
+
+  return {
+    ok: true,
+    id: id,
+    insertedRow: rowNumber
+  };
+}
+
+
+function djungoDelete_(sheet, id) {
+  const row = djungoFindRowById_(sheet, id);
+
+  if (!row) {
+    return {
+      ok: false,
+      error: "ID not found",
+      id: Number(id)
+    };
+  }
+
+  sheet.deleteRow(row);
+
+  return {
+    ok: true,
+    id: Number(id),
+    deletedRow: row
+  };
+}
+
+
+function djungoUpdate_(sheet, id, data) {
+  const row = djungoFindRowById_(sheet, id);
+
+  if (!row) {
+    return {
+      ok: false,
+      error: "ID not found",
+      id: Number(id)
+    };
+  }
+
+  const lastCol = sheet.getLastColumn();
+
+  const headers = sheet
+    .getRange(1, 1, 1, lastCol)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || "").trim();
+    });
+
+  /*
+   * Colonna 1 esclusa intenzionalmente:
+   * l'ID è immutabile.
+   */
+  for (let col = 2; col <= lastCol; col++) {
+    const header = headers[col - 1];
+
+    if (Object.prototype.hasOwnProperty.call(data, header)) {
+      sheet.getRange(row, col).setValue(data[header]);
+    }
+  }
+
+  return {
+    ok: true,
+    id: Number(id),
+    updatedRow: row
+  };
 }
