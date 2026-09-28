@@ -77,8 +77,6 @@ function djungoTestPersistentRead(sheetId) {
 /**
  * B2.2 — interpreta il routing tecnico ricevuto da Flask.
  *
- * Per ora è una funzione interna/testabile:
- * non sostituisce ancora doGet().
  */
 function djungoPersistentRequest_(p) {
   p = p || {};
@@ -86,6 +84,7 @@ function djungoPersistentRequest_(p) {
   const appSlug = String(p.appSlug || "").trim();
   const spreadsheetId = String(p.spreadsheetId || "").trim();
   const sheetId = Number(p.sheetId);
+  const mode = String(p.mode || "meta").trim();
 
   if (!appSlug) {
     throw new Error("Missing appSlug");
@@ -102,9 +101,9 @@ function djungoPersistentRequest_(p) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   /*
-   * Protezione importante:
-   * il backend accetta soltanto richieste destinate
-   * allo Spreadsheet al quale questo GAS è collegato.
+   * Flask determina il routing persistente.
+   * Il GAS verifica che la richiesta sia destinata
+   * allo Spreadsheet al quale è effettivamente collegato.
    */
   if (ss.getId() !== spreadsheetId) {
     throw new Error(
@@ -117,14 +116,55 @@ function djungoPersistentRequest_(p) {
 
   const sheet = djungoGetSheetById_(sheetId);
 
-  return {
-    ok: true,
-    backendVersion: DJUNGO_BACKEND_VERSION,
-    appSlug: appSlug,
-    spreadsheetId: ss.getId(),
-    sheetId: sheet.getSheetId(),
-    sheetName: sheet.getName()
-  };
+  /*
+   * B2.4 — persistent CRUD dispatch.
+   */
+  if (mode === "meta") {
+    return {
+      ok: true,
+      backendVersion: DJUNGO_BACKEND_VERSION,
+      appSlug: appSlug,
+      spreadsheetId: ss.getId(),
+      sheetId: sheet.getSheetId(),
+      sheetName: sheet.getName()
+    };
+  }
+
+  if (mode === "getById") {
+    const id = Number(p.id);
+
+    if (!Number.isInteger(id) || id < 1) {
+      throw new Error("Missing/invalid id");
+    }
+
+    return djungoGetById_(sheet, id);
+  }
+
+  if (mode === "insert") {
+    return djungoInsert_(sheet, p);
+  }
+
+  if (mode === "update") {
+    const id = Number(p.id);
+
+    if (!Number.isInteger(id) || id < 1) {
+      throw new Error("Missing/invalid id");
+    }
+
+    return djungoUpdate_(sheet, id, p);
+  }
+
+  if (mode === "delete") {
+    const id = Number(p.id);
+
+    if (!Number.isInteger(id) || id < 1) {
+      throw new Error("Missing/invalid id");
+    }
+
+    return djungoDelete_(sheet, id);
+  }
+
+  throw new Error("Unsupported persistent mode: " + mode);
 }
 
 
@@ -250,17 +290,19 @@ function djungoInsert_(sheet, data) {
     throw new Error("First column must be the stable ID column");
   }
 
+  const normalizedData = djungoNormalizeDataKeys_(data);
+
   const id = djungoComputeNextId_(sheet);
   const rowNumber = sheet.getLastRow() + 1;
 
   const rowValues = [id];
 
   for (let i = 1; i < headers.length; i++) {
-    const header = headers[i];
+    const key = headers[i].toLowerCase();
 
     rowValues.push(
-      Object.prototype.hasOwnProperty.call(data, header)
-        ? data[header]
+      Object.prototype.hasOwnProperty.call(normalizedData, key)
+        ? normalizedData[key]
         : ""
     );
   }
@@ -282,6 +324,16 @@ function djungoInsert_(sheet, data) {
     id: id,
     insertedRow: rowNumber
   };
+}
+
+function djungoNormalizeDataKeys_(data) {
+  const normalized = {};
+
+  Object.keys(data || {}).forEach(function (key) {
+    normalized[String(key).trim().toLowerCase()] = data[key];
+  });
+
+  return normalized;
 }
 
 
@@ -326,15 +378,17 @@ function djungoUpdate_(sheet, id, data) {
       return String(value || "").trim();
     });
 
+  const normalizedData = djungoNormalizeDataKeys_(data);
+
   /*
    * Colonna 1 esclusa intenzionalmente:
    * l'ID è immutabile.
    */
   for (let col = 2; col <= lastCol; col++) {
-    const header = headers[col - 1];
+    const key = headers[col - 1].toLowerCase();
 
-    if (Object.prototype.hasOwnProperty.call(data, header)) {
-      sheet.getRange(row, col).setValue(data[header]);
+    if (Object.prototype.hasOwnProperty.call(normalizedData, key)) {
+      sheet.getRange(row, col).setValue(normalizedData[key]);
     }
   }
 
