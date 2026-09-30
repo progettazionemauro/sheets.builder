@@ -718,7 +718,7 @@ def api_generate():
             target = generated_root / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
-        
+
         # Also publish generated runtime files to the Flask static folder.
         # This makes the updated CRUD/viewer immediately visible in the browser.
         for relative_path, content in generated.items():
@@ -810,8 +810,8 @@ def run_generated_app(session_id: str, filename: str):
             "ok": False,
             "error": str(exc),
         }), 500
-        
-        
+
+
 # ---------------------------------------------------------
 # NEW PROXY ROUTE (SAFE CRUD)
 # ---------------------------------------------------------
@@ -850,10 +850,34 @@ def api_register_app():
 
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
-    
+
 @app.route("/api/apps/<slug>/<mode>", methods=["GET", "POST"])
 def api_app_proxy(slug: str, mode: str):
     try:
+        # B2.5b — serve persistent schema directly from Flask.
+        #
+        # Per le app persistenti lo schema applicativo è già
+        # registrato in persistent_apps.json: non serve chiamare GAS.
+        if mode == "schema":
+            safe_slug = slugify_app_name(slug)
+
+            persistent_registry = load_persistent_apps()
+            persistent_config = persistent_registry.get("apps", {}).get(safe_slug)
+
+            if persistent_config:
+                schema = persistent_config.get("schema")
+
+                if not isinstance(schema, dict):
+                    raise ValueError(
+                        f"Invalid persistent schema for app: {safe_slug}"
+                    )
+
+                return jsonify({
+                    "ok": True,
+                    "appSlug": safe_slug,
+                    **schema,
+                })
+
         params: Dict[str, Any] = {}
 
         if request.method == "GET":
