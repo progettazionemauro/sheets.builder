@@ -81,11 +81,17 @@ function djungoTestPersistentRead(sheetId) {
 function djungoPersistentRequest_(p) {
   p = p || {};
 
+  /*
+   * 1. PARAMETRI DI ROUTING
+   */
   const appSlug = String(p.appSlug || "").trim();
   const spreadsheetId = String(p.spreadsheetId || "").trim();
   const sheetId = Number(p.sheetId);
   const mode = String(p.mode || "meta").trim();
 
+  /*
+   * 2. VALIDAZIONE DEL ROUTING
+   */
   if (!appSlug) {
     throw new Error("Missing appSlug");
   }
@@ -98,9 +104,14 @@ function djungoPersistentRequest_(p) {
     throw new Error("Missing/invalid sheetId");
   }
 
+  /*
+   * 3. SPREADSHEET COLLEGATO AL GAS
+   */
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   /*
+   * 4. VERIFICA DELLO SPREADSHEET
+   *
    * Flask determina il routing persistente.
    * Il GAS verifica che la richiesta sia destinata
    * allo Spreadsheet al quale è effettivamente collegato.
@@ -114,10 +125,16 @@ function djungoPersistentRequest_(p) {
     );
   }
 
+  /*
+   * 5. RISOLUZIONE DEL FOGLIO TRAMITE sheetId
+   */
   const sheet = djungoGetSheetById_(sheetId);
 
   /*
-   * B2.4 — persistent CRUD dispatch.
+   * 6A. META
+   *
+   * Restituisce informazioni diagnostiche sul backend
+   * e sulla destinazione della richiesta.
    */
   if (mode === "meta") {
     return {
@@ -130,6 +147,18 @@ function djungoPersistentRequest_(p) {
     };
   }
 
+  /*
+   * 6B. VIEW
+   *
+   * Restituisce un insieme di record del foglio.
+   */
+  if (mode === "view") {
+    return djungoView_(sheet, p.limit);
+  }
+
+  /*
+   * 6C. GET BY ID
+   */
   if (mode === "getById") {
     const id = Number(p.id);
 
@@ -140,10 +169,16 @@ function djungoPersistentRequest_(p) {
     return djungoGetById_(sheet, id);
   }
 
+  /*
+   * 6D. INSERT
+   */
   if (mode === "insert") {
     return djungoInsert_(sheet, p);
   }
 
+  /*
+   * 6E. UPDATE
+   */
   if (mode === "update") {
     const id = Number(p.id);
 
@@ -154,6 +189,9 @@ function djungoPersistentRequest_(p) {
     return djungoUpdate_(sheet, id, p);
   }
 
+  /*
+   * 6F. DELETE
+   */
   if (mode === "delete") {
     const id = Number(p.id);
 
@@ -164,10 +202,62 @@ function djungoPersistentRequest_(p) {
     return djungoDelete_(sheet, id);
   }
 
+  /*
+   * 7. MODE NON SUPPORTATO
+   */
   throw new Error("Unsupported persistent mode: " + mode);
 }
 
 
+function djungoView_(sheet, limit) {
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  if (lastCol < 1) {
+    return {
+      ok: true,
+      headers: [],
+      rows: []
+    };
+  }
+
+  const headers = sheet
+    .getRange(1, 1, 1, lastCol)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value == null ? "" : value).trim();
+    });
+
+  if (lastRow < 2) {
+    return {
+      ok: true,
+      headers: headers,
+      rows: []
+    };
+  }
+
+  let requestedLimit = Number(limit);
+
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+    requestedLimit = 50;
+  }
+
+  requestedLimit = Math.min(requestedLimit, 500);
+
+  const dataRows = lastRow - 1;
+  const take = Math.min(requestedLimit, dataRows);
+  const startRow = lastRow - take + 1;
+
+  const rows = sheet
+    .getRange(startRow, 1, take, lastCol)
+    .getValues();
+
+  return {
+    ok: true,
+    headers: headers,
+    rows: rows
+  };
+}
 
 
 /*********************************
