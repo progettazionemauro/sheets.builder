@@ -29,3 +29,6 @@ Thumbs.db
 *.log
 data/apps_registry.json
 data/persistent_apps.json
+
+# Djungo persistent backend runtime configuration
+data/persistent_backend.json

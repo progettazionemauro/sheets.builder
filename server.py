@@ -29,6 +29,7 @@ WORKDIR = ROOT / "workdir" / "flask_sessions"
 DATA_DIR = ROOT / "data"
 APPS_REGISTRY_PATH = DATA_DIR / "apps_registry.json"
 PERSISTENT_APPS_PATH = DATA_DIR / "persistent_apps.json"
+PERSISTENT_BACKEND_PATH = DATA_DIR / "persistent_backend.json"
 
 # =========================================================
 # APPS CONFIG (slug -> hidden backend config)
@@ -185,6 +186,43 @@ def load_persistent_apps() -> Dict[str, Any]:
     return registry
 
 
+def load_persistent_backend_config() -> Dict[str, str]:
+    if not PERSISTENT_BACKEND_PATH.exists():
+        raise FileNotFoundError(
+            "Persistent backend configuration not found"
+        )
+
+    raw = PERSISTENT_BACKEND_PATH.read_text(encoding="utf-8").strip()
+
+    if not raw:
+        raise ValueError("Persistent backend configuration is empty")
+
+    config = json.loads(raw)
+
+    if config.get("configVersion") != 1:
+        raise ValueError(
+            "Unsupported persistent backend configVersion"
+        )
+
+    web_app_url = str(config.get("web_app_url") or "").strip()
+    api_key = str(config.get("api_key") or "").strip()
+
+    if not web_app_url:
+        raise ValueError(
+            "Persistent backend web_app_url is missing"
+        )
+
+    if not api_key:
+        raise ValueError(
+            "Persistent backend api_key is missing"
+        )
+
+    return {
+        "web_app_url": web_app_url,
+        "api_key": api_key,
+    }
+
+
 def save_persistent_apps(registry: Dict[str, Any]) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     write_json(PERSISTENT_APPS_PATH, registry)
@@ -338,14 +376,18 @@ def call_apps_script_proxy(
 
     safe_slug = slugify_app_name(slug)
 
-    # Routing operativo:
-    # appSlug -> Web App URL + API key
-    config = get_app_config(safe_slug)
-
-    # Routing persistente B1:
+    # Routing persistente:
     # appSlug -> spreadsheetId + sheetId + schema
     persistent_registry = load_persistent_apps()
     persistent_config = persistent_registry.get("apps", {}).get(safe_slug)
+
+    # Le app persistenti condividono un unico backend GAS.
+    # Le app non ancora migrate continuano a usare
+    # il routing per-app presente in apps_registry.json.
+    if persistent_config:
+        config = load_persistent_backend_config()
+    else:
+        config = get_app_config(safe_slug)
 
     outbound = {
         "mode": mode,
