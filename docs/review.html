@@ -902,12 +902,22 @@ if (restartForIdBtn) {
 
     const params = new URLSearchParams(window.location.search);
     const returnApp =
-      params.get("returnApp") ||
-      sessionStorage.getItem("DJUNGO_APP_SLUG");
+      params.get("returnApp") || "";
 
-    if (returnApp) {
+    const sourceType = builderState?.project?.source?.type;
+    const generatedApp =
+      builderState?.project?.projectSlug || "";
+
+    const targetApp =
+      returnApp ||
+      (sourceType === "google_sheet" ? generatedApp : "");
+
+    if (targetApp) {
+      sessionStorage.setItem("DJUNGO_APP_SLUG", targetApp);
+      localStorage.setItem("DJUNGO_LAST_APP", targetApp);
+
       window.location.href =
-        `index.html?app=${encodeURIComponent(returnApp)}&_=${Date.now()}`;
+        `index.html?app=${encodeURIComponent(targetApp)}&_=${Date.now()}`;
     } else {
       window.location.href = "app_ready.html";
     }
