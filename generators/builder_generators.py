@@ -1233,9 +1233,18 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     }});
   }}
 
+  function normalizeHeader(h) {{
+    return String(h ?? "").trim().toLowerCase();
+  }}
+
+  function isVisibleHeader(h) {{
+    const normalized = normalizeHeader(h);
+    return VISIBLE_HEADERS.some(v => normalizeHeader(v) === normalized);
+  }}
+
   function buildColumns(headers) {{
     return headers
-      .filter(h => VISIBLE_HEADERS.includes(h))
+      .filter(h => isVisibleHeader(h))
       .map(h => {{
         return {{
           title: LABELS[h] || h,
@@ -1274,7 +1283,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       return;
     }}
 
-    const visibleHeaders = LAST_HEADERS.filter(h => VISIBLE_HEADERS.includes(h));
+    const visibleHeaders = LAST_HEADERS.filter(h => isVisibleHeader(h));
 
     const visibleIndexes = LAST_HEADERS
       .map((h, i) => (visibleHeaders.includes(h) ? i : -1))
