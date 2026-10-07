@@ -263,32 +263,10 @@ a.button.secondary {
       Generate final app
     </button>
 
-    <a
-      id="openAppReady"
-      class="button secondary"
-      href="app_ready.html"
-      style="display:none;"
-    >
-      Continue to delivery page
-    </a>
-
     <span id="downloadStatus" class="muted"></span>
   </div>
 </div>
 
- 
-  <a
-    id="openAppReady"
-    class="button secondary"
-    href="app_ready.html"
-    style="display:none;"
-  >
-    Continue to delivery page
-  </a>
-
-  <span id="downloadStatus" class="muted"></span>
-</div>
-  </div>
 
 
 <script>
@@ -426,10 +404,6 @@ a.button.secondary {
     document.getElementById("sheetName").value = p.sheetName || "";
     document.getElementById("buildMarker").value = p.buildMarker || "";
     document.getElementById("adminPassword").value = p.adminPassword || "";
-      {{/*  const finalDownloads = document.getElementById("finalDownloads");
-      const downloadViewer = document.getElementById("downloadViewer");
-      const downloadIndex = document.getElementById("downloadIndex");
-      const downloadGas = document.getElementById("downloadGas");  */}}
   }
 
   function renderFieldsTable() {
