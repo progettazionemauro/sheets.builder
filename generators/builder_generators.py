@@ -1368,9 +1368,19 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 # PUBLIC API
 # ============================================================
 
-def generate_all(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> Dict[str, str]:
-    return {
-        "codice.gs": generate_gas_backend(project_config, fields_schema),
+def generate_all(
+    project_config: Dict[str, Any],
+    fields_schema: Dict[str, Any],
+    include_gas: bool = True,
+) -> Dict[str, str]:
+    generated = {
         "docs/index.html": generate_index_html(project_config, fields_schema),
         "docs/viewer.html": generate_viewer_html(project_config, fields_schema),
     }
+
+    if include_gas:
+        generated["codice.gs"] = generate_gas_backend(
+            project_config, fields_schema
+        )
+
+    return generated

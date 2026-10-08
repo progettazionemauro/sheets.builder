@@ -566,9 +566,14 @@ chooseNewBtn.addEventListener("click", () => {
       downloadViewer.download = "viewer.html";
       downloadViewer.classList.remove("hidden");
 
-      downloadGas.href = currentDownloads.codice_gs;
-      downloadGas.download = "codice.gs";
-      downloadGas.classList.remove("hidden");
+      if (currentDownloads.codice_gs) {
+        downloadGas.href = currentDownloads.codice_gs;
+        downloadGas.download = "codice.gs";
+        downloadGas.classList.remove("hidden");
+      } else {
+        downloadGas.removeAttribute("href");
+        downloadGas.classList.add("hidden");
+      }
 
       generatedFilesBox.classList.remove("hidden");
       deployPanel.classList.remove("hidden");

@@ -751,7 +751,11 @@ def api_generate():
                 persistent_app_config
             )
 
-        generated = generate_all(project_config, fields_schema)
+        generated = generate_all(
+            project_config,
+            fields_schema,
+            include_gas=source.get("type") != "google_sheet",
+        )
 
         generated_root = session_dir / "generated"
         generated_root.mkdir(parents=True, exist_ok=True)
@@ -774,7 +778,10 @@ def api_generate():
             "downloads": {
                 "index_html": f"/api/download/{session_id}/index.html",
                 "viewer_html": f"/api/download/{session_id}/viewer.html",
-                "codice_gs": f"/api/download/{session_id}/codice.gs",
+                "codice_gs": (
+                    f"/api/download/{session_id}/codice.gs"
+                    if "codice.gs" in generated else None
+                ),
             },
             "generated_root": str(generated_root),
         })
