@@ -879,12 +879,10 @@ if (restartForIdBtn) {
       params.get("returnApp") || "";
 
     const sourceType = builderState?.project?.source?.type;
-    const generatedApp =
-      builderState?.project?.projectSlug || "";
-
     const targetApp =
-      returnApp ||
-      (sourceType === "google_sheet" ? generatedApp : "");
+      sourceType === "google_sheet"
+        ? (data.app_slug || "")
+        : (returnApp || "");
 
     if (targetApp) {
       sessionStorage.setItem("DJUNGO_APP_SLUG", targetApp);

@@ -231,17 +231,48 @@ def save_persistent_apps(registry: Dict[str, Any]) -> None:
 def register_persistent_app(
     app_config: Dict[str, Any],
 ) -> Dict[str, Any]:
-    app_slug = slugify_app_name(app_config.get("appSlug"))
+    requested_slug = slugify_app_name(app_config.get("appSlug"))
 
-    if not app_slug:
+    if not requested_slug:
         raise ValueError("Missing appSlug")
 
+    spreadsheet_id = str(app_config.get("spreadsheetId") or "").strip()
+    sheet_id = str(app_config.get("sheetId") or "").strip()
+
+    if not spreadsheet_id or not sheet_id:
+        raise ValueError("Missing persistent sheet identity")
+
     registry = load_persistent_apps()
+    apps = registry["apps"]
+
+    matching_slugs = [
+        slug
+        for slug, config in apps.items()
+        if (
+            str(config.get("spreadsheetId") or "").strip(),
+            str(config.get("sheetId") or "").strip(),
+        ) == (spreadsheet_id, sheet_id)
+    ]
+
+    if len(matching_slugs) > 1:
+        raise ValueError(
+            "Duplicate persistent registrations for the same sheet"
+        )
+
+    if matching_slugs:
+        app_slug = matching_slugs[0]
+    else:
+        app_slug = requested_slug
+
+        if app_slug in apps:
+            raise ValueError(
+                f"App slug already belongs to another sheet: {app_slug}"
+            )
 
     stored_config = dict(app_config)
     stored_config["appSlug"] = app_slug
 
-    registry["apps"][app_slug] = stored_config
+    apps[app_slug] = stored_config
     save_persistent_apps(registry)
 
     return stored_config
@@ -733,6 +764,8 @@ def api_generate():
 
         source = dict(project_config.get("source", {}) or {})
 
+        registered_app_slug = None
+
         if source.get("type") == "google_sheet":
             persistent_app_config = build_persistent_app_config(
                 project_config,
@@ -747,9 +780,10 @@ def api_generate():
                 persistent_app_config,
             )
 
-            register_persistent_app(
+            registered_config = register_persistent_app(
                 persistent_app_config
             )
+            registered_app_slug = registered_config["appSlug"]
 
         generated = generate_all(
             project_config,
@@ -775,6 +809,7 @@ def api_generate():
         return jsonify({
             "ok": True,
             "session_id": session_id,
+            "app_slug": registered_app_slug,
             "downloads": {
                 "index_html": f"/api/download/{session_id}/index.html",
                 "viewer_html": f"/api/download/{session_id}/viewer.html",
