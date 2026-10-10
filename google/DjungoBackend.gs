@@ -209,6 +209,8 @@ function djungoPersistentRequest_(p) {
 }
 
 
+
+
 function djungoView_(sheet, limit) {
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
@@ -244,13 +246,25 @@ function djungoView_(sheet, limit) {
 
   requestedLimit = Math.min(requestedLimit, 500);
 
-  const dataRows = lastRow - 1;
-  const take = Math.min(requestedLimit, dataRows);
-  const startRow = lastRow - take + 1;
-
-  const rows = sheet
-    .getRange(startRow, 1, take, lastCol)
+  // Legge tutte le righe successive all'intestazione.
+  const allRows = sheet
+    .getRange(2, 1, lastRow - 1, lastCol)
     .getValues();
+
+  // Conserva soltanto le righe con un ID intero positivo.
+  const validRows = allRows.filter(function (row) {
+    const rawId = row[0];
+    const id = Number(rawId);
+
+    return rawId !== "" &&
+      rawId !== null &&
+      String(rawId).trim() !== "" &&
+      Number.isInteger(id) &&
+      id > 0;
+  });
+
+  // Applica il limite ai record validi, non alle righe fisiche.
+  const rows = validRows.slice(-requestedLimit);
 
   return {
     ok: true,
@@ -258,6 +272,7 @@ function djungoView_(sheet, limit) {
     rows: rows
   };
 }
+
 
 
 /*********************************
@@ -487,4 +502,19 @@ function djungoUpdate_(sheet, id, data) {
     id: Number(id),
     updatedRow: row
   };
+}
+
+
+function testB32SwotView() {
+  const sheet = djungoGetSheetById_(784597021);
+  const result = djungoView_(sheet, 50);
+
+  console.log("Scheda: " + sheet.getName());
+  console.log("Record restituiti: " + result.rows.length);
+
+  const ids = result.rows.map(function (row) {
+    return row[0];
+  });
+
+  console.log("ID trovati: " + ids.join(", "));
 }
