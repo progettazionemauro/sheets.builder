@@ -418,9 +418,30 @@ function djungoInsert_(sheet, data) {
 
   // Se tutte le righe sono occupate, espande la griglia.
   if (rowNumber > maxRows) {
-    sheet.insertRowsAfter(maxRows, 1);
-  }
+  sheet.insertRowsAfter(maxRows, 1);
 
+  if (maxRows >= 2) {
+    const sourceRange = sheet.getRange(
+      maxRows, 1, 1, lastCol
+    );
+
+    const targetRange = sheet.getRange(
+      rowNumber, 1, 1, lastCol
+    );
+
+    // Copia formule, formattazione e convalide.
+    sourceRange.copyTo(targetRange);
+
+    // Elimina i valori statici copiati, preservando le formule.
+    const formulas = targetRange.getFormulas()[0];
+
+    for (let col = 1; col <= lastCol; col++) {
+      if (formulas[col - 1] === "") {
+        targetRange.getCell(1, col).clearContent();
+      }
+    }
+  }
+}
   const targetRange = sheet.getRange(rowNumber, 1, 1, lastCol);
   const existingValues = targetRange.getValues()[0];
   const existingFormulas = targetRange.getFormulas()[0];
@@ -683,5 +704,160 @@ function testB33Validation() {
 
   } catch (error) {
     console.log("Errore riferimento convalida: " + error.message);
+  }
+}
+
+function testB34RowExpansion() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const source = ss.getSheetByName("SWOT_B33_TEST");
+
+  if (!source) {
+    throw new Error("SWOT_B33_TEST non trovato");
+  }
+
+  const testName = "SWOT_B34_EXPANSION_TEST";
+
+  if (ss.getSheetByName(testName)) {
+    throw new Error("Il foglio di test esiste già");
+  }
+
+  const sheet = source.copyTo(ss).setName(testName);
+
+  const lastRow = sheet.getMaxRows();
+  const lastCol = sheet.getLastColumn();
+
+  const original = sheet.getRange(lastRow, 1, 1, lastCol);
+
+  const formulasBefore = original.getFormulas()[0];
+  const validationsBefore = original.getDataValidations()[0];
+
+  sheet.insertRowsAfter(lastRow, 1);
+
+  const newRow = sheet.getRange(lastRow + 1, 1, 1, lastCol);
+
+  const formulasAfter = newRow.getFormulas()[0];
+  const validationsAfter = newRow.getDataValidations()[0];
+
+  console.log("=== B3.4 ESPANSIONE ===");
+  console.log("Ultima riga originale: " + lastRow);
+  console.log("Nuova riga: " + (lastRow + 1));
+
+  console.log(
+    "Formule originali: " +
+    formulasBefore.filter(Boolean).length
+  );
+
+  console.log(
+    "Formule nuova riga: " +
+    formulasAfter.filter(Boolean).length
+  );
+
+  console.log(
+    "Convalide originali: " +
+    validationsBefore.filter(Boolean).length
+  );
+
+  console.log(
+    "Convalide nuova riga: " +
+    validationsAfter.filter(Boolean).length
+  );
+}
+function testB34InsertWithExpansion() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const source = ss.getSheetByName("SWOT_B34_EXPANSION_TEST");
+  const testName = "SWOT_B34_INSERT_TEST";
+
+  if (!source) {
+    throw new Error("Foglio sorgente non trovato");
+  }
+
+  if (ss.getSheetByName(testName)) {
+    throw new Error("Foglio di test già esistente");
+  }
+
+  // Crea una copia isolata per il collaudo.
+  const sheet = source.copyTo(ss).setName(testName);
+
+  const lastCol = sheet.getLastColumn();
+
+  // Conserva intestazioni e una riga modello.
+  const maxRows = sheet.getMaxRows();
+
+  if (maxRows > 2) {
+    sheet.deleteRows(3, maxRows - 2);
+  }
+
+  // Prepara la riga 2 come modello senza dati statici.
+  const modelRange = sheet.getRange(2, 1, 1, lastCol);
+  const formulas = modelRange.getFormulas()[0];
+
+  for (let col = 1; col <= lastCol; col++) {
+    if (formulas[col - 1] === "") {
+      modelRange.getCell(1, col).clearContent();
+    }
+  }
+
+  // Occupa la riga 2 per obbligare Djungo a espandere.
+  sheet.getRange("A2").setValue(1);
+
+  const result = djungoInsert_(sheet, {});
+
+  const insertedRow = result.insertedRow;
+  const newRange = sheet.getRange(insertedRow, 1, 1, lastCol);
+
+  const formulasNew = newRange.getFormulas()[0];
+  const validationsNew = newRange.getDataValidations()[0];
+
+  console.log("=== B3.4 TEST INSERIMENTO ===");
+  console.log("ID assegnato: " + result.id);
+  console.log("Riga inserita: " + insertedRow);
+  console.log("Formule nuova riga: " + formulasNew.filter(Boolean).length);
+  console.log("Convalide nuova riga: " + validationsNew.filter(Boolean).length);
+
+  if (insertedRow !== 3) {
+    throw new Error("Espansione non avvenuta alla riga attesa");
+  }
+
+  console.log("TEST B3.4 COMPLETATO");
+}
+
+function testB34VerifyFormulas() {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("SWOT_B34_INSERT_TEST");
+
+  if (!sheet) {
+    throw new Error("Foglio di test non trovato");
+  }
+
+  const lastCol = sheet.getLastColumn();
+
+  const source = sheet.getRange(2, 1, 1, lastCol);
+  const target = sheet.getRange(3, 1, 1, lastCol);
+
+  const sourceFormulas = source.getFormulasR1C1()[0];
+  const targetFormulas = target.getFormulasR1C1()[0];
+
+  let differences = 0;
+
+  for (let i = 0; i < lastCol; i++) {
+    if (sourceFormulas[i] !== targetFormulas[i]) {
+      differences++;
+
+      console.log(
+        "Differenza colonna " + (i + 1) +
+        ": origine=" + sourceFormulas[i] +
+        " | destinazione=" + targetFormulas[i]
+      );
+    }
+  }
+
+  console.log("=== VERIFICA FORMULE B3.4 ===");
+  console.log("Differenze: " + differences);
+
+  if (differences === 0) {
+    console.log("FORMULE COERENTI");
+  } else {
+    console.log("FORMULE DA ESAMINARE");
   }
 }
