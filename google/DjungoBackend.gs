@@ -396,28 +396,70 @@ function djungoInsert_(sheet, data) {
   }
 
   const normalizedData = djungoNormalizeDataKeys_(data);
-
   const id = djungoComputeNextId_(sheet);
-  const rowNumber = sheet.getLastRow() + 1;
+
+  // Individua la prima riga senza ID.
+  const maxRows = sheet.getMaxRows();
+  let rowNumber = maxRows + 1;
+
+  if (maxRows >= 2) {
+    const idValues = sheet
+      .getRange(2, 1, maxRows - 1, 1)
+      .getValues();
+
+    const firstFreeIndex = idValues.findIndex(function (row) {
+      return row[0] === "" || row[0] === null;
+    });
+
+    if (firstFreeIndex !== -1) {
+      rowNumber = firstFreeIndex + 2;
+    }
+  }
+
+  // Se tutte le righe sono occupate, espande la griglia.
+  if (rowNumber > maxRows) {
+    sheet.insertRowsAfter(maxRows, 1);
+  }
+
+  const targetRange = sheet.getRange(rowNumber, 1, 1, lastCol);
+  const existingValues = targetRange.getValues()[0];
+  const existingFormulas = targetRange.getFormulas()[0];
+
+  // Impedisce di sovrascrivere dati non associati a un ID.
+  for (let i = 1; i < lastCol; i++) {
+    if (
+      existingFormulas[i] === "" &&
+      existingValues[i] !== "" &&
+      existingValues[i] !== null
+    ) {
+      throw new Error(
+        "Row " + rowNumber +
+        " contains data without a stable ID"
+      );
+    }
+  }
 
   const rowValues = [id];
 
   for (let i = 1; i < headers.length; i++) {
     const key = headers[i].toLowerCase();
 
-    rowValues.push(
-      Object.prototype.hasOwnProperty.call(normalizedData, key)
-        ? normalizedData[key]
-        : ""
-    );
+    if (existingFormulas[i] !== "") {
+      // Mantiene la formula originale.
+      rowValues.push(existingFormulas[i]);
+    } else {
+      rowValues.push(
+        Object.prototype.hasOwnProperty.call(normalizedData, key)
+          ? normalizedData[key]
+          : ""
+      );
+    }
   }
 
-  // Prima scriviamo realmente il record.
-  sheet
-    .getRange(rowNumber, 1, 1, rowValues.length)
-    .setValues([rowValues]);
+  // Scrive il record preservando le formule delle colonne calcolate.
+  targetRange.setValues([rowValues]);
 
-  // Solo dopo una scrittura riuscita l'ID viene considerato consumato.
+  // Aggiorna il contatore soltanto dopo la scrittura.
   const propertyKey = "DJUNGO_LAST_ID_" + sheet.getSheetId();
 
   PropertiesService
@@ -517,4 +559,129 @@ function testB32SwotView() {
   });
 
   console.log("ID trovati: " + ids.join(", "));
+}
+
+function testB33InsertPosition() {
+  const sheet = djungoGetSheetById_(784597021);
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  const candidate = sheet.getRange(17, 1, 1, 19);
+  const idValues = sheet.getRange(2, 1, sheet.getMaxRows() - 1, 1).getValues();
+
+const firstFreeIndex = idValues.findIndex(function (row) {
+  return row[0] === "" || row[0] === null;
+});
+
+console.log("Prima riga candidata: " + (firstFreeIndex + 2));
+
+console.log("Valori riga 17: " +
+  JSON.stringify(candidate.getValues()[0]));
+
+console.log("Formule riga 17: " +
+  JSON.stringify(candidate.getFormulas()[0]));
+  console.log("Righe fisiche totali: " + sheet.getMaxRows());
+
+  console.log("Scheda: " + sheet.getName());
+  console.log("Ultima riga con contenuto: " + lastRow);
+  console.log("Ultima colonna con contenuto: " + lastCol);
+  console.log("Riga prevista per INSERT: " + (lastRow + 1));
+  console.log("ID A2:A17:", JSON.stringify(sheet.getRange(2, 1, 16, 1).getFormulas()));
+  console.log("Riga 17 disponibile: " + candidate.getValues()[0].every(value => value === "" || value === null));
+}
+
+function testB33RealInsert() {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("SWOT_B33_TEST");
+
+  if (!sheet) {
+    throw new Error("Scheda SWOT_B33_TEST non trovata");
+  }
+
+  const targetRow = 17;
+  const lastCol = sheet.getLastColumn();
+
+  const before = sheet.getRange(targetRow, 1, 1, lastCol);
+  const formulasBefore = before.getFormulas()[0];
+  const validationsBefore = before.getDataValidations()[0];
+
+  // Protezione: il test non deve sovrascrivere un record esistente.
+  if (before.getValues()[0][0] !== "") {
+    throw new Error("Riga 17 già occupata: test annullato");
+  }
+
+  const data = {
+  "Anno": 2025,
+  "Contesto": "QUALITÀ E PROCESSI",
+  "Attività": "TEST B3.3 - Inserimento Djungo",
+  "Parti interessate": "CLIENTI",
+  "Obiettivo (Ante)": "Verifica ID statico, formule e convalide"
+};
+
+  const result = djungoInsert_(sheet, data);
+
+  const insertedRow = result.insertedRow;
+  const after = sheet.getRange(insertedRow, 1, 1, lastCol);
+  const formulasAfter = after.getFormulas()[0];
+  const validationsAfter = after.getDataValidations()[0];
+
+  const formulaColumns = [8, 11, 16, 17];
+
+  const formulasPreserved = formulaColumns.every(function (i) {
+    return formulasBefore[i] === formulasAfter[i];
+  });
+
+  const validationsPreserved = validationsBefore.every(function (rule, i) {
+    return Boolean(rule) === Boolean(validationsAfter[i]);
+  });
+
+  console.log("=== TEST B3.3 ===");
+  console.log("ID assegnato: " + result.id);
+  console.log("Riga inserita: " + insertedRow);
+  console.log("Contesto: " + after.getValues()[0][2]);
+  console.log("Formule conservate: " + formulasPreserved);
+  console.log("Convalide conservate: " + validationsPreserved);
+
+  if (
+    insertedRow !== 17 ||
+    !formulasPreserved ||
+    !validationsPreserved
+  ) {
+    throw new Error("TEST B3.3 NON SUPERATO");
+  }
+
+  console.log("TEST B3.3 SUPERATO");
+}
+
+function testB33Validation() {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("SWOT_B33_TEST");
+
+  const rule = sheet.getRange("C17").getDataValidation();
+
+  if (!rule) {
+    console.log("Nessuna convalida in C17");
+    return;
+  }
+
+  console.log("Tipo: " + rule.getCriteriaType());
+  console.log("Valori non validi ammessi: " + rule.getAllowInvalid());
+
+  try {
+    const criteria = rule.getCriteriaValues();
+
+    console.log("Numero parametri: " + criteria.length);
+
+    const sourceRange = criteria[0];
+
+    console.log("Tipo parametro: " + typeof sourceRange);
+    console.log("Foglio sorgente: " + sourceRange.getSheet().getName());
+    console.log("Intervallo: " + sourceRange.getA1Notation());
+    console.log("Valori: " + JSON.stringify(sourceRange.getDisplayValues()));
+
+  } catch (error) {
+    console.log("Errore riferimento convalida: " + error.message);
+  }
 }
