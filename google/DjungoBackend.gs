@@ -1204,3 +1204,137 @@ if (djungoFindRowById_(sheet, idToDelete)) {
   console.log("TEST 5 OK: tipologie di convalida conservate");
   console.log("=== B3.6 TEST SUPERATO ===");
 }
+
+function testB37CrudIntegration() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const source = ss.getSheetByName("SWOT_B34_INSERT_TEST");
+
+  if (!source) {
+    throw new Error("Foglio sorgente non trovato");
+  }
+
+  // Ogni esecuzione utilizza una copia isolata.
+  const sheet = source.copyTo(ss);
+  sheet.setName("SWOT_B37_CRUD_TEST_" + Date.now());
+
+  const assert = function(condition, message) {
+    if (!condition) {
+      throw new Error("B3.7 FAILED: " + message);
+    }
+  };
+
+  const propertyKey = "DJUNGO_LAST_ID_" + sheet.getSheetId();
+
+  const originalId = Number(sheet.getRange("A2").getValue());
+  const originalRecord = djungoGetById_(sheet, originalId);
+
+  assert(originalRecord.ok, "Record originale non trovato");
+
+  console.log("=== B3.7 CRUD INTEGRATION ===");
+
+  // TEST 1 - INSERT
+  const inserted = djungoInsert_(sheet, {
+    "Attività": "B37_INSERT_TEST"
+  });
+
+  assert(inserted.ok, "INSERT fallito");
+
+  const firstId = inserted.id;
+
+  assert(
+    firstId > originalId,
+    "Nuovo ID non progressivo rispetto al record originale"
+  );
+
+  const created = djungoGetById_(sheet, firstId);
+
+  assert(created.ok, "GET del record inserito fallito");
+  assert(
+    created.record["Attività"] === "B37_INSERT_TEST",
+    "Valore INSERT non corretto"
+  );
+
+  console.log("TEST 1 OK: INSERT + GET, ID " + firstId);
+
+  // TEST 2 - UPDATE
+  const updated = djungoUpdate_(sheet, firstId, {
+    "Attività": "B37_UPDATE_TEST"
+  });
+
+  assert(updated.ok, "UPDATE fallito");
+
+  const afterUpdate = djungoGetById_(sheet, firstId);
+
+  assert(
+    afterUpdate.record["Attività"] === "B37_UPDATE_TEST",
+    "UPDATE non persistito"
+  );
+
+  console.log("TEST 2 OK: UPDATE + GET");
+
+  // TEST 3 - DELETE
+  const deleted = djungoDelete_(sheet, firstId);
+
+  assert(deleted.ok, "DELETE fallito");
+
+  const afterDelete = djungoGetById_(sheet, firstId);
+
+  assert(
+    afterDelete.ok === false,
+    "Record eliminato ancora accessibile"
+  );
+
+  console.log("TEST 3 OK: DELETE + GET");
+
+  // TEST 4 - Integrità del record superstite
+  const surviving = djungoGetById_(sheet, originalId);
+
+  assert(surviving.ok, "Record originale scomparso");
+
+  assert(
+    surviving.record["Attività"] ===
+      originalRecord.record["Attività"],
+    "Record originale modificato"
+  );
+
+  console.log("TEST 4 OK: record superstite conservato");
+
+  // TEST 5 - Nuovo INSERT dopo DELETE
+  const insertedAgain = djungoInsert_(sheet, {
+    "Attività": "B37_SECOND_INSERT"
+  });
+
+  assert(insertedAgain.ok, "Secondo INSERT fallito");
+
+  assert(
+    insertedAgain.id > firstId,
+    "ID eliminato riutilizzato"
+  );
+
+  assert(
+    djungoGetById_(sheet, insertedAgain.id).ok,
+    "Secondo record non recuperabile"
+  );
+
+  console.log(
+    "TEST 5 OK: nuovo ID " + insertedAgain.id +
+    " > ID eliminato " + firstId
+  );
+
+  // TEST 6 - Contatore persistente
+  const storedId = Number(
+    PropertiesService
+      .getDocumentProperties()
+      .getProperty(propertyKey)
+  );
+
+  assert(
+    storedId === insertedAgain.id,
+    "Contatore persistente non aggiornato"
+  );
+
+  console.log("TEST 6 OK: contatore persistente coerente");
+
+  console.log("=== B3.7: TUTTI I TEST SUPERATI ===");
+  console.log("Foglio test: " + sheet.getName());
+}
