@@ -1119,3 +1119,88 @@ function testB35ProtectedUpdate() {
 
   console.log("=== B3.5: TUTTI I TEST SUPERATI ===");
 }
+
+function testB36DeleteIntegrity() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const source = ss.getSheetByName("SWOT_B34_INSERT_TEST");
+
+  if (!source) {
+    throw new Error("Foglio sorgente non trovato");
+  }
+
+  // Copia isolata, senza modificare il foglio originale.
+  const sheet = source.copyTo(ss);
+  sheet.setName("SWOT_B36_DELETE_TEST_" + Date.now());
+
+  const idToDelete = Number(sheet.getRange("A2").getValue());
+  const survivingId = Number(sheet.getRange("A3").getValue());
+
+  if (
+    !Number.isInteger(idToDelete) ||
+    !Number.isInteger(survivingId) ||
+    idToDelete === survivingId
+  ) {
+    throw new Error("ID di test non validi");
+  }
+
+  const survivingRowBefore = djungoFindRowById_(sheet, survivingId);
+  const lastCol = sheet.getLastColumn();
+
+  const formulasBefore = sheet
+    .getRange(survivingRowBefore, 1, 1, lastCol)
+    .getFormulasR1C1()[0];
+
+  const validationsBefore = sheet
+    .getRange(survivingRowBefore, 1, 1, lastCol)
+    .getDataValidations()[0]
+    .map(function (rule) {
+      return rule ? String(rule.getCriteriaType()) : "";
+    });
+
+  console.log("=== B3.6 DELETE INTEGRITY ===");
+
+  const result = djungoDelete_(sheet, idToDelete);
+
+  if (!result.ok) {
+    throw new Error("DELETE non riuscito");
+  }
+if (djungoFindRowById_(sheet, idToDelete)) {
+  throw new Error("ID eliminato ancora presente");
+}
+
+  const survivingRowAfter = djungoFindRowById_(sheet, survivingId);
+
+  if (!survivingRowAfter) {
+    throw new Error("Record superstite non trovato");
+  }
+
+  if (survivingRowAfter !== survivingRowBefore - 1) {
+    throw new Error("Spostamento fisico inatteso");
+  }
+
+  const formulasAfter = sheet
+    .getRange(survivingRowAfter, 1, 1, lastCol)
+    .getFormulasR1C1()[0];
+
+  const validationsAfter = sheet
+    .getRange(survivingRowAfter, 1, 1, lastCol)
+    .getDataValidations()[0]
+    .map(function (rule) {
+      return rule ? String(rule.getCriteriaType()) : "";
+    });
+
+  if (JSON.stringify(formulasBefore) !== JSON.stringify(formulasAfter)) {
+    throw new Error("Formule R1C1 alterate");
+  }
+
+  if (JSON.stringify(validationsBefore) !== JSON.stringify(validationsAfter)) {
+    throw new Error("Tipologie di convalida alterate");
+  }
+
+  console.log("TEST 1 OK: record eliminato");
+  console.log("TEST 2 OK: ID superstite invariato");
+  console.log("TEST 3 OK: spostamento fisico corretto");
+  console.log("TEST 4 OK: formule R1C1 conservate");
+  console.log("TEST 5 OK: tipologie di convalida conservate");
+  console.log("=== B3.6 TEST SUPERATO ===");
+}
