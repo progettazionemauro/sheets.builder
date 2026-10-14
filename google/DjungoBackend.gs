@@ -547,23 +547,85 @@ function djungoUpdate_(sheet, id, data) {
     });
 
   const normalizedData = djungoNormalizeDataKeys_(data);
+  const updates = [];
 
   /*
-   * Colonna 1 esclusa intenzionalmente:
-   * l'ID è immutabile.
+   * B3.5 - FASE 1
+   * Verifica tutti i campi prima di modificare il foglio.
    */
   for (let col = 2; col <= lastCol; col++) {
-    const key = headers[col - 1].toLowerCase();
+    const header = headers[col - 1];
+    const key = header.toLowerCase();
 
-    if (Object.prototype.hasOwnProperty.call(normalizedData, key)) {
-      sheet.getRange(row, col).setValue(normalizedData[key]);
+    if (!Object.prototype.hasOwnProperty.call(normalizedData, key)) {
+      continue;
     }
+
+    const cell = sheet.getRange(row, col);
+    const newValue = normalizedData[key];
+
+    // Non sovrascrivere formule.
+    if (cell.getFormula() !== "") {
+      throw new Error(
+        "UPDATE blocked: formula protected in column " + header
+      );
+    }
+
+    const rule = cell.getDataValidation();
+
+    if (rule !== null) {
+      const type = rule.getCriteriaType();
+
+      // B3.5: supporto alle convalide da intervallo.
+      if (type !== SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
+        throw new Error(
+          "UPDATE blocked: unsupported validation in column " + header
+        );
+      }
+
+      const allowedRange = rule.getCriteriaValues()[0];
+
+      const allowedValues = allowedRange
+        .getDisplayValues()
+        .flat()
+        .filter(function (value) {
+          return value !== "";
+        });
+
+      // Un valore vuoto è consentito in questa prima versione.
+      if (newValue !== "" && newValue !== null) {
+        const valid = allowedValues.some(function (value) {
+          return String(value) === String(newValue);
+        });
+
+        if (!valid) {
+          throw new Error(
+            "UPDATE blocked: invalid value for column " + header
+          );
+        }
+      }
+    }
+
+    // Memorizza la modifica, senza ancora applicarla.
+    updates.push({
+      cell: cell,
+      value: newValue
+    });
   }
+
+  /*
+   * B3.5 - FASE 2
+   * Tutti i controlli sono superati: applica le modifiche.
+   */
+  updates.forEach(function (update) {
+    update.cell.setValue(update.value);
+  });
 
   return {
     ok: true,
     id: Number(id),
-    updatedRow: row
+    updatedRow: row,
+    updatedFields: updates.length
   };
 }
 
@@ -860,4 +922,200 @@ function testB34VerifyFormulas() {
   } else {
     console.log("FORMULE DA ESAMINARE");
   }
+}
+
+function testB35InspectValidations() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("SWOT_B34_INSERT_TEST");
+
+  if (!sheet) {
+    throw new Error("Foglio di test non trovato");
+  }
+
+  const row = 2;
+  const lastCol = sheet.getLastColumn();
+
+  console.log("=== B3.5 ANALISI CONVALIDE ===");
+
+  for (let col = 1; col <= lastCol; col++) {
+    const cell = sheet.getRange(row, col);
+    const rule = cell.getDataValidation();
+
+    if (rule !== null) {
+      const criterion = rule.getCriteriaType();
+      const values = rule.getCriteriaValues();
+
+      console.log(
+        "Colonna " + col +
+        " | Intestazione: " + sheet.getRange(1, col).getValue() +
+        " | Criterio: " + criterion +
+        " | Parametri: " + values.map(function (value) {
+          if (value && typeof value.getA1Notation === "function") {
+            return value.getSheet().getName() +
+              "!" + value.getA1Notation();
+          }
+          return String(value);
+        }).join(", ") +
+        " | Rifiuta input non valido: " + !rule.getAllowInvalid()
+      );
+    }
+  }
+
+  console.log("=== FINE ANALISI B3.5 ===");
+}
+
+function testB35ProtectedUpdate() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const source = ss.getSheetByName("SWOT_B34_INSERT_TEST");
+
+  if (!source) {
+    throw new Error("Foglio sorgente di test non trovato");
+  }
+
+  // Copia isolata: nessuna modifica al foglio originale.
+  const sheet = source.copyTo(ss);
+  sheet.setName("SWOT_B35_UPDATE_TEST_" + Date.now());
+
+  const id = Number(sheet.getRange("A2").getValue());
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("ID di test non valido");
+  }
+
+  // Ricava un valore ammesso dalla convalida di C2.
+  const rule = sheet.getRange("C2").getDataValidation();
+
+  if (
+    !rule ||
+    rule.getCriteriaType() !==
+      SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE
+  ) {
+    throw new Error("Convalida C2 non disponibile");
+  }
+
+  const allowed = rule.getCriteriaValues()[0]
+    .getDisplayValues()
+    .flat()
+    .filter(function (value) {
+      return value !== "";
+    });
+
+  if (allowed.length === 0) {
+    throw new Error("Nessun valore ammesso per C2");
+  }
+
+  const validValue = allowed[0];
+  const invalidValue = "__DJUNGO_INVALID_B35__";
+
+  const assert = function (condition, message) {
+    if (!condition) {
+      throw new Error("TEST FALLITO: " + message);
+    }
+  };
+
+  console.log("=== B3.5 UPDATE PROTETTO ===");
+  console.log("Foglio isolato: " + sheet.getName());
+  console.log("ID: " + id);
+
+  // TEST 1: aggiornamento valido.
+  const validResult = djungoUpdate_(sheet, id, {
+    "Contesto": validValue
+  });
+
+  assert(validResult.ok === true, "UPDATE valido non riuscito");
+  assert(
+    String(sheet.getRange("C2").getDisplayValue()) === validValue,
+    "Valore valido non scritto"
+  );
+
+  console.log("TEST 1 OK: valore ammesso accettato");
+
+  // TEST 2: aggiornamento non valido.
+  const beforeInvalid = sheet.getRange("C2").getValue();
+  let rejected = false;
+
+  try {
+    djungoUpdate_(sheet, id, {
+      "Contesto": invalidValue
+    });
+  } catch (error) {
+    rejected = true;
+    console.log("Rifiuto previsto: " + error.message);
+  }
+
+  assert(rejected, "Valore non ammesso accettato");
+  assert(
+    sheet.getRange("C2").getValue() === beforeInvalid,
+    "C2 modificata dopo rifiuto"
+  );
+
+  console.log("TEST 2 OK: valore non ammesso rifiutato");
+
+  // TEST 3: nessun aggiornamento parziale.
+  const beforeD = sheet.getRange("D2").getValue();
+  const beforeC = sheet.getRange("C2").getValue();
+
+  rejected = false;
+
+  try {
+    djungoUpdate_(sheet, id, {
+      "Attività": "__DJUNGO_PARTIAL_TEST__",
+      "Contesto": invalidValue
+    });
+  } catch (error) {
+    rejected = true;
+  }
+
+  assert(rejected, "Richiesta mista non rifiutata");
+  assert(
+    sheet.getRange("D2").getValue() === beforeD,
+    "D2 modificata nonostante il rifiuto"
+  );
+  assert(
+    sheet.getRange("C2").getValue() === beforeC,
+    "C2 modificata nonostante il rifiuto"
+  );
+
+  console.log("TEST 3 OK: nessuna modifica parziale");
+
+  // TEST 4: protezione delle formule.
+  const lastCol = sheet.getLastColumn();
+  const formulas = sheet.getRange(2, 2, 1, lastCol - 1)
+    .getFormulas()[0];
+
+  const formulaIndex = formulas.findIndex(function (value) {
+    return value !== "";
+  });
+
+  assert(formulaIndex >= 0, "Nessuna formula disponibile nella riga 2");
+
+  const formulaCol = formulaIndex + 2;
+  const formulaHeader = String(
+    sheet.getRange(1, formulaCol).getValue()
+  ).trim();
+
+  const originalFormula = sheet.getRange(2, formulaCol).getFormula();
+
+  rejected = false;
+
+  try {
+    const payload = {};
+    payload[formulaHeader] = "__DJUNGO_FORMULA_TEST__";
+    djungoUpdate_(sheet, id, payload);
+  } catch (error) {
+    rejected = true;
+    console.log("Protezione formula: " + error.message);
+  }
+
+  assert(rejected, "Sovrascrittura formula accettata");
+  assert(
+    sheet.getRange(2, formulaCol).getFormula() === originalFormula,
+    "Formula originale modificata"
+  );
+
+  console.log(
+    "TEST 4 OK: formula protetta in colonna " + formulaCol
+  );
+
+  console.log("=== B3.5: TUTTI I TEST SUPERATI ===");
 }
