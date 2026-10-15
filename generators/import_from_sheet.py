@@ -88,7 +88,10 @@ def _read_values_from_range_ref(workbook, ref: str, debug: bool = False) -> List
     for row in ws[range_ref]:
         for cell in row:
             if cell.value is not None and str(cell.value).strip():
-                values.append(str(cell.value).strip())
+                value = cell.value
+                if isinstance(value, float) and value.is_integer():
+                    value = int(value)
+                values.append(str(value).strip())
     return values
 
 
