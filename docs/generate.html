@@ -173,6 +173,18 @@
       <label for="sheetName">Sheet name *</label>
       <input id="sheetName" type="text" placeholder="Es. HorrorMovie" />
 
+      <p class="muted">
+        Google Sheets persistent backend (optional).
+        Enter both identifiers to connect this app to the shared GAS.
+      </p>
+      <label for="spreadsheetIdInput">Spreadsheet ID</label>
+      <input id="spreadsheetIdInput" type="text"
+             placeholder="Google document ID" />
+
+      <label for="sheetIdInput">Sheet ID</label>
+      <input id="sheetIdInput" type="text"
+             placeholder="Numeric sheet ID (gid)" />
+
       <div class="actions">
         <button id="parserBtn" type="button">Start parser</button>
         <span id="parserStatus" class="muted"></span>
@@ -487,6 +499,22 @@ chooseNewBtn.addEventListener("click", () => {
 
       currentSessionId = data.session_id;
       currentBuilderState = data.builder_state;
+
+      const spreadsheetId = document.getElementById("spreadsheetIdInput").value.trim();
+      const sheetId = document.getElementById("sheetIdInput").value.trim();
+
+      if (spreadsheetId || sheetId) {
+        if (!spreadsheetId || !/^[0-9]+$/.test(sheetId)) {
+          throw new Error("Enter a valid Spreadsheet ID and numeric Sheet ID (gid).");
+        }
+
+        currentBuilderState.project.source = {
+          type: "google_sheet",
+          spreadsheetId: spreadsheetId,
+          sheetId: Number(sheetId),
+          sheetName: sheet
+        };
+      }
 
       localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId);
       localStorage.setItem("DJUNGO_BUILDER_STATE", JSON.stringify(currentBuilderState));
