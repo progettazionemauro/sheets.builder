@@ -50,7 +50,7 @@
 </head>
 <body>
 
-  <div class="muted">Viewer read-only — tab <b>Sheet1</b></div>
+  <div class="muted">Viewer read-only — tab <b>SWOT_B34_EXPANSION_TEST</b></div>
 
   <div class="toolbar">
     <div>
@@ -73,63 +73,349 @@
 
 <script>
   const qs = new URLSearchParams(location.search);
-  const APP_SLUG = qs.get("app") || "generated-app";
+  const APP_SLUG = qs.get("app") || "swot-b34-expansion-test";
   const URL_LIMIT = qs.get("limit") || "50";
   const EMBEDDED_MODE = qs.get("embedded") === "1";
 
   const VISIBLE_HEADERS = [
   "id",
-  "year",
-  "title",
-  "url",
-  "link",
-  "nation",
-  "rating"
+  "anno",
+  "contesto",
+  "attività",
+  "parti interessate",
+  "obiettivo (ante)",
+  "swot (ante)",
+  "swot (ante) numerico",
+  "fattore interno - esterno (ante)",
+  "fattori interni",
+  "fattori esterni",
+  "r / o (ante)",
+  "anno di rilevazione (post)",
+  "esito post",
+  "swot (post)",
+  "swot (post) numerico",
+  "fattore interno - esterno (post)",
+  "r / o (post)",
+  "commento post"
 ];
   const ENUMS = {
-  "rating": [
-    "Mediocre",
-    "Medio",
-    "Buono",
-    "Ottimo",
-    "Capolavoro",
-    "Pessimo"
+  "anno": [
+    "2024",
+    "2025",
+    "2026",
+    "2027"
+  ],
+  "contesto": [
+    "ECONOMICO",
+    "TECNOLOGICO",
+    "LEGALE",
+    "POLITICO / REGOLATORIO",
+    "SOCIALE",
+    "AMBIENTALE / CLIMATICO",
+    "MERCATO / DOMANDA",
+    "VENDITE E CUSTOMER CARE",
+    "AREA FINANZA",
+    "RISORSE UMANE",
+    "INFRASTRUTTURE / ASSET",
+    "SUPPLY CHAIN / FORNITORI",
+    "QUALITÀ E PROCESSI",
+    "CYBERSECURITY / IT",
+    "LOGISTICA",
+    "REPUTAZIONE / BRAND",
+    "CONCORRENZA",
+    "INNOVAZIONE / R&D",
+    "COMPLIANCE / ETICA",
+    "SALUTE E SICUREZZA (OHS)"
+  ],
+  "parti interessate": [
+    "CLIENTI",
+    "PROSPECT / MERCATO POTENZIALE",
+    "COMPETITORS",
+    "FORNITORI",
+    "PARTNER / ALLEANZE",
+    "SOCIETÀ DI INGEGNERIA",
+    "STUDI DI ARCHITETTURA",
+    "CONSULENTI",
+    "ISTITUTI DI CREDITO / BANCHE",
+    "AGENZIA DELLE ENTRATE",
+    "INAIL",
+    "ENTI REGOLATORI / PA",
+    "ORGANISMI DI CERTIFICAZIONE",
+    "ASSICURAZIONI",
+    "DIPENDENTI",
+    "COLLABORATORI / FREELANCE",
+    "PROPRIETÀ / SOCI",
+    "COMUNITÀ LOCALE",
+    "ASSOCIAZIONI DI CATEGORIA",
+    "MEDIA / OPINIONE PUBBLICA"
+  ],
+  "swot (ante)": [
+    "25 - BASSA MINACCIA (E)",
+    "50 - MEDIA MINACCIA (E)",
+    "75 - ESTREMA MINACCIA (E)",
+    "25 - BASSA OPPORTUNITA (E)",
+    "50 - MEDIA OPPORTUNITA (E)",
+    "100 - ESTREMA OPPORTUNITA (E)",
+    "25 - BASSA DEBOLEZZA (I)",
+    "50 - MEDIA DEBOLEZZA (I)",
+    "100 - ESTREMA DEBOLEZZA (I)",
+    "25 - BASSA FORZA (I)",
+    "50 - MEDIA FORZA (I)",
+    "100 - ESTREMA FORZA (I)"
   ]
 };
   const LABELS = {
-  "id": "id",
-  "year": "year",
-  "title": "Title",
-  "url": "url",
-  "link": "link",
-  "nation": "nation",
-  "rating": "rating"
+  "id": "ID",
+  "anno": "Anno",
+  "contesto": "Contesto",
+  "attività": "Attività",
+  "parti interessate": "Parti interessate",
+  "obiettivo (ante)": "Obiettivo (Ante)",
+  "swot (ante)": "SWOT (Ante)",
+  "swot (ante) numerico": "SWOT (Ante) numerico",
+  "fattore interno - esterno (ante)": "Fattore Interno - Esterno (Ante)",
+  "fattori interni": "FATTORI INTERNI",
+  "fattori esterni": "FATTORI ESTERNI",
+  "r / o (ante)": "R / O (Ante)",
+  "anno di rilevazione (post)": "Anno di Rilevazione (POST)",
+  "esito post": "Esito POST",
+  "swot (post)": "SWOT (POST)",
+  "swot (post) numerico": "SWOT (Post) numerico",
+  "fattore interno - esterno (post)": "Fattore Interno - Esterno (POST)",
+  "r / o (post)": "R / O (POST)",
+  "commento post": "Commento POST"
 };
   const ENUM_STYLES = {
-  "rating": {
-    "Capolavoro": {
-      "bg": "#215a6c",
-      "fg": "#c6dbe1"
+  "anno": {
+    "2024": {
+      "bg": "",
+      "fg": ""
     },
-    "Ottimo": {
-      "bg": "#d4edbc",
-      "fg": "#11734b"
+    "2025": {
+      "bg": "",
+      "fg": ""
     },
-    "Buono": {
-      "bg": "#ffe5a0",
-      "fg": "#473821"
+    "2026": {
+      "bg": "",
+      "fg": ""
     },
-    "Medio": {
-      "bg": "#ffc8aa",
-      "fg": "#753800"
+    "2027": {
+      "bg": "",
+      "fg": ""
+    }
+  },
+  "contesto": {
+    "ECONOMICO": {
+      "bg": "",
+      "fg": ""
     },
-    "Mediocre": {
-      "bg": "#ffcfc9",
-      "fg": "#b10202"
+    "TECNOLOGICO": {
+      "bg": "",
+      "fg": ""
     },
-    "Pessimo": {
-      "bg": "#e8eaed",
-      "fg": "#000000"
+    "LEGALE": {
+      "bg": "",
+      "fg": ""
+    },
+    "POLITICO / REGOLATORIO": {
+      "bg": "",
+      "fg": ""
+    },
+    "SOCIALE": {
+      "bg": "",
+      "fg": ""
+    },
+    "AMBIENTALE / CLIMATICO": {
+      "bg": "",
+      "fg": ""
+    },
+    "MERCATO / DOMANDA": {
+      "bg": "",
+      "fg": ""
+    },
+    "VENDITE E CUSTOMER CARE": {
+      "bg": "",
+      "fg": ""
+    },
+    "AREA FINANZA": {
+      "bg": "",
+      "fg": ""
+    },
+    "RISORSE UMANE": {
+      "bg": "",
+      "fg": ""
+    },
+    "INFRASTRUTTURE / ASSET": {
+      "bg": "",
+      "fg": ""
+    },
+    "SUPPLY CHAIN / FORNITORI": {
+      "bg": "",
+      "fg": ""
+    },
+    "QUALITÀ E PROCESSI": {
+      "bg": "",
+      "fg": ""
+    },
+    "CYBERSECURITY / IT": {
+      "bg": "",
+      "fg": ""
+    },
+    "LOGISTICA": {
+      "bg": "",
+      "fg": ""
+    },
+    "REPUTAZIONE / BRAND": {
+      "bg": "",
+      "fg": ""
+    },
+    "CONCORRENZA": {
+      "bg": "",
+      "fg": ""
+    },
+    "INNOVAZIONE / R&D": {
+      "bg": "",
+      "fg": ""
+    },
+    "COMPLIANCE / ETICA": {
+      "bg": "",
+      "fg": ""
+    },
+    "SALUTE E SICUREZZA (OHS)": {
+      "bg": "",
+      "fg": ""
+    }
+  },
+  "parti interessate": {
+    "CLIENTI": {
+      "bg": "",
+      "fg": ""
+    },
+    "PROSPECT / MERCATO POTENZIALE": {
+      "bg": "",
+      "fg": ""
+    },
+    "COMPETITORS": {
+      "bg": "",
+      "fg": ""
+    },
+    "FORNITORI": {
+      "bg": "",
+      "fg": ""
+    },
+    "PARTNER / ALLEANZE": {
+      "bg": "",
+      "fg": ""
+    },
+    "SOCIETÀ DI INGEGNERIA": {
+      "bg": "",
+      "fg": ""
+    },
+    "STUDI DI ARCHITETTURA": {
+      "bg": "",
+      "fg": ""
+    },
+    "CONSULENTI": {
+      "bg": "",
+      "fg": ""
+    },
+    "ISTITUTI DI CREDITO / BANCHE": {
+      "bg": "",
+      "fg": ""
+    },
+    "AGENZIA DELLE ENTRATE": {
+      "bg": "",
+      "fg": ""
+    },
+    "INAIL": {
+      "bg": "",
+      "fg": ""
+    },
+    "ENTI REGOLATORI / PA": {
+      "bg": "",
+      "fg": ""
+    },
+    "ORGANISMI DI CERTIFICAZIONE": {
+      "bg": "",
+      "fg": ""
+    },
+    "ASSICURAZIONI": {
+      "bg": "",
+      "fg": ""
+    },
+    "DIPENDENTI": {
+      "bg": "",
+      "fg": ""
+    },
+    "COLLABORATORI / FREELANCE": {
+      "bg": "",
+      "fg": ""
+    },
+    "PROPRIETÀ / SOCI": {
+      "bg": "",
+      "fg": ""
+    },
+    "COMUNITÀ LOCALE": {
+      "bg": "",
+      "fg": ""
+    },
+    "ASSOCIAZIONI DI CATEGORIA": {
+      "bg": "",
+      "fg": ""
+    },
+    "MEDIA / OPINIONE PUBBLICA": {
+      "bg": "",
+      "fg": ""
+    }
+  },
+  "swot (ante)": {
+    "25 - BASSA MINACCIA (E)": {
+      "bg": "",
+      "fg": ""
+    },
+    "50 - MEDIA MINACCIA (E)": {
+      "bg": "",
+      "fg": ""
+    },
+    "75 - ESTREMA MINACCIA (E)": {
+      "bg": "",
+      "fg": ""
+    },
+    "25 - BASSA OPPORTUNITA (E)": {
+      "bg": "",
+      "fg": ""
+    },
+    "50 - MEDIA OPPORTUNITA (E)": {
+      "bg": "",
+      "fg": ""
+    },
+    "100 - ESTREMA OPPORTUNITA (E)": {
+      "bg": "",
+      "fg": ""
+    },
+    "25 - BASSA DEBOLEZZA (I)": {
+      "bg": "",
+      "fg": ""
+    },
+    "50 - MEDIA DEBOLEZZA (I)": {
+      "bg": "",
+      "fg": ""
+    },
+    "100 - ESTREMA DEBOLEZZA (I)": {
+      "bg": "",
+      "fg": ""
+    },
+    "25 - BASSA FORZA (I)": {
+      "bg": "",
+      "fg": ""
+    },
+    "50 - MEDIA FORZA (I)": {
+      "bg": "",
+      "fg": ""
+    },
+    "100 - ESTREMA FORZA (I)": {
+      "bg": "",
+      "fg": ""
     }
   }
 };
@@ -194,9 +480,18 @@
     });
   }
 
+  function normalizeHeader(h) {
+    return String(h ?? "").trim().toLowerCase();
+  }
+
+  function isVisibleHeader(h) {
+    const normalized = normalizeHeader(h);
+    return VISIBLE_HEADERS.some(v => normalizeHeader(v) === normalized);
+  }
+
   function buildColumns(headers) {
     return headers
-      .filter(h => VISIBLE_HEADERS.includes(h))
+      .filter(h => isVisibleHeader(h))
       .map(h => {
         return {
           title: LABELS[h] || h,
@@ -235,7 +530,7 @@
       return;
     }
 
-    const visibleHeaders = LAST_HEADERS.filter(h => VISIBLE_HEADERS.includes(h));
+    const visibleHeaders = LAST_HEADERS.filter(h => isVisibleHeader(h));
 
     const visibleIndexes = LAST_HEADERS
       .map((h, i) => (visibleHeaders.includes(h) ? i : -1))

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Generated App</title>
+  <title>SWOT_B34_EXPANSION_TEST</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 1100px; margin: 28px auto; padding: 0 16px; }
     h1 { margin: 0 0 6px; }
@@ -25,7 +25,7 @@
 </head>
 <body>
 
-  <h1>Generated App database</h1>
+  <h1>SWOT_B34_EXPANSION_TEST database</h1>
 
 <p class="muted">
   Manage records, update data and browse the current spreadsheet table.
@@ -44,33 +44,59 @@
       <span id="cfgStatus" class="muted"></span>
     </div>
 
-    <small>Slug app: <code>generated-app</code></small>
+    <small>Slug app: <code>swot-b34-expansion-test</code></small>
   </div>
 
   <div class="card">
     <h3 style="margin:0 0 10px;">Insert (Item)</h3>
 
 
-    <label for="year">year <span class="muted">(optional)</span></label>
-    <input id="year" type="number" min="0" placeholder="year" />
-
-
-    <label for="title">Title <span class="muted">(optional)</span></label>
-    <input id="title" placeholder="Title" />
-
-
-    <label for="url">url <span class="muted">(optional)</span></label>
-    <input id="url" placeholder="url" />
-
-
-    <label for="nation">nation <span class="muted">(optional)</span></label>
-    <input id="nation" placeholder="nation" />
-
-
-    <label for="rating">rating <span class="muted">(optional)</span></label>
-    <select id="rating">
-      <option value="" selected>—</option><option>Mediocre</option><option>Medio</option><option>Buono</option><option>Ottimo</option><option>Capolavoro</option><option>Pessimo</option>
+    <label for="anno">Anno <span class="muted">(optional)</span></label>
+    <select id="anno">
+      <option value="" selected>—</option><option>2024</option><option>2025</option><option>2026</option><option>2027</option>
     </select>
+
+
+    <label for="contesto">Contesto <span class="muted">(optional)</span></label>
+    <select id="contesto">
+      <option value="" selected>—</option><option>ECONOMICO</option><option>TECNOLOGICO</option><option>LEGALE</option><option>POLITICO / REGOLATORIO</option><option>SOCIALE</option><option>AMBIENTALE / CLIMATICO</option><option>MERCATO / DOMANDA</option><option>VENDITE E CUSTOMER CARE</option><option>AREA FINANZA</option><option>RISORSE UMANE</option><option>INFRASTRUTTURE / ASSET</option><option>SUPPLY CHAIN / FORNITORI</option><option>QUALITÀ E PROCESSI</option><option>CYBERSECURITY / IT</option><option>LOGISTICA</option><option>REPUTAZIONE / BRAND</option><option>CONCORRENZA</option><option>INNOVAZIONE / R&amp;D</option><option>COMPLIANCE / ETICA</option><option>SALUTE E SICUREZZA (OHS)</option>
+    </select>
+
+
+    <label for="attività">Attività <span class="muted">(optional)</span></label>
+    <input id="attività" placeholder="Attività" />
+
+
+    <label for="parti_interessate">Parti interessate <span class="muted">(optional)</span></label>
+    <select id="parti_interessate">
+      <option value="" selected>—</option><option>CLIENTI</option><option>PROSPECT / MERCATO POTENZIALE</option><option>COMPETITORS</option><option>FORNITORI</option><option>PARTNER / ALLEANZE</option><option>SOCIETÀ DI INGEGNERIA</option><option>STUDI DI ARCHITETTURA</option><option>CONSULENTI</option><option>ISTITUTI DI CREDITO / BANCHE</option><option>AGENZIA DELLE ENTRATE</option><option>INAIL</option><option>ENTI REGOLATORI / PA</option><option>ORGANISMI DI CERTIFICAZIONE</option><option>ASSICURAZIONI</option><option>DIPENDENTI</option><option>COLLABORATORI / FREELANCE</option><option>PROPRIETÀ / SOCI</option><option>COMUNITÀ LOCALE</option><option>ASSOCIAZIONI DI CATEGORIA</option><option>MEDIA / OPINIONE PUBBLICA</option>
+    </select>
+
+
+    <label for="obiettivo_ante">Obiettivo (Ante) <span class="muted">(optional)</span></label>
+    <input id="obiettivo_ante" placeholder="Obiettivo (Ante)" />
+
+
+    <label for="swot_ante">SWOT (Ante) <span class="muted">(optional)</span></label>
+    <select id="swot_ante">
+      <option value="" selected>—</option><option>25 - BASSA MINACCIA (E)</option><option>50 - MEDIA MINACCIA (E)</option><option>75 - ESTREMA MINACCIA (E)</option><option>25 - BASSA OPPORTUNITA (E)</option><option>50 - MEDIA OPPORTUNITA (E)</option><option>100 - ESTREMA OPPORTUNITA (E)</option><option>25 - BASSA DEBOLEZZA (I)</option><option>50 - MEDIA DEBOLEZZA (I)</option><option>100 - ESTREMA DEBOLEZZA (I)</option><option>25 - BASSA FORZA (I)</option><option>50 - MEDIA FORZA (I)</option><option>100 - ESTREMA FORZA (I)</option>
+    </select>
+
+
+    <label for="anno_di_rilevazione_post">Anno di Rilevazione (POST) <span class="muted">(optional)</span></label>
+    <input id="anno_di_rilevazione_post" type="number" min="0" placeholder="Anno di Rilevazione (POST)" />
+
+
+    <label for="esito_post">Esito POST <span class="muted">(optional)</span></label>
+    <input id="esito_post" placeholder="Esito POST" />
+
+
+    <label for="swot_post">SWOT (POST) <span class="muted">(optional)</span></label>
+    <input id="swot_post" placeholder="SWOT (POST)" />
+
+
+    <label for="commento_post">Commento POST <span class="muted">(optional)</span></label>
+    <input id="commento_post" placeholder="Commento POST" />
 
     <div class="actions">
       <button id="insertBtn" type="button">Insert</button>
@@ -140,7 +166,7 @@
   
   const qs = new URLSearchParams(window.location.search);
   const DEBUG_MODE = qs.get("debug") === "1";
-  const APP_SLUG = qs.get("app") || "generated-app";
+  const APP_SLUG = qs.get("app") || "swot-b34-expansion-test";
 
   function setMsg(el, msg, cls) {
     el.className = cls || "muted";
@@ -295,11 +321,16 @@ async function call_(mode, params = {}, needsKey = false) {
     setMsg(st, "Inserting…");
 
     const payload = {
-        "year": document.getElementById("year").value.trim(),
-        "title": document.getElementById("title").value.trim(),
-        "url": document.getElementById("url").value.trim(),
-        "nation": document.getElementById("nation").value.trim(),
-        "rating": document.getElementById("rating").value
+        "anno": document.getElementById("anno").value,
+        "contesto": document.getElementById("contesto").value,
+        "attività": document.getElementById("attività").value.trim(),
+        "parti interessate": document.getElementById("parti_interessate").value,
+        "obiettivo (ante)": document.getElementById("obiettivo_ante").value.trim(),
+        "swot (ante)": document.getElementById("swot_ante").value,
+        "anno di rilevazione (post)": document.getElementById("anno_di_rilevazione_post").value.trim(),
+        "esito post": document.getElementById("esito_post").value.trim(),
+        "swot (post)": document.getElementById("swot_post").value.trim(),
+        "commento post": document.getElementById("commento_post").value.trim()
       };
 
     const r = await call_("insert", payload, true);
@@ -335,11 +366,16 @@ async function call_(mode, params = {}, needsKey = false) {
     );
 
     if (r.ok && r.record) {
-        document.getElementById("year").value = r.record["year"] || "";
-        document.getElementById("title").value = r.record["title"] || "";
-        document.getElementById("url").value = r.record["url"] || "";
-        document.getElementById("nation").value = r.record["nation"] || "";
-        document.getElementById("rating").value = r.record["rating"] || "";
+        document.getElementById("anno").value = r.record["anno"] || "";
+        document.getElementById("contesto").value = r.record["contesto"] || "";
+        document.getElementById("attività").value = r.record["attività"] || "";
+        document.getElementById("parti_interessate").value = r.record["parti interessate"] || "";
+        document.getElementById("obiettivo_ante").value = r.record["obiettivo (ante)"] || "";
+        document.getElementById("swot_ante").value = r.record["swot (ante)"] || "";
+        document.getElementById("anno_di_rilevazione_post").value = r.record["anno di rilevazione (post)"] || "";
+        document.getElementById("esito_post").value = r.record["esito post"] || "";
+        document.getElementById("swot_post").value = r.record["swot (post)"] || "";
+        document.getElementById("commento_post").value = r.record["commento post"] || "";
     }
   } catch (e) {
     setMsg(st, "ERR: " + e.message, "err");
@@ -357,11 +393,16 @@ async function call_(mode, params = {}, needsKey = false) {
     setMsg(st, "Updating record…");
 
     const payload = {
-        "year": document.getElementById("year").value.trim(),
-        "title": document.getElementById("title").value.trim(),
-        "url": document.getElementById("url").value.trim(),
-        "nation": document.getElementById("nation").value.trim(),
-        "rating": document.getElementById("rating").value
+        "anno": document.getElementById("anno").value,
+        "contesto": document.getElementById("contesto").value,
+        "attività": document.getElementById("attività").value.trim(),
+        "parti interessate": document.getElementById("parti_interessate").value,
+        "obiettivo (ante)": document.getElementById("obiettivo_ante").value.trim(),
+        "swot (ante)": document.getElementById("swot_ante").value,
+        "anno di rilevazione (post)": document.getElementById("anno_di_rilevazione_post").value.trim(),
+        "esito post": document.getElementById("esito_post").value.trim(),
+        "swot (post)": document.getElementById("swot_post").value.trim(),
+        "commento post": document.getElementById("commento_post").value.trim()
       };
     payload.id = id;
 
