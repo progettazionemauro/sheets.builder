@@ -1052,6 +1052,28 @@ async function call_(mode, params = {{}}, needsKey = false) {{
   if (responsePanel) responsePanel.style.display = "block";
 }}
 
+window.addEventListener("message", event => {{
+  if (event.origin !== window.location.origin) return;
+  if (event.source !== viewer.contentWindow) return;
+  if (event.data?.type === "DJUNGO_DELETE_RECORD") {{
+    const id = String(event.data.id ?? "").trim();
+    if (!/^[1-9][0-9]*$/.test(id)) return;
+    document.getElementById("crud_id").value = id;
+    document.getElementById("deleteBtn").click();
+    return;
+  }}
+  if (event.data?.type !== "DJUNGO_EDIT_RECORD") return;
+
+  const id = String(event.data.id ?? "").trim();
+  if (!/^[1-9]\\d*$/.test(id)) return;
+
+  document.getElementById("crud_id").value = id;
+  document.getElementById("getBtn").click();
+
+  const formCard = document.getElementById("insertBtn").closest(".card");
+  formCard?.scrollIntoView({{ behavior: "smooth", block: "start" }});
+}});
+
 loadViewer(false);
 </script>
 
@@ -1084,6 +1106,9 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     enum_map_js = _generate_viewer_enum_map_js(fields)
     label_map_js = _generate_viewer_label_map_js(fields)
     enum_styles_js = _generate_viewer_enum_styles_js(fields)
+
+    has_record_id = any(f.name == "id" and f.type == "int" for f in fields)
+    has_record_id_js = js_pretty(has_record_id)
 
     entity_name = project_config["entityName"]
     sheet_name = project_config["sheetName"]
@@ -1137,6 +1162,46 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       outline: 2px solid #ffe69c;
       outline-offset: -2px;
     }}
+    /* B34-03: pannello laterale di dettaglio */
+    .detail-panel {{
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(420px, 100%);
+      height: 100%;
+      box-sizing: border-box;
+      background: #fff;
+      box-shadow: -6px 0 24px rgba(0,0,0,.18);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }}
+    .detail-panel[hidden] {{ display: none; }}
+    .detail-header, .detail-actions {{
+      padding: 14px;
+      border-bottom: 1px solid #ddd;
+    }}
+    .detail-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .detail-content {{
+      padding: 14px;
+      overflow-y: auto;
+      flex: 1;
+    }}
+    .detail-actions {{
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid #ddd;
+      border-bottom: 0;
+    }}
+    .detail-actions button {{ padding: 9px 12px; cursor: pointer; }}
+    .detail-actions button[hidden] {{ display: none; }}
+    .detail-field {{ margin-bottom: 14px; }}
+    .detail-field-label {{ font-size: 12px; font-weight: bold; color: #555; }}
+    .detail-field-value {{ margin-top: 4px; overflow-wrap: anywhere; white-space: pre-wrap; }}
   </style>
 </head>
 <body>
@@ -1161,6 +1226,17 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
   <div id="status" class="muted" style="margin:6px 0;">Caricamento…</div>
   <div id="dataTable"></div>
+  <aside id="detailPanel" class="detail-panel" hidden aria-label="Dettaglio record">
+    <div class="detail-header">
+      <strong id="detailTitle">Dettaglio record</strong>
+      <button id="detailCloseBtn" type="button">Chiudi</button>
+    </div>
+    <div id="detailContent" class="detail-content"></div>
+    <div class="detail-actions">
+      <button id="detailEditBtn" type="button">Modifica</button>
+      <button id="detailDeleteBtn" type="button">Elimina</button>
+    </div>
+  </aside>
 
 <script>
   const qs = new URLSearchParams(location.search);
@@ -1168,6 +1244,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const URL_LIMIT = qs.get("limit") || "50";
   const EMBEDDED_MODE = qs.get("embedded") === "1";
 
+  const HAS_RECORD_ID = {has_record_id_js};
   const VISIBLE_HEADERS = {visible_cols_js};
   const ENUMS = {enum_map_js};
   const LABELS = {label_map_js};
@@ -1274,6 +1351,82 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       }});
   }}
 
+  let SELECTED_RECORD = null;
+
+  function openDetailPanel(record) {{
+    SELECTED_RECORD = record;
+
+    const panel = document.getElementById("detailPanel");
+    const content = document.getElementById("detailContent");
+    const title = document.getElementById("detailTitle");
+
+    content.replaceChildren();
+
+    const recordId = String(record.id ?? record.ID ?? "").trim();
+    const canEditRecord = HAS_RECORD_ID && /^[1-9][0-9]*$/.test(recordId);
+
+    title.textContent = canEditRecord
+      ? "Dettaglio record — ID " + recordId
+      : "Dettaglio record";
+
+    document.getElementById("detailEditBtn").hidden = !canEditRecord;
+    document.getElementById("detailDeleteBtn").hidden = !canEditRecord;
+
+    LAST_HEADERS.forEach(header => {{
+      const field = document.createElement("div");
+      field.className = "detail-field";
+
+      const label = document.createElement("div");
+      label.className = "detail-field-label";
+      label.textContent = LABELS[header] || header;
+
+      const value = document.createElement("div");
+      value.className = "detail-field-value";
+      value.textContent = String(record[header] ?? "");
+
+      field.append(label, value);
+      content.appendChild(field);
+    }});
+
+    panel.hidden = false;
+  }}
+
+  document.getElementById("detailEditBtn").addEventListener("click", () => {{
+    if (!SELECTED_RECORD) return;
+    const id = String(SELECTED_RECORD.ID ?? SELECTED_RECORD.id ?? "").trim();
+    if (!/^[1-9]\\d*$/.test(id)) return;
+    window.parent.postMessage({{ type: "DJUNGO_EDIT_RECORD", id }}, window.location.origin);
+  }});
+
+
+  document.getElementById("detailDeleteBtn").addEventListener("click", () => {{
+    if (!SELECTED_RECORD) return;
+
+    const id = String(SELECTED_RECORD.ID ?? SELECTED_RECORD.id ?? "").trim();
+    if (!/^[1-9][0-9]*$/.test(id)) {{
+      alert("ID del record non valido");
+      return;
+    }}
+
+    if (window.parent === window) {{
+      alert("Apri il Viewer dalla pagina principale per eliminare il record");
+      return;
+    }}
+
+    window.parent.postMessage(
+      {{ type: "DJUNGO_DELETE_RECORD", id }},
+      window.location.origin
+    );
+  }});
+
+  function closeDetailPanel() {{
+    document.getElementById("detailPanel").hidden = true;
+    SELECTED_RECORD = null;
+  }}
+
+  document.getElementById("detailCloseBtn")
+    .addEventListener("click", closeDetailPanel);
+
   function renderTable() {{
     const status = document.getElementById("status");
     const search = document.getElementById("searchBox").value.trim().toLowerCase();
@@ -1317,6 +1470,10 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         paginationSizeSelector: [10, 25, 50, 100],
         placeholder: "No records found"
       }});
+      DATA_TABLE.on("rowClick", function(event, row) {{
+        openDetailPanel(row.getData());
+      }});
+
     }}
 
     status.textContent = `${{rows.length}} records loaded`;
