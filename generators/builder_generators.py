@@ -27,6 +27,7 @@ class FieldDef:
     formula_source: str | None = None
     formula_anchor_row: int | None = None
     formula_mode: str | None = None
+    sort_type: str = "auto"
 
 
 # ============================================================
@@ -75,6 +76,10 @@ def field_map_from_schema(fields_schema: Dict[str, Any]) -> List[FieldDef]:
                 formula_source=raw.get("formulaSource"),
                 formula_anchor_row=raw.get("formulaAnchorRow"),
                 formula_mode=raw.get("formulaMode"),
+                sort_type=raw.get("sortType", "auto")
+                    if raw.get("sortType") in
+                    ("auto", "string", "number", "date_it", "datetime_it")
+                    else "auto",
             )
         )
     return out
@@ -1103,6 +1108,13 @@ def _generate_viewer_enum_styles_js(fields: List[FieldDef]) -> str:
 def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> str:
     fields = field_map_from_schema(fields_schema)
     visible_cols_js = _generate_viewer_visible_columns_js(fields)
+    sort_config_js = js_pretty({
+        f.name: {
+            "sortType": f.sort_type,
+            "fieldType": f.type
+        }
+        for f in viewer_fields(fields)
+    })
     enum_map_js = _generate_viewer_enum_map_js(fields)
     label_map_js = _generate_viewer_label_map_js(fields)
     enum_styles_js = _generate_viewer_enum_styles_js(fields)
@@ -1319,6 +1331,67 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     return VISIBLE_HEADERS.some(v => normalizeHeader(v) === normalized);
   }}
 
+  const COLUMN_SORT_CONFIG = {sort_config_js};
+
+  function numericSortValue(value) {{
+    if (value === null || value === undefined || String(value).trim() === "") return null;
+    let s = String(value).trim().replace(/\\s/g, "");
+    if (s.includes(",") && s.includes(".")) {{
+      s = s.lastIndexOf(",") > s.lastIndexOf(".")
+        ? s.replace(/\\./g, "").replace(",", ".")
+        : s.replace(/,/g, "");
+    }} else if (s.includes(",")) {{
+      s = s.replace(",", ".");
+    }}
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }}
+
+  function italianDateValue(value) {{
+    const s = String(value ?? "").trim();
+    const match = s.match(/^(\\d{{1,2}})\\/(\\d{{1,2}})\\/(\\d{{4}})(?:[ T](\\d{{1,2}}):(\\d{{2}})(?::(\\d{{2}}))?)?$/);
+    if (!match) return null;
+    const [, day, month, year, hour = "0", minute = "0", second = "0"] = match;
+    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    if (d.getFullYear() !== Number(year) || d.getMonth() !== Number(month) - 1 ||
+        d.getDate() !== Number(day) || d.getHours() !== Number(hour) ||
+        d.getMinutes() !== Number(minute) || d.getSeconds() !== Number(second)) return null;
+    return d.getTime();
+  }}
+
+  function compareNullable(a, b, parser) {{
+    const x = parser(a);
+    const y = parser(b);
+    if (x === null && y === null) return 0;
+    if (x === null) return -1;
+    if (y === null) return 1;
+    return x - y;
+  }}
+
+  function getColumnSorter(header) {{
+    const normalizedHeader = String(header ?? "").trim().toLowerCase();
+    const configKey = Object.keys(COLUMN_SORT_CONFIG).find(
+      key => key.trim().toLowerCase() === normalizedHeader
+    );
+    const config = COLUMN_SORT_CONFIG[configKey] || {{}};
+    let type = config.sortType || "auto";
+    if (type === "auto") {{
+      const fieldType = String(config.fieldType || "").toLowerCase();
+      type = ["int", "integer", "float", "number", "decimal"].includes(fieldType)
+        ? "number"
+        : ["date", "datetime", "timestamp"].includes(fieldType)
+          ? "date_it"
+          : "string";
+    }}
+    if (type === "number") {{
+      return (a, b) => compareNullable(a, b, numericSortValue);
+    }}
+    if (type === "date_it" || type === "datetime_it") {{
+      return (a, b) => compareNullable(a, b, italianDateValue);
+    }}
+    return "string";
+  }}
+
   function buildColumns(headers) {{
     return headers
       .filter(h => isVisibleHeader(h))
@@ -1327,7 +1400,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
           title: LABELS[h] || h,
           field: h,
           headerFilter: "input",
-          sorter: "string",
+          sorter: getColumnSorter(h),
           resizable: true,
           formatter: function(cell) {{
             const value = cell.getValue();

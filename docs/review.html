@@ -212,6 +212,7 @@ a.button.secondary {
           <th>field name</th>
           <th>display label</th>
           <th>type</th>
+          <th>sorting</th>
           <th>required</th>
           <th>show in form</th>
           <th>show in viewer</th>
@@ -332,6 +333,8 @@ a.button.secondary {
       f.computed = normalizeBool(f.computed);
       f.visibleInForm = normalizeBool(f.visibleInForm);
       f.visibleInViewer = normalizeBool(f.visibleInViewer);
+      const allowedSortTypes = ["auto", "string", "number", "date_it", "datetime_it"];
+      f.sortType = allowedSortTypes.includes(f.sortType) ? f.sortType : "auto";
       f.locked = normalizeBool(f.locked);
       if (!Array.isArray(f.enumValues)) f.enumValues = [];
       return f;
@@ -422,6 +425,19 @@ a.button.secondary {
         </td>
         <td class="readonly-cell">
           <input data-key="type" data-index="${idx}" value="${escapeHtml(field.type)}" readonly />
+        </td>
+        <td>
+          <select data-key="sortType" data-index="${idx}">
+            ${[
+              ["auto", "Automatico"],
+              ["string", "Testo"],
+              ["number", "Numero"],
+              ["date_it", "Data italiana"],
+              ["datetime_it", "Data/ora"]
+            ].map(([value, label]) =>
+              `<option value="${value}" ${field.sortType === value ? "selected" : ""}>${label}</option>`
+            ).join("")}
+          </select>
         </td>
         <td>
           <select data-key="required" data-index="${idx}" ${field.computed ? "disabled" : ""}>
@@ -654,7 +670,9 @@ a.button.secondary {
 
       if (el.tagName === "SELECT") {
         el.addEventListener("change", () => {
-          field[key] = el.value === "true";
+          field[key] = key === "sortType"
+            ? el.value
+            : el.value === "true";
 
           if (key === "required" && field.computed) {
             field.required = false;
