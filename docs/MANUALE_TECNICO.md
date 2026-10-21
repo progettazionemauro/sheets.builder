@@ -132,3 +132,23 @@ La verifica sul server Hetzner staging è ancora da eseguire.
 Il deploy deve preservare `codice.gs`, `data/apps_registry.json` e gli
 altri dati operativi esistenti. Non utilizzare `git reset --hard`.
 Non intervenire sul server di produzione.
+
+
+## Aggiornamento tecnico B34-01 — 21/10/2026
+
+Commit d940c03 distribuito su Hetzner staging.
+
+Il Viewer generato include HEADER_ALIASES e resolveFieldKey():
+la risoluzione dinamica originalHeader → name viene utilizzata
+per visibilità, etichette e configurazione dell'ordinamento.
+La soluzione non dipende dai nomi specifici delle colonne SWOT.
+
+Collaudo staging: caricamento di 12 record e ordinamento numerico ID
+corretto, inclusi i valori a due cifre.
+
+I precedenti riferimenti al deploy staging ancora da effettuare
+sono superati da questo aggiornamento.
+
+Restano aperti i test specifici dei comparatori date_it e datetime_it.
+Il problema intermittente HTTP 404 di Apps Script non può considerarsi
+definitivamente risolto sulla base di un solo collaudo positivo.

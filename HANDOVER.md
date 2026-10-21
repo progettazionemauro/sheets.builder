@@ -44,7 +44,7 @@ Pannello dettaglio record del Viewer.
 Verificati sullo staging caricamento record, Update e Delete.
 Commit di riferimento: 1492bda.
 
-B34-01 — DA IMPLEMENTARE
+B34-01 — IMPLEMENTATO E COLLAUDATO SU STAGING
 Ordinamento configurabile per singola colonna nella Customization.
 Tipi previsti: numerico, alfabetico, data italiana e data estesa.
 Distinguere ordinamento iniziale dei record e ordinamento Tabulator.
@@ -102,14 +102,14 @@ Non eliminarli né includerli automaticamente nei commit.
 
 1. Predisporre docs/MANUALE_TECNICO.md.
 2. Adeguare publish.sh alla trisincronia sicura dello staging.
-3. Implementare B34-01 secondo le decisioni già documentate.
+3. B34-01 implementato; completare i test specifici date_it e datetime_it.
 
 ## PRIORITÀ COLLAUDO FINALE — 21/10/2026
 
 Obiettivo: arrivare rapidamente al collaudo integrato di Djungo.
 
 Funzionalità ancora da completare con priorità:
-- B34-01: ordinamento configurabile per colonna.
+- B34-01: completato su staging; test specifici date_it e datetime_it ancora aperti.
 - Anchor link: collegamenti cliccabili nel Viewer e nel dettaglio.
 - Immagini: visualizzazione corretta nel Viewer e nel dettaglio.
 
@@ -139,3 +139,22 @@ Esito: ordinamento numerico ID funzionante nel Viewer reale. Osservata anche la 
 Da completare prima della chiusura definitiva: verifica degli altri tipi di ordinamento, aggiornamento del manuale tecnico, commit selettivo, sincronizzazione GitHub e Hetzner staging, verifica funzionale sul server.
 
 Proteggere codice.gs, data/apps_registry.json e gli altri dati operativi. Non utilizzare git add . o git reset --hard. Non intervenire sulla produzione.
+
+
+## Aggiornamento B34-01 — Hetzner staging, 21/10/2026
+
+Commit generatore: d940c03, sincronizzato Ubuntu → GitHub → Hetzner staging.
+
+Collaudo applicazione SWOT: 12 record caricati correttamente.
+Ordinamento numerico ID verificato: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 17.
+La mappatura dinamica HEADER_ALIASES / resolveFieldKey collega
+le intestazioni originali del foglio ai nomi interni dei campi,
+senza hardcoding di specifiche colonne.
+
+Durante il collaudo mostrato non sono comparsi errori HTTP 404 o JSON.
+Non è tuttavia dimostrata la risoluzione definitiva dell'eventuale
+problema intermittente Apps Script.
+
+Restano da collaudare specificamente date_it e datetime_it.
+Prossima attività funzionale: link cliccabili e immagini nel Viewer.
+Produzione non modificata.
