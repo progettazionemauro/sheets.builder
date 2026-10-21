@@ -1117,6 +1117,10 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     })
     enum_map_js = _generate_viewer_enum_map_js(fields)
     label_map_js = _generate_viewer_label_map_js(fields)
+    header_aliases_js = js_pretty({
+        f.original_header or f.name: f.name
+        for f in fields
+    })
     enum_styles_js = _generate_viewer_enum_styles_js(fields)
 
     has_record_id = any(f.name == "id" and f.type == "int" for f in fields)
@@ -1260,6 +1264,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const VISIBLE_HEADERS = {visible_cols_js};
   const ENUMS = {enum_map_js};
   const LABELS = {label_map_js};
+  const HEADER_ALIASES = {header_aliases_js};
   const ENUM_STYLES = {enum_styles_js};
 
     async function apiCall_(mode, params = {{}}) {{
@@ -1326,9 +1331,20 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     return String(h ?? "").trim().toLowerCase();
   }}
 
+  function resolveFieldKey(header) {{
+    const normalized = normalizeHeader(header);
+    const alias = Object.keys(HEADER_ALIASES).find(
+      key => normalizeHeader(key) === normalized
+    );
+    if (alias) return HEADER_ALIASES[alias];
+
+    return Object.keys(LABELS).find(
+      key => normalizeHeader(key) === normalized
+    ) || header;
+  }}
+
   function isVisibleHeader(h) {{
-    const normalized = normalizeHeader(h);
-    return VISIBLE_HEADERS.some(v => normalizeHeader(v) === normalized);
+    return VISIBLE_HEADERS.includes(resolveFieldKey(h));
   }}
 
   const COLUMN_SORT_CONFIG = {sort_config_js};
@@ -1369,11 +1385,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   }}
 
   function getColumnSorter(header) {{
-    const normalizedHeader = String(header ?? "").trim().toLowerCase();
-    const configKey = Object.keys(COLUMN_SORT_CONFIG).find(
-      key => key.trim().toLowerCase() === normalizedHeader
-    );
-    const config = COLUMN_SORT_CONFIG[configKey] || {{}};
+    const config = COLUMN_SORT_CONFIG[resolveFieldKey(header)] || {{}};
     let type = config.sortType || "auto";
     if (type === "auto") {{
       const fieldType = String(config.fieldType || "").toLowerCase();
@@ -1397,7 +1409,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       .filter(h => isVisibleHeader(h))
       .map(h => {{
         return {{
-          title: LABELS[h] || h,
+          title: LABELS[resolveFieldKey(h)] || h,
           field: h,
           headerFilter: "input",
           sorter: getColumnSorter(h),
