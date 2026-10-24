@@ -213,6 +213,7 @@ a.button.secondary {
           <th>display label</th>
           <th>type</th>
           <th>sorting</th>
+          <th>visualizzazione</th>
           <th>required</th>
           <th>show in form</th>
           <th>show in viewer</th>
@@ -335,6 +336,8 @@ a.button.secondary {
       f.visibleInViewer = normalizeBool(f.visibleInViewer);
       const allowedSortTypes = ["auto", "string", "number", "date_it", "datetime_it"];
       f.sortType = allowedSortTypes.includes(f.sortType) ? f.sortType : "auto";
+      const allowedDisplayTypes = ["text", "link", "image"];
+      f.displayType = allowedDisplayTypes.includes(f.displayType) ? f.displayType : "text";
       f.locked = normalizeBool(f.locked);
       if (!Array.isArray(f.enumValues)) f.enumValues = [];
       return f;
@@ -436,6 +439,17 @@ a.button.secondary {
               ["datetime_it", "Data/ora"]
             ].map(([value, label]) =>
               `<option value="${value}" ${field.sortType === value ? "selected" : ""}>${label}</option>`
+            ).join("")}
+          </select>
+        </td>
+        <td>
+          <select data-key="displayType" data-index="${idx}">
+            ${[
+              ["text", "Testo"],
+              ["link", "Link"],
+              ["image", "Immagine"]
+            ].map(([value, label]) =>
+              `<option value="${value}" ${field.displayType === value ? "selected" : ""}>${label}</option>`
             ).join("")}
           </select>
         </td>
@@ -670,7 +684,7 @@ a.button.secondary {
 
       if (el.tagName === "SELECT") {
         el.addEventListener("change", () => {
-          field[key] = key === "sortType"
+          field[key] = ["sortType", "displayType"].includes(key)
             ? el.value
             : el.value === "true";
 

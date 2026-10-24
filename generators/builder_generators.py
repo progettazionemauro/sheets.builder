@@ -28,6 +28,7 @@ class FieldDef:
     formula_anchor_row: int | None = None
     formula_mode: str | None = None
     sort_type: str = "auto"
+    display_type: str = "text"
 
 
 # ============================================================
@@ -80,6 +81,9 @@ def field_map_from_schema(fields_schema: Dict[str, Any]) -> List[FieldDef]:
                     if raw.get("sortType") in
                     ("auto", "string", "number", "date_it", "datetime_it")
                     else "auto",
+                display_type=raw.get("displayType", "text")
+                    if raw.get("displayType") in ("text", "link", "image")
+                    else "text",
             )
         )
     return out
@@ -652,6 +656,22 @@ def _generate_getbyid_fill_js(fields: List[FieldDef]) -> str:
     return "\n".join(lines)
 
 
+
+def _generate_record_fill_js(fields: List[FieldDef]) -> str:
+    lines = []
+    for f in form_fields(fields):
+        dom_id = slugify_for_dom(f.name)
+        field_key = js_string(f.name)
+        element_id = js_string(dom_id)
+        lines.append(
+            f'    if (Object.prototype.hasOwnProperty.call(record, {field_key})) '
+            f'document.getElementById({element_id}).value = '
+            f'String(record[{field_key}] ?? "");'
+        )
+    return "\n".join(lines)
+
+
+
 def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str, Any]) -> str:
     fields = field_map_from_schema(fields_schema)
     constraints = constraints_from_schema(fields_schema)
@@ -664,6 +684,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     form_html = _generate_form_html(fields, constraints)
     payload_js = _generate_payload_js(fields)
     fill_js = _generate_getbyid_fill_js(fields)
+    record_fill_js = _generate_record_fill_js(fields)
 
     return f'''<!doctype html>
 <html lang="it">
@@ -719,33 +740,20 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 
 {form_html}
 
+    <div style="margin:12px 0;">
+      <label for="crud_id">Record ID</label>
+      <input id="crud_id" type="text" readonly
+             placeholder="Assigned automatically"
+             style="max-width:180px; background:#f1f5f9; cursor:default;" />
+      <small class="muted">Identificativo del record, non modificabile.</small>
+    </div>
+
     <div class="actions">
       <button id="insertBtn" type="button">Insert</button>
+      <button id="saveChangesBtn" type="button" hidden>Save changes</button>
+      <button id="deleteBtn" type="button" class="secondary" hidden>Delete</button>
+      <button id="cancelEditBtn" type="button" class="secondary" hidden>Annulla modifica</button>
       <span id="insertStatus" class="muted"></span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin:0 0 10px;">Find, update or delete an existing record</h3>
-      <p class="muted">
-    Enter a record id, load the record into the form, then update or delete it.
-      </p>
-    <div class="row">
-      <div>
-        <label for="crud_id">id</label>
-        <input id="crud_id" type="number" min="1" step="1" placeholder="1" />
-      </div>
-      <div>
-        <label>&nbsp;</label>
-        <div class="actions" style="margin-top:0;">
-          <button id="getBtn" type="button" class="secondary">Load record</button>
-          <button id="updateBtn" type="button">update</button>
-          <button id="deleteBtn" type="button" class="secondary">delete</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="actions">
       <span id="crudStatus" class="muted"></span>
     </div>
   </div>
@@ -868,9 +876,9 @@ const viewer = document.getElementById("viewer");
 
 const actionButtons = [
   "insertBtn",
-  "getBtn",
-  "updateBtn",
+  "saveChangesBtn",
   "deleteBtn",
+  "cancelEditBtn",
   "pingBtn",
   "schemaBtn"
 ]
@@ -879,9 +887,13 @@ const actionButtons = [
 
 const formControls = Array.from(document.querySelectorAll("input, select, button"));
 
+let IS_BUSY = false;
+
 function setBusy(isBusy, message = "") {{
+  IS_BUSY = Boolean(isBusy);
+
   formControls.forEach(el => {{
-    el.disabled = isBusy;
+    el.disabled = IS_BUSY;
   }});
 
   if (message) {{
@@ -959,61 +971,40 @@ async function call_(mode, params = {{}}, needsKey = false) {{
   }}
 }});
 
-  document.getElementById("getBtn").addEventListener("click", async () => {{
-  const st = document.getElementById("crudStatus");
-  try {{
-    setBusy(true, "Operation in progress. Please wait…");
+  document.getElementById("saveChangesBtn").addEventListener("click", async () => {{
+    const st = document.getElementById("crudStatus");
+    try {{
+      if (FORM_MODE !== "edit") return;
 
-    const id = document.getElementById("crud_id").value.trim();
-    setMsg(st, "Loading record…");
+      const id = document.getElementById("crud_id").value.trim();
+      if (!/^[1-9][0-9]*$/.test(id)) throw new Error("Invalid record ID");
 
-    const r = await call_("getById", {{ id }}, true);
+      setBusy(true, "Operation in progress. Please wait…");
+      setMsg(st, "Updating record…");
 
-    setMsg(
-      st,
-      r.ok ? `OK loaded id=${{id}}` : ("ERR: " + (r.error || "")),
-      r.ok ? "ok" : "err"
-    );
+      const payload = {payload_js};
+      payload.id = id;
 
-    if (r.ok && r.record) {{
-{fill_js}
-    }}
-  }} catch (e) {{
-    setMsg(st, "ERR: " + e.message, "err");
-  }} finally {{
-    setBusy(false);
-  }}
-}});
+      const r = await call_("update", payload, true);
 
-  document.getElementById("updateBtn").addEventListener("click", async () => {{
-  const st = document.getElementById("crudStatus");
-  try {{
-    setBusy(true, "Operation in progress. Please wait…");
+      if (!r.ok) throw new Error(r.error || "Unknown error");
 
-    const id = document.getElementById("crud_id").value.trim();
-    setMsg(st, "Updating record…");
-
-    const payload = {payload_js};
-    payload.id = id;
-
-    const r = await call_("update", payload, true);
-
-    setMsg(
-      st,
-      r.ok ? `OK updated id=${{id}}` : ("ERR: " + (r.error || "")),
-      r.ok ? "ok" : "err"
-    );
-
-    if (r.ok) {{
+      clearEditForm();
+      setMsg(st, `OK updated id=${{id}}`, "ok");
       refreshViewerSoon();
-    }}
 
-  }} catch (e) {{
-    setMsg(st, "ERR: " + e.message, "err");
-  }} finally {{
-    setTimeout(() => setBusy(false), 900);
-  }}
-}});
+    }} catch (e) {{
+      setMsg(st, "ERR: " + e.message, "err");
+    }} finally {{
+      setTimeout(() => setBusy(false), 900);
+    }}
+  }});
+
+  document.getElementById("cancelEditBtn").addEventListener("click", () => {{
+    clearEditForm();
+    setMsg(document.getElementById("crudStatus"), "");
+    setMsg(document.getElementById("insertStatus"), "");
+  }});
 
   document.getElementById("customizeConfigBtn").addEventListener("click", () => {{
   window.location.href =
@@ -1021,34 +1012,35 @@ async function call_(mode, params = {{}}, needsKey = false) {{
 }});
 
   document.getElementById("deleteBtn").addEventListener("click", async () => {{
-  const st = document.getElementById("crudStatus");
-  try {{
-    const id = document.getElementById("crud_id").value.trim();
-    if (!id) throw new Error("Missing id");
-    if (!confirm(`Delete id=${{id}}?`)) return;
+    const st = document.getElementById("crudStatus");
 
-    setBusy(true, "Operation in progress. Please wait…");
-    setMsg(st, "Deleting record…");
+    try {{
+      if (FORM_MODE !== "edit") return;
 
-    const r = await call_("delete", {{ id }}, true);
+      const id = document.getElementById("crud_id").value.trim();
+      if (!/^[1-9][0-9]*$/.test(id)) {{
+        throw new Error("Invalid record ID");
+      }}
 
-    setMsg(
-      st,
-      r.ok ? `OK deleted id=${{id}}` : ("ERR: " + (r.error || "")),
-      r.ok ? "ok" : "err"
-    );
+      if (!confirm(`Delete record id=${{id}}?`)) return;
 
-    if (r.ok) {{
+      setBusy(true, "Operation in progress. Please wait…");
+      setMsg(st, "Deleting record…");
+
+      const r = await call_("delete", {{ id }}, true);
+      if (!r.ok) throw new Error(r.error || "Unknown error");
+
+      clearEditForm();
+      setMsg(st, `OK deleted id=${{id}}`, "ok");
       refreshViewerSoon();
-    }}
 
-  }} catch (e) {{
-    setMsg(st, "ERR: " + e.message, "err");
-  }} finally {{
-    setTimeout(() => setBusy(false), 900);
-  }}
-}});
-  
+    }} catch (e) {{
+      setMsg(st, "ERR: " + e.message, "err");
+    }} finally {{
+      setTimeout(() => setBusy(false), 900);
+    }}
+  }});
+
   if (DEBUG_MODE) {{
   const debugPanel = document.getElementById("debugPanel");
   const responsePanel = document.getElementById("responsePanel");
@@ -1057,23 +1049,56 @@ async function call_(mode, params = {{}}, needsKey = false) {{
   if (responsePanel) responsePanel.style.display = "block";
 }}
 
+let FORM_MODE = "insert";
+
+function setFormMode(mode) {{
+  FORM_MODE = mode === "edit" ? "edit" : "insert";
+  const editing = FORM_MODE === "edit";
+
+  document.getElementById("insertBtn").hidden = editing;
+  document.getElementById("saveChangesBtn").hidden = !editing;
+  document.getElementById("deleteBtn").hidden = !editing;
+  document.getElementById("cancelEditBtn").hidden = !editing;
+}}
+
+function clearEditForm() {{
+  document.getElementById("crud_id").value = "";
+
+  document.getElementById("insertBtn")
+    .closest(".card")
+    .querySelectorAll("input, select, textarea")
+    .forEach(field => {{
+      field.value = "";
+    }});
+
+  setFormMode("insert");
+}}
+
+function populateForm(record) {{
+  if (!record || typeof record !== "object" || Array.isArray(record)) return false;
+
+  clearEditForm();
+{record_fill_js}
+  return true;
+}}
+
 window.addEventListener("message", event => {{
   if (event.origin !== window.location.origin) return;
   if (event.source !== viewer.contentWindow) return;
-  if (event.data?.type === "DJUNGO_DELETE_RECORD") {{
-    const id = String(event.data.id ?? "").trim();
-    if (!/^[1-9][0-9]*$/.test(id)) return;
-    document.getElementById("crud_id").value = id;
-    document.getElementById("deleteBtn").click();
-    return;
-  }}
+  if (IS_BUSY) return;
+
   if (event.data?.type !== "DJUNGO_EDIT_RECORD") return;
 
   const id = String(event.data.id ?? "").trim();
-  if (!/^[1-9]\\d*$/.test(id)) return;
+  if (!/^[1-9][0-9]*$/.test(id)) return;
+
+  if (!populateForm(event.data.record)) return;
 
   document.getElementById("crud_id").value = id;
-  document.getElementById("getBtn").click();
+  setFormMode("edit");
+
+  setMsg(document.getElementById("crudStatus"), "");
+  setMsg(document.getElementById("insertStatus"), "");
 
   const formCard = document.getElementById("insertBtn").closest(".card");
   formCard?.scrollIntoView({{ behavior: "smooth", block: "start" }});
@@ -1113,6 +1138,10 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
             "sortType": f.sort_type,
             "fieldType": f.type
         }
+        for f in viewer_fields(fields)
+    })
+    display_config_js = js_pretty({
+        f.name: f.display_type
         for f in viewer_fields(fields)
     })
     enum_map_js = _generate_viewer_enum_map_js(fields)
@@ -1242,17 +1271,6 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
   <div id="status" class="muted" style="margin:6px 0;">Caricamento…</div>
   <div id="dataTable"></div>
-  <aside id="detailPanel" class="detail-panel" hidden aria-label="Dettaglio record">
-    <div class="detail-header">
-      <strong id="detailTitle">Dettaglio record</strong>
-      <button id="detailCloseBtn" type="button">Chiudi</button>
-    </div>
-    <div id="detailContent" class="detail-content"></div>
-    <div class="detail-actions">
-      <button id="detailEditBtn" type="button">Modifica</button>
-      <button id="detailDeleteBtn" type="button">Elimina</button>
-    </div>
-  </aside>
 
 <script>
   const qs = new URLSearchParams(location.search);
@@ -1266,6 +1284,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const LABELS = {label_map_js};
   const HEADER_ALIASES = {header_aliases_js};
   const ENUM_STYLES = {enum_styles_js};
+  const DISPLAY_CONFIG = {display_config_js};
 
     async function apiCall_(mode, params = {{}}) {{
     let url = `/api/apps/${{APP_SLUG}}/${{mode}}`;
@@ -1294,8 +1313,49 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     ));
   }}
 
+  function safeHttpUrl(value) {{
+    const raw = String(value ?? "").trim();
+    if (!raw) return null;
+    try {{
+      const url = new URL(raw);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    }} catch {{
+      return null;
+    }}
+  }}
+
+  function renderDisplayValue(header, rawValue) {{
+    const mode = DISPLAY_CONFIG[resolveFieldKey(header)] || "text";
+    const value = String(rawValue ?? "");
+    const url = safeHttpUrl(value);
+
+    if (mode === "link" && url) {{
+      const link = document.createElement("a");
+      link.href = url;
+      link.textContent = "LINK";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      return link;
+    }}
+
+    if (mode === "image" && url) {{
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Immagine: " + header;
+      img.loading = "lazy";
+      img.style.maxWidth = "120px";
+      img.style.maxHeight = "80px";
+      img.style.objectFit = "contain";
+      return img;
+    }}
+
+    const span = document.createElement("span");
+    span.textContent = value;
+    return span;
+  }}
+
   function styleAttrForEnum(headerName, value) {{
-    const fieldStyles = ENUM_STYLES[headerName];
+    const fieldStyles = ENUM_STYLES[resolveFieldKey(headerName)];
     if (!fieldStyles) return "";
     const styleDef = fieldStyles[String(value ?? "").trim()];
     if (!styleDef) return "";
@@ -1341,6 +1401,15 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     return Object.keys(LABELS).find(
       key => normalizeHeader(key) === normalized
     ) || header;
+  }}
+
+  function normalizeRecord(record) {{
+    const normalized = {{}};
+    Object.entries(record).forEach(([header, value]) => {{
+      const key = resolveFieldKey(header);
+      normalized[key] = value;
+    }});
+    return normalized;
   }}
 
   function isVisibleHeader(h) {{
@@ -1430,87 +1499,11 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
               }});
             }}
 
-            return esc(value);
+            return renderDisplayValue(h, value);
           }}
         }};
       }});
   }}
-
-  let SELECTED_RECORD = null;
-
-  function openDetailPanel(record) {{
-    SELECTED_RECORD = record;
-
-    const panel = document.getElementById("detailPanel");
-    const content = document.getElementById("detailContent");
-    const title = document.getElementById("detailTitle");
-
-    content.replaceChildren();
-
-    const recordId = String(record.id ?? record.ID ?? "").trim();
-    const canEditRecord = HAS_RECORD_ID && /^[1-9][0-9]*$/.test(recordId);
-
-    title.textContent = canEditRecord
-      ? "Dettaglio record — ID " + recordId
-      : "Dettaglio record";
-
-    document.getElementById("detailEditBtn").hidden = !canEditRecord;
-    document.getElementById("detailDeleteBtn").hidden = !canEditRecord;
-
-    LAST_HEADERS.forEach(header => {{
-      const field = document.createElement("div");
-      field.className = "detail-field";
-
-      const label = document.createElement("div");
-      label.className = "detail-field-label";
-      label.textContent = LABELS[header] || header;
-
-      const value = document.createElement("div");
-      value.className = "detail-field-value";
-      value.textContent = String(record[header] ?? "");
-
-      field.append(label, value);
-      content.appendChild(field);
-    }});
-
-    panel.hidden = false;
-  }}
-
-  document.getElementById("detailEditBtn").addEventListener("click", () => {{
-    if (!SELECTED_RECORD) return;
-    const id = String(SELECTED_RECORD.ID ?? SELECTED_RECORD.id ?? "").trim();
-    if (!/^[1-9]\\d*$/.test(id)) return;
-    window.parent.postMessage({{ type: "DJUNGO_EDIT_RECORD", id }}, window.location.origin);
-  }});
-
-
-  document.getElementById("detailDeleteBtn").addEventListener("click", () => {{
-    if (!SELECTED_RECORD) return;
-
-    const id = String(SELECTED_RECORD.ID ?? SELECTED_RECORD.id ?? "").trim();
-    if (!/^[1-9][0-9]*$/.test(id)) {{
-      alert("ID del record non valido");
-      return;
-    }}
-
-    if (window.parent === window) {{
-      alert("Apri il Viewer dalla pagina principale per eliminare il record");
-      return;
-    }}
-
-    window.parent.postMessage(
-      {{ type: "DJUNGO_DELETE_RECORD", id }},
-      window.location.origin
-    );
-  }});
-
-  function closeDetailPanel() {{
-    document.getElementById("detailPanel").hidden = true;
-    SELECTED_RECORD = null;
-  }}
-
-  document.getElementById("detailCloseBtn")
-    .addEventListener("click", closeDetailPanel);
 
   function renderTable() {{
     const status = document.getElementById("status");
@@ -1556,7 +1549,17 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         placeholder: "No records found"
       }});
       DATA_TABLE.on("rowClick", function(event, row) {{
-        openDetailPanel(row.getData());
+        if (event.target.closest("a")) return;
+
+        const record = normalizeRecord(row.getData());
+        const id = String(record.id ?? "").trim();
+
+        if (!/^[1-9][0-9]*$/.test(id)) return;
+
+        window.parent.postMessage(
+          {{ type: "DJUNGO_EDIT_RECORD", id, record }},
+          window.location.origin
+        );
       }});
 
     }}

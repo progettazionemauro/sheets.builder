@@ -46,6 +46,46 @@
       outline: 2px solid #ffe69c;
       outline-offset: -2px;
     }
+    /* B34-03: pannello laterale di dettaglio */
+    .detail-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(420px, 100%);
+      height: 100%;
+      box-sizing: border-box;
+      background: #fff;
+      box-shadow: -6px 0 24px rgba(0,0,0,.18);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-panel[hidden] { display: none; }
+    .detail-header, .detail-actions {
+      padding: 14px;
+      border-bottom: 1px solid #ddd;
+    }
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .detail-content {
+      padding: 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .detail-actions {
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid #ddd;
+      border-bottom: 0;
+    }
+    .detail-actions button { padding: 9px 12px; cursor: pointer; }
+    .detail-actions button[hidden] { display: none; }
+    .detail-field { margin-bottom: 14px; }
+    .detail-field-label { font-size: 12px; font-weight: bold; color: #555; }
+    .detail-field-value { margin-top: 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -77,6 +117,7 @@
   const URL_LIMIT = qs.get("limit") || "50";
   const EMBEDDED_MODE = qs.get("embedded") === "1";
 
+  const HAS_RECORD_ID = true;
   const VISIBLE_HEADERS = [
   "id",
   "anno",
@@ -84,7 +125,6 @@
   "attività",
   "parti interessate",
   "obiettivo (ante)",
-  "swot (ante)",
   "swot (ante) numerico",
   "fattore interno - esterno (ante)",
   "fattori interni",
@@ -171,7 +211,6 @@
   "attività": "Attività",
   "parti interessate": "Parti interessate",
   "obiettivo (ante)": "Obiettivo (Ante)",
-  "swot (ante)": "SWOT (Ante)",
   "swot (ante) numerico": "SWOT (Ante) numerico",
   "fattore interno - esterno (ante)": "Fattore Interno - Esterno (Ante)",
   "fattori interni": "FATTORI INTERNI",
@@ -184,6 +223,27 @@
   "fattore interno - esterno (post)": "Fattore Interno - Esterno (POST)",
   "r / o (post)": "R / O (POST)",
   "commento post": "Commento POST"
+};
+  const HEADER_ALIASES = {
+  "ID": "id",
+  "Anno": "anno",
+  "Contesto": "contesto",
+  "Attività": "attività",
+  "Parti interessate": "parti interessate",
+  "Obiettivo (Ante)": "obiettivo (ante)",
+  "SWOT (Ante)": "swot (ante)",
+  "SWOT (Ante) numerico": "swot (ante) numerico",
+  "Fattore Interno - Esterno (Ante)": "fattore interno - esterno (ante)",
+  "FATTORI INTERNI": "fattori interni",
+  "FATTORI ESTERNI": "fattori esterni",
+  "R / O (Ante)": "r / o (ante)",
+  "Anno di Rilevazione (POST)": "anno di rilevazione (post)",
+  "Esito POST": "esito post",
+  "SWOT (POST)": "swot (post)",
+  "SWOT (Post) numerico": "swot (post) numerico",
+  "Fattore Interno - Esterno (POST)": "fattore interno - esterno (post)",
+  "R / O (POST)": "r / o (post)",
+  "Commento POST": "commento post"
 };
   const ENUM_STYLES = {
   "anno": {
@@ -419,6 +479,26 @@
     }
   }
 };
+  const DISPLAY_CONFIG = {
+  "id": "text",
+  "anno": "text",
+  "contesto": "text",
+  "attività": "link",
+  "parti interessate": "text",
+  "obiettivo (ante)": "link",
+  "swot (ante) numerico": "text",
+  "fattore interno - esterno (ante)": "text",
+  "fattori interni": "text",
+  "fattori esterni": "text",
+  "r / o (ante)": "text",
+  "anno di rilevazione (post)": "text",
+  "esito post": "text",
+  "swot (post)": "text",
+  "swot (post) numerico": "text",
+  "fattore interno - esterno (post)": "text",
+  "r / o (post)": "text",
+  "commento post": "text"
+};
 
     async function apiCall_(mode, params = {}) {
     let url = `/api/apps/${APP_SLUG}/${mode}`;
@@ -447,8 +527,49 @@
     ));
   }
 
+  function safeHttpUrl(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) return null;
+    try {
+      const url = new URL(raw);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function renderDisplayValue(header, rawValue) {
+    const mode = DISPLAY_CONFIG[resolveFieldKey(header)] || "text";
+    const value = String(rawValue ?? "");
+    const url = safeHttpUrl(value);
+
+    if (mode === "link" && url) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.textContent = "LINK";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      return link;
+    }
+
+    if (mode === "image" && url) {
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Immagine: " + header;
+      img.loading = "lazy";
+      img.style.maxWidth = "120px";
+      img.style.maxHeight = "80px";
+      img.style.objectFit = "contain";
+      return img;
+    }
+
+    const span = document.createElement("span");
+    span.textContent = value;
+    return span;
+  }
+
   function styleAttrForEnum(headerName, value) {
-    const fieldStyles = ENUM_STYLES[headerName];
+    const fieldStyles = ENUM_STYLES[resolveFieldKey(headerName)];
     if (!fieldStyles) return "";
     const styleDef = fieldStyles[String(value ?? "").trim()];
     if (!styleDef) return "";
@@ -484,9 +605,159 @@
     return String(h ?? "").trim().toLowerCase();
   }
 
+  function resolveFieldKey(header) {
+    const normalized = normalizeHeader(header);
+    const alias = Object.keys(HEADER_ALIASES).find(
+      key => normalizeHeader(key) === normalized
+    );
+    if (alias) return HEADER_ALIASES[alias];
+
+    return Object.keys(LABELS).find(
+      key => normalizeHeader(key) === normalized
+    ) || header;
+  }
+
+  function normalizeRecord(record) {
+    const normalized = {};
+    Object.entries(record).forEach(([header, value]) => {
+      const key = resolveFieldKey(header);
+      normalized[key] = value;
+    });
+    return normalized;
+  }
+
   function isVisibleHeader(h) {
-    const normalized = normalizeHeader(h);
-    return VISIBLE_HEADERS.some(v => normalizeHeader(v) === normalized);
+    return VISIBLE_HEADERS.includes(resolveFieldKey(h));
+  }
+
+  const COLUMN_SORT_CONFIG = {
+  "id": {
+    "sortType": "number",
+    "fieldType": "int"
+  },
+  "anno": {
+    "sortType": "auto",
+    "fieldType": "enum"
+  },
+  "contesto": {
+    "sortType": "auto",
+    "fieldType": "enum"
+  },
+  "attività": {
+    "sortType": "auto",
+    "fieldType": "string"
+  },
+  "parti interessate": {
+    "sortType": "auto",
+    "fieldType": "enum"
+  },
+  "obiettivo (ante)": {
+    "sortType": "auto",
+    "fieldType": "string"
+  },
+  "swot (ante) numerico": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "fattore interno - esterno (ante)": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "fattori interni": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "fattori esterni": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "r / o (ante)": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "anno di rilevazione (post)": {
+    "sortType": "auto",
+    "fieldType": "int"
+  },
+  "esito post": {
+    "sortType": "auto",
+    "fieldType": "string"
+  },
+  "swot (post)": {
+    "sortType": "auto",
+    "fieldType": "string"
+  },
+  "swot (post) numerico": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "fattore interno - esterno (post)": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "r / o (post)": {
+    "sortType": "auto",
+    "fieldType": "computed"
+  },
+  "commento post": {
+    "sortType": "auto",
+    "fieldType": "string"
+  }
+};
+
+  function numericSortValue(value) {
+    if (value === null || value === undefined || String(value).trim() === "") return null;
+    let s = String(value).trim().replace(/\s/g, "");
+    if (s.includes(",") && s.includes(".")) {
+      s = s.lastIndexOf(",") > s.lastIndexOf(".")
+        ? s.replace(/\./g, "").replace(",", ".")
+        : s.replace(/,/g, "");
+    } else if (s.includes(",")) {
+      s = s.replace(",", ".");
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function italianDateValue(value) {
+    const s = String(value ?? "").trim();
+    const match = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (!match) return null;
+    const [, day, month, year, hour = "0", minute = "0", second = "0"] = match;
+    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    if (d.getFullYear() !== Number(year) || d.getMonth() !== Number(month) - 1 ||
+        d.getDate() !== Number(day) || d.getHours() !== Number(hour) ||
+        d.getMinutes() !== Number(minute) || d.getSeconds() !== Number(second)) return null;
+    return d.getTime();
+  }
+
+  function compareNullable(a, b, parser) {
+    const x = parser(a);
+    const y = parser(b);
+    if (x === null && y === null) return 0;
+    if (x === null) return -1;
+    if (y === null) return 1;
+    return x - y;
+  }
+
+  function getColumnSorter(header) {
+    const config = COLUMN_SORT_CONFIG[resolveFieldKey(header)] || {};
+    let type = config.sortType || "auto";
+    if (type === "auto") {
+      const fieldType = String(config.fieldType || "").toLowerCase();
+      type = ["int", "integer", "float", "number", "decimal"].includes(fieldType)
+        ? "number"
+        : ["date", "datetime", "timestamp"].includes(fieldType)
+          ? "date_it"
+          : "string";
+    }
+    if (type === "number") {
+      return (a, b) => compareNullable(a, b, numericSortValue);
+    }
+    if (type === "date_it" || type === "datetime_it") {
+      return (a, b) => compareNullable(a, b, italianDateValue);
+    }
+    return "string";
   }
 
   function buildColumns(headers) {
@@ -494,10 +765,10 @@
       .filter(h => isVisibleHeader(h))
       .map(h => {
         return {
-          title: LABELS[h] || h,
+          title: LABELS[resolveFieldKey(h)] || h,
           field: h,
           headerFilter: "input",
-          sorter: "string",
+          sorter: getColumnSorter(h),
           resizable: true,
           formatter: function(cell) {
             const value = cell.getValue();
@@ -515,7 +786,7 @@
               });
             }
 
-            return esc(value);
+            return renderDisplayValue(h, value);
           }
         };
       });
@@ -564,6 +835,20 @@
         paginationSizeSelector: [10, 25, 50, 100],
         placeholder: "No records found"
       });
+      DATA_TABLE.on("rowClick", function(event, row) {
+        if (event.target.closest("a")) return;
+
+        const record = normalizeRecord(row.getData());
+        const id = String(record.id ?? "").trim();
+
+        if (!/^[1-9][0-9]*$/.test(id)) return;
+
+        window.parent.postMessage(
+          { type: "DJUNGO_EDIT_RECORD", id, record },
+          window.location.origin
+        );
+      });
+
     }
 
     status.textContent = `${rows.length} records loaded`;
