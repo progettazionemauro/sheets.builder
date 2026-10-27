@@ -619,13 +619,23 @@ def _html_input_for_field(field: FieldDef, constraints: Dict[str, Any]) -> str:
     <label for="{dom_id}">{label} <span class="muted">({required_label})</span></label>
     <input id="{dom_id}" type="number"{min_v}{max_v} placeholder="{label}" />'''.rstrip()
 
+    preview = ""
+    if field.type in ("string", "text"):
+        preview = (
+            f'<div class="dj-image-preview" data-preview-for="{dom_id}" hidden>'
+            f'<a target="_blank" rel="noopener noreferrer">'
+            f'<img alt="Anteprima: {label}" loading="lazy"></a>'
+            f'</div>'
+        )
+
     placeholder = label
     if field.type == "date":
         placeholder = constraints.get(field.name, {}).get("format", "dd/mm/yyyy")
 
     return f'''
     <label for="{dom_id}">{label} <span class="muted">({required_label})</span></label>
-    <input id="{dom_id}" placeholder="{escape_html(placeholder)}" />'''.rstrip()
+    <input id="{dom_id}" placeholder="{escape_html(placeholder)}" />
+    {preview}'''.rstrip()
 
 
 def _generate_form_html(fields: List[FieldDef], constraints: Dict[str, Any]) -> str:
@@ -702,6 +712,30 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     button {{ padding:9px 12px; border:0; border-radius:8px; background:#111; color:#fff; cursor:pointer; font-weight:800; }}
     button.secondary {{ background:#666; }}
     button:disabled {{ opacity:.6; cursor:not-allowed; }}
+    .dj-image-preview {{
+      width: 100%;
+      max-width: 600px;
+      height: 300px;
+      box-sizing: border-box;
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: #f1f5f9;
+    }}
+    .dj-image-preview[hidden] {{ display: none; }}
+    .dj-image-preview a {{
+      display: flex;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+    }}
+    .dj-image-preview img {{
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }}
     .row {{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }}
     .actions {{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }}
     .ok {{ color:#0a6; font-weight:800; }}
@@ -1061,6 +1095,43 @@ function setFormMode(mode) {{
   document.getElementById("cancelEditBtn").hidden = !editing;
 }}
 
+function imageUrlFromValue(value) {{
+  try {{
+    const url = new URL(String(value ?? "").trim());
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    return /\\.(png|jpe?g|gif|webp|avif|svg)$/i.test(url.pathname)
+      ? url.href : null;
+  }} catch {{
+    return null;
+  }}
+}}
+
+function refreshImagePreviews() {{
+  document.querySelectorAll(".dj-image-preview").forEach(preview => {{
+    const field = document.getElementById(preview.dataset.previewFor);
+    const url = imageUrlFromValue(field?.value);
+    const img = preview.querySelector("img");
+    const link = preview.querySelector("a");
+
+    if (!img || !link) return;
+
+    preview.hidden = !url;
+
+    if (url) {{
+      if (img.getAttribute("src") !== url) img.src = url;
+      link.href = url;
+    }} else {{
+      img.removeAttribute("src");
+      link.removeAttribute("href");
+    }}
+  }});
+}}
+
+document.querySelectorAll(".dj-image-preview").forEach(preview => {{
+  const field = document.getElementById(preview.dataset.previewFor);
+  field?.addEventListener("input", refreshImagePreviews);
+}});
+
 function clearEditForm() {{
   document.getElementById("crud_id").value = "";
 
@@ -1072,6 +1143,7 @@ function clearEditForm() {{
     }});
 
   setFormMode("insert");
+  refreshImagePreviews();
 }}
 
 function populateForm(record) {{
@@ -1079,6 +1151,7 @@ function populateForm(record) {{
 
   clearEditForm();
 {record_fill_js}
+  refreshImagePreviews();
   return true;
 }}
 
@@ -1325,28 +1398,30 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   }}
 
   function renderDisplayValue(header, rawValue) {{
-    const mode = DISPLAY_CONFIG[resolveFieldKey(header)] || "text";
     const value = String(rawValue ?? "");
     const url = safeHttpUrl(value);
 
-    if (mode === "link" && url) {{
+    if (url) {{
+      const parsed = new URL(url);
+      const isImage = /\\.(png|jpe?g|gif|webp|avif|svg)$/i.test(parsed.pathname);
+
+      if (isImage) {{
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Immagine: " + header;
+        img.loading = "lazy";
+        img.style.maxWidth = "120px";
+        img.style.maxHeight = "80px";
+        img.style.objectFit = "contain";
+        return img;
+      }}
+
       const link = document.createElement("a");
       link.href = url;
       link.textContent = "LINK";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       return link;
-    }}
-
-    if (mode === "image" && url) {{
-      const img = document.createElement("img");
-      img.src = url;
-      img.alt = "Immagine: " + header;
-      img.loading = "lazy";
-      img.style.maxWidth = "120px";
-      img.style.maxHeight = "80px";
-      img.style.objectFit = "contain";
-      return img;
     }}
 
     const span = document.createElement("span");

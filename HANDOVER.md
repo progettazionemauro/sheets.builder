@@ -158,3 +158,74 @@ problema intermittente Apps Script.
 Restano da collaudare specificamente date_it e datetime_it.
 Prossima attività funzionale: link cliccabili e immagini nel Viewer.
 Produzione non modificata.
+
+## AGGIORNAMENTO 27/10/2026 — IMMAGINI E TRISINCRONIA
+
+### B34 — Anteprime automatiche delle immagini
+
+Il generatore generators/builder_generators.py è stato aggiornato
+per riconoscere e visualizzare automaticamente le immagini
+associate a URL nei campi applicativi.
+
+Funzionalità introdotte:
+- anteprima automatica delle immagini nel CRUD;
+- miniature delle immagini nel Viewer;
+- mantenimento della configurazione di visualizzazione esistente.
+
+Il generatore aggiornato è stato verificato in locale.
+La copia presente su Hetzner staging è identica alla versione locale,
+come confermato dal confronto SHA-256:
+
+59d7440ec3495441bd7448e07e541551e4c30bdcfb460f244bd8aac6974fe9fe
+
+GitHub contiene ancora la versione precedente del generatore.
+La sincronizzazione GitHub è pertanto da completare.
+
+### Trisincronia Ubuntu → GitHub → Hetzner staging
+
+Branch operativo: level-b-persistent-backend.
+Commit comune verificato: aa4e297.
+
+Il precedente publish.sh è stato salvato come:
+publish.sh.bak-pre-trisync-20261027
+
+È stata predisposta una prima versione diagnostica di publish.sh,
+eseguibile con:
+
+./publish.sh --dry-run
+
+Primo test completato correttamente il 27/10/2026.
+Il controllo verifica branch, stato locale, commit GitHub,
+commit e modifiche su Hetzner staging e stato documentazione.
+
+La versione corrente NON esegue pubblicazioni.
+
+### Vincoli di sicurezza
+
+Proteggere i file operativi e gli artefatti generati,
+in particolare:
+- codice.gs;
+- data/apps_registry.json;
+- data/persistent_apps.json;
+- data/persistent_backend.json;
+- docs/index.html;
+- docs/viewer.html;
+- output/current/.
+
+Non utilizzare git add . o git reset --hard.
+
+Google Apps Script resta gestito separatamente:
+il progetto GAS remoto è la fonte operativa autorevole.
+L'automazione tramite clasp è rinviata.
+
+Non intervenire sulla produzione.
+
+### Prossime attività
+
+1. Completare il nuovo publish.sh con controlli di sicurezza
+   e pubblicazione selettiva sul solo staging.
+2. Aggiornare docs/MANUALE_TECNICO.md.
+3. Eseguire commit selettivo di codice e documentazione.
+4. Sincronizzare GitHub e Hetzner staging senza sovrascrivere
+   i dati operativi.
+5. Riprendere il collaudo funzionale integrato di Djungo.

@@ -1,70 +1,58 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-echo "=== Djungo Builder Publish ==="
+BRANCH="level-b-persistent-backend"
+HOST="root@65.21.176.227"
+REMOTE_DIR="/opt/sheets.builder"
 
-echo ""
-echo "=== Step 1 - Rebuild demo files ==="
+if [[ "${1:-}" != "--dry-run" || $# -ne 1 ]]; then
+    echo "Uso: ./publish.sh --dry-run"
+    echo "Questa versione non esegue pubblicazioni."
+    exit 2
+fi
 
-python pipeline/build_all_from_input.py examples/case_001
-python tools/publish_to_docs.py
+echo "=== DJUNGO — TRISYNC DRY RUN ==="
 
-echo ""
-echo "=== Step 2 - Git status ==="
+echo
+echo "=== 1. Repository locale ==="
+test "$(git branch --show-current)" = "$BRANCH" || {
+    echo "STOP: branch locale non corretto."
+    exit 1
+}
 
-git status
+git log -1 --oneline
+git status --short
 
-echo ""
-read -p "Commit message: " MSG
+echo
+echo "=== 2. File sorgente modificati ==="
+git diff --name-only -- \
+    . \
+    ':!data/' \
+    ':!output/' \
+    ':!docs/index.html' \
+    ':!docs/viewer.html' \
+    ':!docs/codice.gs' \
+    ':!codice.gs'
 
-git add .
-git commit -m "$MSG" || true
-git push origin main
+echo
+echo "=== 3. GitHub ==="
+git fetch origin "$BRANCH"
+LOCAL_COMMIT="$(git rev-parse HEAD)"
+GITHUB_COMMIT="$(git rev-parse "origin/$BRANCH")"
 
-echo ""
-echo "=== Step 3 - Hetzner sync ==="
+echo "Locale: $LOCAL_COMMIT"
+echo "GitHub: $GITHUB_COMMIT"
 
-ssh root@65.21.176.227 <<'EOF'
-set -e
+echo
+echo "=== 4. Hetzner staging ==="
+ssh "$HOST" "cd '$REMOTE_DIR' && \
+    echo 'Commit:' && git log -1 --oneline && \
+    echo 'Modifiche operative:' && git status --short"
 
-cd /opt/sheets.builder
+echo
+echo "=== 5. Documentazione ==="
+git status --short -- README.md HANDOVER.md docs/MANUALE_TECNICO.md
 
-echo ""
-echo "=== Reset local deploy artifacts ==="
-
-git reset --hard HEAD
-
-echo ""
-echo "=== Pull latest changes ==="
-
-git pull origin main
-
-echo ""
-echo "=== Activate venv ==="
-
-source venv/bin/activate
-
-echo ""
-echo "=== Install requirements ==="
-
-pip install -r requirements.txt
-
-echo ""
-echo "=== Restart service ==="
-
-systemctl restart sheets-builder
-systemctl status sheets-builder --no-pager
-
-echo ""
-echo "=== Health check ==="
-
-curl -s https://builder.sgbh.org/health
-
-echo ""
-echo "=== Current commit ==="
-
-git log --oneline -n 1
-EOF
-
-echo ""
-echo "=== Published successfully ==="
+echo
+echo "=== DRY RUN COMPLETATO ==="
+echo "Nessun commit, push o deployment eseguito."

@@ -152,3 +152,61 @@ sono superati da questo aggiornamento.
 Restano aperti i test specifici dei comparatori date_it e datetime_it.
 Il problema intermittente HTTP 404 di Apps Script non può considerarsi
 definitivamente risolto sulla base di un solo collaudo positivo.
+
+## B34 — Riconoscimento automatico delle immagini (27/10/2026)
+
+Il modulo generators/builder_generators.py è stato aggiornato
+per gestire automaticamente le anteprime delle immagini
+associate a URL nei campi applicativi.
+
+Le funzionalità introdotte comprendono:
+- visualizzazione automatica delle immagini nel CRUD;
+- generazione delle miniature nel Viewer;
+- compatibilità con la configurazione di visualizzazione esistente.
+
+Il generatore è stato verificato funzionalmente in locale.
+La versione presente su Hetzner staging è identica a quella
+locale, come confermato dal confronto SHA-256.
+
+Il collaudo completo delle miniature nel Viewer pubblicato
+rimane da completare.
+
+## Trisincronia e distribuzione sicura (27/10/2026)
+
+Il codice sorgente locale costituisce la fonte autorevole
+per lo sviluppo applicativo.
+
+Flusso previsto:
+Ubuntu locale → GitHub → Hetzner staging.
+
+Branch operativo: level-b-persistent-backend.
+Directory staging: /opt/sheets.builder.
+Servizio: sheets-builder.
+
+La pubblicazione deve essere selettiva e deve preservare
+i dati persistenti e gli artefatti generati.
+
+File da proteggere:
+- codice.gs;
+- data/apps_registry.json;
+- data/persistent_apps.json;
+- data/persistent_backend.json;
+- docs/index.html;
+- docs/viewer.html;
+- output/current/;
+- workdir/.
+
+Il progetto Google Apps Script remoto costituisce
+un'eccezione alla regola della fonte autorevole locale.
+I file GAS non devono essere distribuiti automaticamente.
+
+Lo script publish.sh è attualmente disponibile
+nella sola modalità diagnostica:
+
+./publish.sh --dry-run
+
+La modalità di pubblicazione effettiva sarà abilitata
+soltanto dopo l'introduzione dei controlli di sicurezza
+e la verifica della conservazione dei file operativi.
+
+La produzione è esclusa dalla procedura di staging.
