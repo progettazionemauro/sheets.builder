@@ -204,11 +204,15 @@ e verifica la disponibilità dell'applicazione.
 Lo script richiede che il commit locale sia già
 presente su GitHub: non esegue commit o push.
 
-Commit comune collaudato: a204ac9.
+Commit comune collaudato: bae6a22.
 Il deployment effettivo del 30/10/2026 ha aggiornato
 soltanto publish.sh.
 Verificati servizio attivo ed endpoint /generate.html
-con risposta HTTP 200.
+con risposta HTTP 200. Durante il deployment di bae6a22
+è stato osservato un HTTP 502 transitorio dopo il riavvio;
+la verifica successiva ha restituito HTTP 200.
+È stata predisposta localmente una verifica HTTP
+con tentativi ripetuti, ancora da distribuire.
 
 Restano da collaudare i diversi casi di conflitto,
 la gestione delle migrazioni e i test funzionali completi.
@@ -242,10 +246,20 @@ integrazione documentale → checkpoint → trisincronia.
 La sintesi viene preparata durante la sessione
 di sviluppo e verificata prima della pubblicazione.
 
-Il futuro checkpoint.sh dovrà selezionare soltanto
-i file autorizzati, controllare l'area di staging Git,
-richiedere approvazione, creare il commit, eseguire
-il push e richiamare publish.sh.
+checkpoint.sh è operativo nelle modalità --dry-run
+e --run. Classifica i file, seleziona soltanto sorgenti
+e documentazione autorizzati, controlla l'area di staging
+Git, richiede conferma, crea il commit, esegue il push
+e richiama publish.sh per la distribuzione.
+
+Il commit bae6a22 ha introdotto il checkpoint.
+Il collaudo in anteprima ha confermato la corretta
+esclusione dei dati persistenti e degli output generati.
+
+Le modifiche successive per il recupero di push e
+deployment interrotti sono ancora in fase di collaudo.
+Il recupero deve verificare i singoli commit e rifiutare
+merge e percorsi non autorizzati.
 
 La produzione Hetzner rimane esclusa.
 La promozione staging → produzione richiederà una

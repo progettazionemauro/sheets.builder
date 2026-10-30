@@ -180,7 +180,7 @@ con il commit c86f6ae del 27/10/2026.
 ### Trisincronia Ubuntu → GitHub → Hetzner staging
 
 Branch operativo: level-b-persistent-backend.
-Ultimo commit comune verificato: a204ac9.
+Ultimo commit comune verificato: bae6a22.
 
 Lo script publish.sh supporta:
 
@@ -229,18 +229,29 @@ L'automazione tramite clasp è rinviata.
 
 La produzione Hetzner è esclusa dalla trisincronia.
 
-### Processo documentale e checkpoint — 30/10/2026
+### Processo documentale e checkpoint — aggiornamento 30/10/2026
 
 Metodo concordato:
 implementazione → sintesi tecnica → verifica →
 integrazione del manuale → checkpoint → trisincronia.
 
-Il futuro checkpoint.sh dovrà:
-- selezionare esclusivamente file sorgente autorizzati;
-- verificare e integrare la documentazione predisposta;
-- mostrare le modifiche e richiedere approvazione;
-- eseguire commit e push su GitHub;
-- richiamare publish.sh per il deployment su staging.
+checkpoint.sh è stato implementato e versionato nel commit
+bae6a22. Supporta --dry-run per classificare le modifiche
+e --run per il checkpoint operativo, con selezione esplicita
+dei file autorizzati, verifica documentale, conferma
+dell'utente, commit, push e richiamo di publish.sh.
+
+Il collaudo --dry-run ha classificato correttamente
+2 sorgenti, 0 documenti, 0 GAS e 20 file esclusi.
+
+Sono in fase di completamento e collaudo:
+- ripresa di push e deployment interrotti;
+- verifica di ogni commit locale non pubblicato;
+- esclusione dei commit di merge dal recupero automatico;
+- controllo HTTP con tentativi ripetuti dopo il riavvio.
+
+Queste ultime modifiche sono ancora locali e non
+devono essere considerate già distribuite.
 
 La sintesi tecnica e l'integrazione documentale vengono
 preparate durante la sessione di sviluppo, non generate
@@ -248,9 +259,9 @@ automaticamente da uno script Bash.
 
 ### Prossime attività
 
-1. Integrare docs/MANUALE_TECNICO.md con il processo checkpoint.
-2. Implementare checkpoint.sh con selezione sicura dei file.
-3. Collaudare i casi di conflitto e la protezione dei dati.
+1. Completare il collaudo del recupero dei checkpoint interrotti.
+2. Verificare i casi di conflitto e la protezione dei dati.
+3. Pubblicare le modifiche approvate sul solo staging.
 4. Riprendere i test funzionali CRUD, Viewer e persistenza.
 5. Progettare separatamente la promozione staging → produzione,
    con backup e approvazione esplicita.

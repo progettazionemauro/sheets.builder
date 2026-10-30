@@ -49,6 +49,30 @@ gas_source() {
     esac
 }
 
+complete_deployment() {
+    echo
+    echo "=== PREFLIGHT STAGING ==="
+
+    if ! ./publish.sh --dry-run; then
+        echo "STOP: preflight staging non superato."
+        echo "Il commit GitHub rimane invariato."
+        return 1
+    fi
+
+    echo
+    read -r -p "Scrivi STAGING per verificare/distribuire su Hetzner: " DEPLOY
+    if [[ "$DEPLOY" != "STAGING" ]]; then
+        echo "Distribuzione staging rinviata."
+        return 0
+    fi
+
+    ./publish.sh --staging
+
+    echo
+    echo "=== CHECKPOINT COMPLETATO ==="
+    echo "GitHub e Hetzner staging allineati."
+}
+
 echo "=== DJUNGO CHECKPOINT — ANTEPRIMA ==="
 echo "Branch: $BRANCH"
 echo
@@ -104,9 +128,65 @@ echo "=== CONTROLLI PRELIMINARI ==="
 
 git fetch origin "$BRANCH"
 
-if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$BRANCH")" ]]; then
-    echo "STOP: Ubuntu e GitHub non allineati"
-    exit 1
+LOCAL_HEAD="$(git rev-parse HEAD)"
+REMOTE_HEAD="$(git rev-parse "origin/$BRANCH")"
+
+if [[ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]]; then
+    if ! git merge-base --is-ancestor "$REMOTE_HEAD" "$LOCAL_HEAD"; then
+        echo "STOP: GitHub è avanti o la cronologia è divergente."
+        echo "Nessun push automatico consentito."
+        exit 1
+    fi
+
+    echo
+    echo "=== CHECKPOINT LOCALE DA COMPLETARE ==="
+    git log --oneline "$REMOTE_HEAD..$LOCAL_HEAD"
+
+    echo
+    echo "=== VERIFICA FILE DEI COMMIT DA RECUPERARE ==="
+
+    mapfile -t PENDING_COMMITS < <(
+        git rev-list --reverse "$REMOTE_HEAD..$LOCAL_HEAD"
+    )
+
+    for commit in "${PENDING_COMMITS[@]}"; do
+        echo "Verifica commit: $(git rev-parse --short "$commit")"
+
+        PARENTS="$(git rev-list --parents -n 1 "$commit")"
+        read -r -a PARENT_ARRAY <<< "$PARENTS"
+
+        if (( ${#PARENT_ARRAY[@]} != 2 )); then
+            echo "STOP: commit di merge o senza un unico genitore."
+            echo "Richiesta verifica manuale: $commit"
+            exit 1
+        fi
+
+        mapfile -d '' -t PENDING_FILES < <(
+            git diff-tree --root --no-commit-id --name-only                 -r -z --no-renames "$commit"
+        )
+
+        for file in "${PENDING_FILES[@]}"; do
+            if allowed_source "$file" || allowed_docs "$file"; then
+                echo "  AUTORIZZATO: $file"
+            else
+                echo "STOP: file non autorizzato nel commit $commit: $file"
+                exit 1
+            fi
+        done
+    done
+
+    if ! git diff --cached --quiet || [[ -n "$(git ls-files -u)" ]]; then
+        echo "STOP: staging Git non vuoto o conflitti presenti."
+        exit 1
+    fi
+
+    read -r -p "Scrivi RIPRENDI per completare il push: " CONFIRM
+    [[ "$CONFIRM" == "RIPRENDI" ]] || exit 0
+
+    git push origin "$BRANCH"
+    echo "Push completato."
+    complete_deployment
+    exit $?
 fi
 
 if ! git diff --cached --quiet || [[ -n "$(git ls-files -u)" ]]; then
@@ -134,8 +214,9 @@ for file in "${FILES[@]}"; do
 done
 
 if (( ${#SELECTED[@]} == 0 )); then
-    echo "Nessuna modifica autorizzata da pubblicare."
-    exit 0
+    echo "Nessuna nuova modifica autorizzata."
+    complete_deployment
+    exit $?
 fi
 
 if (( HAS_CODE && (!HAS_HANDOVER || !HAS_MANUAL) )); then
@@ -201,24 +282,4 @@ echo
 echo "=== GITHUB AGGIORNATO ==="
 echo "Commit: $(git rev-parse --short HEAD)"
 
-echo
-echo "=== PREFLIGHT STAGING ==="
-
-if ! ./publish.sh --dry-run; then
-    echo "ATTENZIONE: GitHub aggiornato, staging NON aggiornato."
-    echo "Verificare il problema prima di procedere."
-    exit 1
-fi
-
-echo
-read -r -p "Scrivi STAGING per distribuire su Hetzner: " DEPLOY
-if [[ "$DEPLOY" != "STAGING" ]]; then
-    echo "GitHub aggiornato; distribuzione staging rinviata."
-    exit 0
-fi
-
-./publish.sh --staging
-
-echo
-echo "=== CHECKPOINT COMPLETATO ==="
-echo "GitHub e Hetzner staging aggiornati."
+complete_deployment

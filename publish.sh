@@ -139,7 +139,22 @@ test "$(git rev-parse HEAD)" = "$EXPECTED"
 systemctl restart sheets-builder
 systemctl is-active --quiet sheets-builder
 
-curl -fsS -o /dev/null https://builder.sgbh.org/generate.html
+echo "Attesa disponibilità applicazione web..."
+
+READY=0
+for attempt in {1..15}; do
+    if curl -fsS --max-time 5 -o /dev/null https://builder.sgbh.org/generate.html 2>/dev/null; then
+        READY=1
+        echo "HTTP OK al tentativo $attempt"
+        break
+    fi
+    sleep 2
+done
+
+if [[ "$READY" -ne 1 ]]; then
+    echo "ERRORE: applicazione non disponibile dopo i tentativi previsti"
+    exit 1
+fi
 
 echo "STAGING AGGIORNATO: $(git rev-parse --short HEAD)"
 REMOTE
