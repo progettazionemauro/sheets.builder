@@ -163,46 +163,53 @@ Produzione non modificata.
 
 ### B34 — Anteprime automatiche delle immagini
 
-Il generatore generators/builder_generators.py è stato aggiornato
-per riconoscere e visualizzare automaticamente le immagini
-associate a URL nei campi applicativi.
+Il generatore generators/builder_generators.py riconosce e
+visualizza automaticamente immagini associate a URL.
 
-Funzionalità introdotte:
-- anteprima automatica delle immagini nel CRUD;
+Funzionalità implementate:
+- anteprima automatica delle immagini nei form CRUD;
 - miniature delle immagini nel Viewer;
 - mantenimento della configurazione di visualizzazione esistente.
 
-Il generatore aggiornato è stato verificato in locale.
-La copia presente su Hetzner staging è identica alla versione locale,
-come confermato dal confronto SHA-256:
-
+Verifica SHA-256 del generatore:
 59d7440ec3495441bd7448e07e541551e4c30bdcfb460f244bd8aac6974fe9fe
 
-GitHub contiene ancora la versione precedente del generatore.
-La sincronizzazione GitHub è pertanto da completare.
+Sincronizzazione Ubuntu, GitHub e Hetzner staging completata
+con il commit c86f6ae del 27/10/2026.
 
 ### Trisincronia Ubuntu → GitHub → Hetzner staging
 
 Branch operativo: level-b-persistent-backend.
-Commit comune verificato: aa4e297.
+Ultimo commit comune verificato: a204ac9.
 
-Il precedente publish.sh è stato salvato come:
-publish.sh.bak-pre-trisync-20261027
-
-È stata predisposta una prima versione diagnostica di publish.sh,
-eseguibile con:
+Lo script publish.sh supporta:
 
 ./publish.sh --dry-run
+./publish.sh --staging
 
-Primo test completato correttamente il 27/10/2026.
-Il controllo verifica branch, stato locale, commit GitHub,
-commit e modifiche su Hetzner staging e stato documentazione.
+Il primo comando esegue i controlli preliminari senza deployment.
+Il secondo aggiorna Hetzner staging mediante fast-forward,
+previa verifica dei percorsi protetti e dei conflitti locali.
 
-La versione corrente NON esegue pubblicazioni.
+Il 30/10/2026 è stato verificato il deployment del commit
+a204ac9, con aggiornamento del solo publish.sh.
+
+Verifiche effettuate:
+- commit identico su Ubuntu, GitHub e Hetzner staging;
+- servizio sheets-builder attivo;
+- endpoint https://builder.sgbh.org/generate.html: HTTP 200;
+- nessun intervento sulla produzione.
+
+La procedura è stata collaudata sia senza aggiornamenti
+sia con un commit effettivo da distribuire.
+Restano da testare separatamente i casi di conflitto.
 
 ### Vincoli di sicurezza
 
-Proteggere i file operativi e gli artefatti generati,
+Ubuntu è la fonte autorevole del codice Python, HTML sorgente
+e della documentazione.
+
+Non sovrascrivere database, registri e artefatti generati,
 in particolare:
 - codice.gs;
 - data/apps_registry.json;
@@ -210,22 +217,40 @@ in particolare:
 - data/persistent_backend.json;
 - docs/index.html;
 - docs/viewer.html;
-- output/current/.
+- output/current/;
+- workdir/;
+- output_project/.
 
 Non utilizzare git add . o git reset --hard.
 
-Google Apps Script resta gestito separatamente:
-il progetto GAS remoto è la fonte operativa autorevole.
+Google Apps Script segue una procedura separata:
+il progetto GAS remoto rimane la fonte autorevole.
 L'automazione tramite clasp è rinviata.
 
-Non intervenire sulla produzione.
+La produzione Hetzner è esclusa dalla trisincronia.
+
+### Processo documentale e checkpoint — 30/10/2026
+
+Metodo concordato:
+implementazione → sintesi tecnica → verifica →
+integrazione del manuale → checkpoint → trisincronia.
+
+Il futuro checkpoint.sh dovrà:
+- selezionare esclusivamente file sorgente autorizzati;
+- verificare e integrare la documentazione predisposta;
+- mostrare le modifiche e richiedere approvazione;
+- eseguire commit e push su GitHub;
+- richiamare publish.sh per il deployment su staging.
+
+La sintesi tecnica e l'integrazione documentale vengono
+preparate durante la sessione di sviluppo, non generate
+automaticamente da uno script Bash.
 
 ### Prossime attività
 
-1. Completare il nuovo publish.sh con controlli di sicurezza
-   e pubblicazione selettiva sul solo staging.
-2. Aggiornare docs/MANUALE_TECNICO.md.
-3. Eseguire commit selettivo di codice e documentazione.
-4. Sincronizzare GitHub e Hetzner staging senza sovrascrivere
-   i dati operativi.
-5. Riprendere il collaudo funzionale integrato di Djungo.
+1. Integrare docs/MANUALE_TECNICO.md con il processo checkpoint.
+2. Implementare checkpoint.sh con selezione sicura dei file.
+3. Collaudare i casi di conflitto e la protezione dei dati.
+4. Riprendere i test funzionali CRUD, Viewer e persistenza.
+5. Progettare separatamente la promozione staging → produzione,
+   con backup e approvazione esplicita.

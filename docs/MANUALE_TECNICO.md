@@ -171,42 +171,82 @@ locale, come confermato dal confronto SHA-256.
 Il collaudo completo delle miniature nel Viewer pubblicato
 rimane da completare.
 
-## Trisincronia e distribuzione sicura (27/10/2026)
+## Trisincronia e distribuzione sicura — aggiornamento 30/10/2026
 
-Il codice sorgente locale costituisce la fonte autorevole
-per lo sviluppo applicativo.
+### Architettura e fonti autorevoli
 
-Flusso previsto:
-Ubuntu locale → GitHub → Hetzner staging.
+Ubuntu locale è la fonte autorevole per codice Python,
+HTML sorgente e documentazione.
 
-Branch operativo: level-b-persistent-backend.
+Flusso: Ubuntu → GitHub → Hetzner staging.
+
+Branch: level-b-persistent-backend.
 Directory staging: /opt/sheets.builder.
 Servizio: sheets-builder.
+URL: https://builder.sgbh.org.
 
-La pubblicazione deve essere selettiva e deve preservare
-i dati persistenti e gli artefatti generati.
+Il progetto Google Apps Script remoto costituisce
+un'eccezione: i file GAS non vengono distribuiti
+automaticamente.
 
-File da proteggere:
-- codice.gs;
+### Pubblicazione controllata
+
+Lo script publish.sh supporta:
+
+- ./publish.sh --dry-run
+- ./publish.sh --staging
+
+La prima modalità esegue il preflight senza deployment.
+La seconda, dopo i controlli, aggiorna staging mediante
+merge fast-forward, riavvia il servizio se necessario
+e verifica la disponibilità dell'applicazione.
+
+Lo script richiede che il commit locale sia già
+presente su GitHub: non esegue commit o push.
+
+Commit comune collaudato: a204ac9.
+Il deployment effettivo del 30/10/2026 ha aggiornato
+soltanto publish.sh.
+Verificati servizio attivo ed endpoint /generate.html
+con risposta HTTP 200.
+
+Restano da collaudare i diversi casi di conflitto,
+la gestione delle migrazioni e i test funzionali completi.
+
+### Protezione dei dati
+
+Non sovrascrivere:
+- codice.gs e altri file GAS;
 - data/apps_registry.json;
 - data/persistent_apps.json;
 - data/persistent_backend.json;
 - docs/index.html;
 - docs/viewer.html;
-- output/current/;
+- output/;
+- output_project/;
 - workdir/.
 
-Il progetto Google Apps Script remoto costituisce
-un'eccezione alla regola della fonte autorevole locale.
-I file GAS non devono essere distribuiti automaticamente.
+Alcuni file operativi risultano già tracciati da Git.
+Pertanto .gitignore non costituisce una protezione
+sufficiente.
 
-Lo script publish.sh è attualmente disponibile
-nella sola modalità diagnostica:
+Non utilizzare git add . né git reset --hard.
 
-./publish.sh --dry-run
+### Processo di checkpoint
 
-La modalità di pubblicazione effettiva sarà abilitata
-soltanto dopo l'introduzione dei controlli di sicurezza
-e la verifica della conservazione dei file operativi.
+Il processo concordato è:
 
-La produzione è esclusa dalla procedura di staging.
+Implementazione → sintesi tecnica → verifica →
+integrazione documentale → checkpoint → trisincronia.
+
+La sintesi viene preparata durante la sessione
+di sviluppo e verificata prima della pubblicazione.
+
+Il futuro checkpoint.sh dovrà selezionare soltanto
+i file autorizzati, controllare l'area di staging Git,
+richiedere approvazione, creare il commit, eseguire
+il push e richiamare publish.sh.
+
+La produzione Hetzner rimane esclusa.
+La promozione staging → produzione richiederà una
+procedura separata, con backup e approvazione.
