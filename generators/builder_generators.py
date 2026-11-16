@@ -1812,9 +1812,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   }}
   
   if (EMBEDDED_MODE) {{
-  const toolbar = document.querySelector(".toolbar");
-  if (toolbar) toolbar.style.display = "none";
-
+  // Keep search and page-size controls visible in embedded mode.
   const topLabel = document.querySelector(".muted");
   if (topLabel) topLabel.style.display = "none";
 }}
