@@ -81,6 +81,8 @@ mapfile -d '' -t UNTRACKED < <(
 
 is_protected() {
     case "$1" in
+        google/DjungoBackend.gs)
+            return 1 ;;
         data/*|output/*|output_project/*|workdir/*|\
         backup_layout_before_cleanup/*|\
         codice.gs|*.gs|google/*|\

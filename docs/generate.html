@@ -133,6 +133,28 @@
       Select one option. Only the controls needed for that path will be shown.
     </p>
 
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Import from Google Sheets URL</h3>
+      <p class="muted">
+        Paste a public Google Sheets URL. No file download required.
+      </p>
+
+      <label for="gsUrlInput">Google Sheets URL</label>
+      <input id="gsUrlInput" type="url"
+             placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+
+      <div class="actions">
+        <button id="gsFindBtn" type="button">Find sheets</button>
+        <span id="gsStatus" class="muted"></span>
+      </div>
+
+      <div id="gsSelectPanel" class="hidden">
+        <label for="gsSelect">Select a sheet</label>
+        <select id="gsSelect"></select>
+      </div>
+    </div>
+
     <div id="googleSheetPanel" class="hidden" style="margin-bottom:16px;">
       <p class="ok">Google Sheet detected</p>
       <p>
@@ -142,6 +164,7 @@
       </p>
       <div class="actions">
         <button id="chooseGoogleSheetBtn" type="button">Continue from Google Sheet</button>
+        <span id="googleImportStatus" class="muted"></span>
       </div>
     </div>
 
@@ -340,11 +363,166 @@ const xlsxFile = document.getElementById("xlsxFile");
       "Ready to continue.";
   }
 
-  chooseGoogleSheetBtn.addEventListener("click", () => {
-    updateDebug({
-      stage: "google-sheet-context-received",
-      source: googleSheetContext
-    });
+
+  const gsUrlInput = document.getElementById("gsUrlInput");
+  const gsFindBtn = document.getElementById("gsFindBtn");
+  const gsStatus = document.getElementById("gsStatus");
+  const gsSelect = document.getElementById("gsSelect");
+  const gsSelectPanel = document.getElementById("gsSelectPanel");
+
+  let gsTabs = [];
+
+  function clearGoogleSelection() {
+    gsTabs = [];
+    gsSelectPanel.classList.add("hidden");
+    googleSheetPanel.classList.add("hidden");
+    googleSheetContext.sheetId = null;
+    googleSheetContext.sheetName = null;
+  }
+
+  gsUrlInput.addEventListener("input", clearGoogleSelection);
+
+  gsFindBtn.addEventListener("click", async () => {
+    const url = gsUrlInput.value.trim();
+    clearGoogleSelection();
+
+    if (!url) {
+      setStatus(gsStatus, "Enter a Google Sheets URL.", "err");
+      return;
+    }
+
+    gsFindBtn.disabled = true;
+    setStatus(gsStatus, "Reading available sheets...", "muted");
+
+    try {
+      const resp = await fetch(
+        "/api/google-sheet/tabs?url=" + encodeURIComponent(url)
+      );
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || "Cannot retrieve sheets");
+      }
+
+      if (!Array.isArray(data.tabs) || !data.tabs.length) {
+        throw new Error("No sheets available");
+      }
+
+      gsTabs = data.tabs;
+      googleSheetContext.spreadsheetId = data.spreadsheet_id;
+      googleSheetContext.spreadsheetName = "Google Sheets";
+
+      gsSelect.replaceChildren(new Option("Choose a sheet...", ""));
+
+      for (const tab of gsTabs) {
+        gsSelect.add(new Option(tab.sheetName, tab.sheetId));
+      }
+
+      gsSelectPanel.classList.remove("hidden");
+
+      const parsed = new URL(url);
+      const gid = parsed.searchParams.get("gid") ||
+        new URLSearchParams(
+          parsed.hash.replace(/^#/, "")
+        ).get("gid");
+
+      if (gid && gsTabs.some(tab => tab.sheetId === gid)) {
+        gsSelect.value = gid;
+        gsSelect.dispatchEvent(new Event("change"));
+      }
+
+      setStatus(
+        gsStatus,
+        gsTabs.length + " sheets found.",
+        "ok"
+      );
+
+    } catch (err) {
+      setStatus(gsStatus, "ERR: " + err.message, "err");
+    } finally {
+      gsFindBtn.disabled = false;
+    }
+  });
+
+  gsSelect.addEventListener("change", () => {
+    const tab = gsTabs.find(
+      item => item.sheetId === gsSelect.value
+    );
+
+    if (!tab) {
+      googleSheetPanel.classList.add("hidden");
+      return;
+    }
+
+    googleSheetContext.sheetId = tab.sheetId;
+    googleSheetContext.sheetName = tab.sheetName;
+
+    googleSpreadsheetName.textContent =
+      googleSheetContext.spreadsheetName;
+    googleSheetName.textContent = tab.sheetName;
+    googleSheetId.textContent = tab.sheetId;
+
+    googleSheetPanel.classList.remove("hidden");
+  });
+
+  chooseGoogleSheetBtn.addEventListener("click", async () => {
+    const status = document.getElementById("googleImportStatus");
+
+    try {
+      if (!googleSheetContext.sheetId ||
+          !/^[0-9]+$/.test(googleSheetContext.sheetId)) {
+        throw new Error("Missing or invalid Google Sheet gid");
+      }
+
+      chooseGoogleSheetBtn.disabled = true;
+      setStatus(status, "Importing from Google Sheets...", "muted");
+
+      const url = new URL(
+        "https://docs.google.com/spreadsheets/d/" +
+        encodeURIComponent(googleSheetContext.spreadsheetId) + "/edit"
+      );
+      url.searchParams.set("gid", googleSheetContext.sheetId);
+
+      const formData = new FormData();
+      formData.append("google_sheet_url", url.toString());
+      formData.append("spreadsheet_name",
+                      googleSheetContext.spreadsheetName || "");
+      formData.append("sheet_name", googleSheetContext.sheetName);
+      formData.append("sheet_id", googleSheetContext.sheetId);
+
+      const resp = await fetch("/api/google-sheet/import", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || "Google Sheets import failed");
+      }
+
+      currentSessionId = data.session_id;
+      currentBuilderState = data.builder_state;
+
+      localStorage.setItem("DJUNGO_SESSION_ID", currentSessionId);
+      localStorage.setItem(
+        "DJUNGO_BUILDER_STATE",
+        JSON.stringify(currentBuilderState)
+      );
+
+      setStatus(status, "Import completed.", "ok");
+      window.location.href = "review.html?autoload=1";
+
+    } catch (err) {
+      setStatus(status, "ERR: " + err.message, "err");
+      updateDebug({
+        stage: "google-sheet-import-error",
+        error: err.message
+      });
+    } finally {
+      chooseGoogleSheetBtn.disabled = false;
+    }
   });
 
   let currentSessionId = null;

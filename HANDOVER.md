@@ -265,3 +265,52 @@ automaticamente da uno script Bash.
 4. Riprendere i test funzionali CRUD, Viewer e persistenza.
 5. Progettare separatamente la promozione staging → produzione,
    con backup e approvazione esplicita.
+
+## Decisione architetturale — importazione Google Sheets (05/11/2026)
+
+I Google Sheets sorgente devono essere condivisi in lettura tramite
+link, con esportazione consentita. Djungo utilizzerà gli endpoint
+nativi di esportazione senza introdurre Google Drive/Sheets API
+con OAuth. Le autorizzazioni GAS necessarie al backend CRUD
+rimangono ammesse.
+
+Da sviluppare: importazione XLSX automatica, identificazione
+della scheda e verifica del recupero degli stili HTML.
+
+## CHECKPOINT GS-125 — 16/11/2026
+
+### Stato funzionale consolidato
+
+- Branch: `level-b-persistent-backend`.
+- Commit di partenza: `f6a6e4f`.
+- Importazione Google Sheets mediante URL pubblico ed export XLSX,
+  senza OAuth Google Drive/Sheets; scoperta delle schede collaudata.
+- Backend persistente GAS condiviso, deployment esistente aggiornato
+  alla versione 15.
+- Viewer: paginazione remota, ricerca e ordinamento globali collaudati.
+- Valori Date: rappresentazione mediante `getDisplayValues()`
+  nelle risposte `view` e `getById`; valori tipizzati conservati
+  per l'ordinamento.
+- UPDATE persistente: evita di riscrivere celle invariate.
+- GS-110: CREATE, READ, UPDATE e DELETE reali superati.
+- GS-122: aggiornamento reale con conservazione di valore e
+  formato di una cella originariamente interpretata come orario.
+- ID stabili indipendenti dalle posizioni fisiche; sono ammesse lacune.
+
+### Stato della distribuzione
+
+Il sorgente locale contiene modifiche non ancora sincronizzate
+con GitHub e Hetzner staging. Il deployment GAS versione 15
+è già pubblicato ed è distinto dal deployment Flask su staging.
+
+### Prossime operazioni obbligatorie
+
+1. Verifica e selezione esplicita dei file da versionare.
+2. Controlli sintattici e funzionali dei generatori.
+3. Commit locale e sincronizzazione GitHub.
+4. Deployment sul solo Hetzner staging, con backup e rollback.
+5. Verifica di commit, file e risposte HTTP sui tre ambienti.
+6. Nessun intervento sulla produzione senza autorizzazione separata.
+
+Escludere dal commit backup, anteprime `_gs*_preview`, dati
+temporanei e configurazioni contenenti eventuali credenziali.

@@ -272,3 +272,31 @@ The generated application should remain:
 - portable
 - self-hostable
 - independent from proprietary SaaS lock-in
+
+## CHECKPOINT GS-125 — 2026-11-16
+
+The current local development checkpoint includes:
+
+- Public Google Sheets URL import and worksheet discovery,
+  without requiring Google Drive/Sheets OAuth.
+- Shared persistent Google Apps Script backend, deployed as
+  version 15 on the existing deployment.
+- Remote Viewer pagination, global search and sorting.
+- Stable record IDs independent of physical spreadsheet rows.
+- Display-safe handling of Google Sheets Date values in
+  `view` and `getById`.
+- Persistent partial-update behavior that skips unchanged
+  cells, including cells formatted as dates or times.
+- Real CRUD and cell-preservation regression checks passed.
+
+Relevant files include `server.py`,
+`generators/google_sheet_source.py`,
+`generators/builder_generators.py`, `docs/generate.html`,
+and `google/DjungoBackend.gs`.
+
+**Release status:** local source changes still require curated
+Git commit, GitHub synchronization, Hetzner staging deployment,
+and post-deployment verification. Production is out of scope.
+
+Historical sections above describe earlier project states and
+should not be interpreted as the latest release checkpoint.

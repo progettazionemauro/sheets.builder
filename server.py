@@ -21,6 +21,11 @@ from werkzeug.utils import secure_filename
 from pipeline.build_schema_from_input import build_schema_from_directory
 from app.builder_state import build_builder_state
 from generators.builder_generators import generate_all
+from generators.google_sheet_source import (
+    download_google_sheet_xlsx,
+    list_google_sheet_tabs,
+    parse_google_sheet_url,
+)
 
 
 ROOT = Path(__file__).resolve().parent
@@ -541,22 +546,84 @@ def api_parse():
 # ---------------------------------------------------------
 # IMPORT FROM GOOGLE SHEET
 # ---------------------------------------------------------
+
+@app.get("/api/google-sheet/tabs")
+def api_google_sheet_tabs():
+    url = (request.args.get("url") or "").strip()
+
+    try:
+        spreadsheet_id, _ = parse_google_sheet_url(url)
+        tabs = list_google_sheet_tabs(url)
+
+        return jsonify({
+            "ok": True,
+            "spreadsheet_id": spreadsheet_id,
+            "tabs": tabs,
+        })
+
+    except ValueError as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 400
+
+    except requests.RequestException:
+        return jsonify({
+            "ok": False,
+            "error": "Unable to retrieve Google Sheets metadata",
+        }), 502
+
+
 @app.post("/api/google-sheet/import")
 def api_google_sheet_import():
     try:
         xlsx_file = request.files.get("xlsx")
         zip_file = request.files.get("web_export")
+        google_sheet_url = (request.form.get("google_sheet_url") or "").strip()
 
         spreadsheet_id = (request.form.get("spreadsheet_id") or "").strip()
         spreadsheet_name = (request.form.get("spreadsheet_name") or "").strip()
         sheet_id = (request.form.get("sheet_id") or "").strip()
         sheet_name = (request.form.get("sheet_name") or "").strip()
 
-        if not xlsx_file:
-            return jsonify({"ok": False, "error": "Missing xlsx file"}), 400
+        if google_sheet_url:
+            if xlsx_file or zip_file:
+                return jsonify({
+                    "ok": False,
+                    "error": "Choose URL import or file upload, not both",
+                }), 400
 
-        if not zip_file:
-            return jsonify({"ok": False, "error": "Missing web_export file"}), 400
+            url_xlsx, url_spreadsheet_id, url_gid = (
+                download_google_sheet_xlsx(google_sheet_url)
+            )
+
+            if spreadsheet_id and spreadsheet_id != url_spreadsheet_id:
+                return jsonify({
+                    "ok": False,
+                    "error": "Spreadsheet ID does not match URL",
+                }), 400
+
+            spreadsheet_id = url_spreadsheet_id
+            if not sheet_id:
+                sheet_id = url_gid or ""
+
+            tabs = list_google_sheet_tabs(google_sheet_url)
+            selected_tab = next(
+                (tab for tab in tabs if tab["sheetId"] == sheet_id),
+                None,
+            )
+
+            if not selected_tab or selected_tab["sheetName"] != sheet_name:
+                return jsonify({
+                    "ok": False,
+                    "error": "Sheet name and gid do not match",
+                }), 400
+        else:
+            if not xlsx_file:
+                return jsonify({"ok": False, "error": "Missing xlsx file"}), 400
+
+            if not zip_file:
+                return jsonify({"ok": False, "error": "Missing web_export file"}), 400
 
         if not spreadsheet_id:
             return jsonify({"ok": False, "error": "Missing spreadsheet_id"}), 400
@@ -575,48 +642,52 @@ def api_google_sheet_import():
         xlsx_path = input_dir / "input.xlsx"
         zip_path = session_dir / "google-web-export.zip"
 
-        xlsx_file.save(xlsx_path)
-        zip_file.save(zip_path)
+        if google_sheet_url:
+            xlsx_path.write_bytes(url_xlsx)
+        else:
+            xlsx_file.save(xlsx_path)
+            zip_file.save(zip_path)
 
-        extract_dir = session_dir / "web_export"
-        extract_dir.mkdir(parents=True, exist_ok=True)
+        if zip_file:
+            extract_dir = session_dir / "web_export"
+            extract_dir.mkdir(parents=True, exist_ok=True)
 
-        with zipfile.ZipFile(zip_path, "r") as archive:
-            for member in archive.infolist():
-                member_path = Path(member.filename)
+            with zipfile.ZipFile(zip_path, "r") as archive:
+                for member in archive.infolist():
+                    member_path = Path(member.filename)
 
-                if member_path.is_absolute() or ".." in member_path.parts:
-                    raise ValueError(
-                        f"Unsafe ZIP member path: {member.filename}"
-                    )
+                    if member_path.is_absolute() or ".." in member_path.parts:
+                        raise ValueError(
+                            f"Unsafe ZIP member path: {member.filename}"
+                        )
 
-                target_path = extract_dir / member_path
+                    target_path = extract_dir / member_path
 
-                if member.is_dir():
-                    target_path.mkdir(parents=True, exist_ok=True)
-                    continue
+                    if member.is_dir():
+                        target_path.mkdir(parents=True, exist_ok=True)
+                        continue
 
-                target_path.parent.mkdir(parents=True, exist_ok=True)
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
 
-                with archive.open(member, "r") as source:
-                    with target_path.open("wb") as target:
-                        target.write(source.read())
+                    with archive.open(member, "r") as source:
+                        with target_path.open("wb") as target:
+                            target.write(source.read())
 
-        html_candidates = [
-            path
-            for path in extract_dir.rglob("*.html")
-            if path.stem == sheet_name
-        ]
+            html_candidates = [
+                path
+                for path in extract_dir.rglob("*.html")
+                if path.stem == sheet_name
+            ]
 
-        if len(html_candidates) != 1:
-            raise ValueError(
-                "Could not uniquely identify HTML for selected sheet "
-                f"{sheet_name!r}; found {len(html_candidates)} matches"
-            )
+            if len(html_candidates) != 1:
+                raise ValueError(
+                    "Could not uniquely identify HTML for selected sheet "
+                    f"{sheet_name!r}; found {len(html_candidates)} matches"
+                )
 
-        selected_html = html_candidates[0]
-        html_path = input_dir / "input.html"
-        html_path.write_bytes(selected_html.read_bytes())
+            selected_html = html_candidates[0]
+            html_path = input_dir / "input.html"
+            html_path.write_bytes(selected_html.read_bytes())
 
         from openpyxl import load_workbook
 

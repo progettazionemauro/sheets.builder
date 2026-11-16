@@ -354,7 +354,8 @@ function doGet(e) {{
     if (mode === "schema") return jsonp_(cb, schema_());
     if (mode === "view") {{
       const limit = clampInt_(p.limit, 1, 500, 50);
-      return jsonp_(cb, view_(limit));
+      const page = clampInt_(p.page, 1, 1000000, 1);
+      return jsonp_(cb, view_(limit, page));
     }}
 
     const apiKey = String(p.apiKey || "");
@@ -425,24 +426,35 @@ function schema_() {{
 /***************
  * VIEW
  ***************/
-function view_(limit) {{
+function view_(limit, page = 1) {{
   const sh = getSheet_();
   ensureHeaders_(sh);
 
   const lastRow = sh.getLastRow();
   const lastCol = sh.getLastColumn();
 
-  if (lastRow < 2 || lastCol < 1) {{
-    return {{ ok: true, headers: HEADERS, rows: [] }};
-  }}
+  const totalRows = Math.max(0, lastRow - 1);
+  const pageSize = Math.max(1, Math.min(500, Number(limit) || 50));
+  const currentPage = Math.max(1, Math.floor(Number(page) || 1));
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
   const numCols = Math.min(lastCol, HEADERS.length);
-  const dataRows = lastRow - 1;
-  const take = Math.min(limit, dataRows);
-  const start = lastRow - take + 1;
+  const skip = (currentPage - 1) * pageSize;
+  const take = Math.max(0, Math.min(pageSize, totalRows - skip));
 
-  const rows = sh.getRange(start, 1, take, numCols).getValues();
-  return {{ ok: true, headers: HEADERS.slice(0, numCols), rows }};
+  const rows = take > 0 && numCols > 0
+    ? sh.getRange(lastRow - skip - take + 1, 1, take, numCols).getValues()
+    : [];
+
+  return {{
+    ok: true,
+    headers: HEADERS.slice(0, Math.max(0, numCols)),
+    rows: rows,
+    page: currentPage,
+    pageSize: pageSize,
+    totalRows: totalRows,
+    totalPages: totalPages
+  }};
 }}
 
 /***************
@@ -901,6 +913,12 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   u.searchParams.set("app", APP_SLUG);
   u.searchParams.set("limit", "50");
   u.searchParams.set("embedded", "1");
+  // Override opzionale: senza parametro, rilevamento automatico.
+  const remoteOverride =
+    new URLSearchParams(window.location.search).get("remote");
+  if (remoteOverride === "1" || remoteOverride === "0") {{
+    u.searchParams.set("remote", remoteOverride);
+  }}
   if (cacheBust) u.searchParams.set("_", Date.now().toString());
   return u.toString();
 }}
@@ -1350,6 +1368,8 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const APP_SLUG = qs.get("app") || {js_string(project_slug)};
   const URL_LIMIT = qs.get("limit") || "50";
   const EMBEDDED_MODE = qs.get("embedded") === "1";
+  const REMOTE_OVERRIDE = qs.get("remote");
+  let REMOTE_PAGINATION = REMOTE_OVERRIDE === "1";
 
   const HAS_RECORD_ID = {has_record_id_js};
   const VISIBLE_HEADERS = {visible_cols_js};
@@ -1555,7 +1575,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         return {{
           title: LABELS[resolveFieldKey(h)] || h,
           field: h,
-          headerFilter: "input",
+          headerFilter: REMOTE_PAGINATION ? false : "input",
           sorter: getColumnSorter(h),
           resizable: true,
           formatter: function(cell) {{
@@ -1580,8 +1600,99 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       }});
   }}
 
+  let REMOTE_REFRESH_TIMER = null;
+
   function renderTable() {{
     const status = document.getElementById("status");
+
+    // GS-47: optional server pagination; the existing local Viewer stays intact.
+    if (REMOTE_PAGINATION) {{
+      if (!LAST_HEADERS.length) {{
+        status.textContent = "No headers loaded";
+        return;
+      }}
+
+      if (DATA_TABLE) {{
+        clearTimeout(REMOTE_REFRESH_TIMER);
+        REMOTE_REFRESH_TIMER = setTimeout(function () {{
+          // Su pagina 1 forziamo una nuova richiesta al backend.
+          // Sulle altre pagine ripartiamo dalla prima.
+          const refresh = DATA_TABLE.getPage() === 1
+            ? DATA_TABLE.setData()
+            : DATA_TABLE.setPage(1);
+
+          Promise.resolve(refresh).catch(function (error) {{
+            status.textContent = "Errore: " + error.message;
+          }});
+        }}, 300);
+        return;
+      }}
+
+      DATA_TABLE = new Tabulator("#dataTable", {{
+        columns: buildColumns(LAST_HEADERS),
+        layout: "fitDataStretch",
+        height: "520px",
+        movableColumns: true,
+        pagination: true,
+        paginationMode: "remote",
+        sortMode: "remote",
+        paginationSize: Number(URL_LIMIT) || 50,
+        paginationSizeSelector: [10, 25, 50, 100],
+        paginationCounter: "rows",
+        ajaxURL: `/api/apps/${{APP_SLUG}}/view`,
+        ajaxRequestFunc: async function (_url, _config, params) {{
+          const page = Math.max(1, Number(params.page) || 1);
+          const limit = Math.max(1, Number(params.size) || 50);
+          // Compatibilità con i parametri di ordinamento
+          // delle diverse modalità Ajax di Tabulator.
+          const sorters =
+            (Array.isArray(params.sort) && params.sort.length
+              ? params.sort : null) ||
+            (Array.isArray(params.sorters) && params.sorters.length
+              ? params.sorters : null) ||
+            (DATA_TABLE ? DATA_TABLE.getSorters() : []);
+          const sorter = sorters.length ? sorters[0] : null;
+
+          const sortField = sorter?.field || "";
+          const sortDir = sorter?.dir === "desc" ? "desc" : "asc";
+          const search = document.getElementById("searchBox").value.trim();
+
+          const response = await apiCall_("view", {{
+            page, limit, search, sortField, sortDir
+          }});
+          if (!response || response.ok !== true) {{
+            throw new Error(response?.error || "GAS view request failed");
+          }}
+          if (!Number.isInteger(Number(response.totalPages)) ||
+              !Number.isInteger(Number(response.totalRows))) {{
+            throw new Error("GAS pagination not deployed: missing totals");
+          }}
+          LAST_HEADERS = response.headers || LAST_HEADERS;
+          LAST_ROWS = (response.rows || []).slice().reverse();
+          const total = Number(response.totalRows);
+          status.textContent = `${{total}} total records — page ${{page}} of ${{Math.max(1, Number(response.totalPages))}}`;
+          return {{
+            last_page: Math.max(1, Number(response.totalPages)),
+            last_row: total,
+            data: rowsToObjects(LAST_HEADERS, LAST_ROWS)
+          }};
+        }},
+        placeholder: "No records found"
+      }});
+
+      DATA_TABLE.on("rowClick", function (event, row) {{
+        if (event.target.closest("a")) return;
+        const record = normalizeRecord(row.getData());
+        const id = String(record.id ?? "").trim();
+        if (!/^[1-9][0-9]*$/.test(id)) return;
+        window.parent.postMessage(
+          {{ type: "DJUNGO_EDIT_RECORD", id, record }},
+          window.location.origin
+        );
+      }});
+      return;
+    }}
+
     const search = document.getElementById("searchBox").value.trim().toLowerCase();
 
     if (!LAST_HEADERS.length) {{
@@ -1648,7 +1759,42 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
     try {{
       const limit = document.getElementById("limitBox").value || URL_LIMIT;
-      const resp = await apiCall_("view", {{ limit }});
+      const probe = REMOTE_OVERRIDE === "0"
+        ? null
+        : await apiCall_("view", {{ limit: 1, page: 1 }});
+
+      const supportsRemote = Boolean(
+        probe && probe.ok === true &&
+        probe.totalRows != null &&
+        probe.totalPages != null &&
+        Number.isInteger(Number(probe.totalRows)) &&
+        Number.isInteger(Number(probe.totalPages))
+      );
+
+      if (REMOTE_OVERRIDE === "1" && !supportsRemote) {{
+        throw new Error("GAS pagination not deployed: missing totals");
+      }}
+
+      REMOTE_PAGINATION =
+        REMOTE_OVERRIDE !== "0" && supportsRemote;
+
+      const resp = REMOTE_PAGINATION
+        ? probe
+        : await apiCall_("view", {{ limit }});
+
+      if (REMOTE_PAGINATION) {{
+        const searchLabel = document.querySelector(
+          'label[for="searchBox"]'
+        );
+        if (searchLabel)
+          searchLabel.textContent = "Ricerca su tutti i record";
+
+        const limitLabel = document.querySelector(
+          'label[for="limitBox"]'
+        );
+        if (limitLabel)
+          limitLabel.textContent = "Righe per pagina";
+      }}
 
       if (!resp || resp.ok !== true) {{
         status.textContent = "Errore: " + (resp?.error || "risposta non valida");
@@ -1673,9 +1819,21 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   if (topLabel) topLabel.style.display = "none";
 }}
 
+  if (REMOTE_PAGINATION) {{
+    const searchLabel = document.querySelector('label[for="searchBox"]');
+    if (searchLabel) searchLabel.textContent = "Ricerca su tutti i record";
+    const limitLabel = document.querySelector('label[for="limitBox"]');
+    if (limitLabel) limitLabel.textContent = "Righe per pagina";
+  }}
   document.getElementById("searchBox").addEventListener("input", renderTable);
   document.getElementById("limitBox").value = URL_LIMIT;
-  document.getElementById("limitBox").addEventListener("change", load);
+  document.getElementById("limitBox").addEventListener("change", function () {{
+    if (REMOTE_PAGINATION && DATA_TABLE) {{
+      DATA_TABLE.setPageSize(Number(this.value) || 50);
+    }} else {{
+      load();
+    }}
+  }});
 
   load();
 </script>

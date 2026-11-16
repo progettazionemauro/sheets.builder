@@ -153,7 +153,7 @@ function djungoPersistentRequest_(p) {
    * Restituisce un insieme di record del foglio.
    */
   if (mode === "view") {
-    return djungoView_(sheet, p.limit);
+    return djungoView_(sheet, p.limit, p.page, p.search, p.sortField, p.sortDir);
   }
 
   /*
@@ -211,15 +211,22 @@ function djungoPersistentRequest_(p) {
 
 
 
-function djungoView_(sheet, limit) {
+function djungoView_(sheet, limit, page, search, sortField, sortDir) {
+  // Paginazione sui record con ID valido, non sulle righe fisiche.
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
 
+  let pageSize = Number(limit);
+  if (!Number.isInteger(pageSize) || pageSize < 1) pageSize = 50;
+  pageSize = Math.min(pageSize, 500);
+
+  let currentPage = Number(page);
+  if (!Number.isSafeInteger(currentPage) || currentPage < 1) currentPage = 1;
+
   if (lastCol < 1) {
     return {
-      ok: true,
-      headers: [],
-      rows: []
+      ok: true, headers: [], rows: [], page: currentPage,
+      pageSize: pageSize, totalRows: 0, totalPages: 0
     };
   }
 
@@ -232,47 +239,169 @@ function djungoView_(sheet, limit) {
 
   if (lastRow < 2) {
     return {
-      ok: true,
-      headers: headers,
-      rows: []
+      ok: true, headers: headers, rows: [], page: currentPage,
+      pageSize: pageSize, totalRows: 0, totalPages: 0
     };
   }
 
-  let requestedLimit = Number(limit);
 
-  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
-    requestedLimit = 50;
+  // GS-75: ricerca e ordinamento sull'intero insieme dei record validi.
+  // Senza filtri rimane attiva la paginazione ottimizzata precedente.
+  const needle = String(search == null ? "" : search)
+    .trim().toLocaleLowerCase();
+  const order = String(sortField == null ? "" : sortField).trim();
+
+  if (needle || order) {
+    const fullRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    const all = fullRange.getValues();
+    const allDisplay = fullRange.getDisplayValues();
+
+    let matching = all.map(function (row, index) {
+      return { raw: row, shown: allDisplay[index] };
+    }).filter(function (entry) {
+      const rawId = entry.raw[0];
+      const id = Number(rawId);
+
+      return rawId !== "" && rawId !== null &&
+        String(rawId).trim() !== "" &&
+        Number.isInteger(id) && id > 0 &&
+        (!needle || entry.shown.some(function (value) {
+          return String(value).toLocaleLowerCase().includes(needle);
+        }));
+    });
+
+    if (order) {
+      const col = headers.findIndex(function (header) {
+        return header.toLocaleLowerCase() === order.toLocaleLowerCase();
+      });
+
+      if (col < 0) {
+        throw new Error("Unknown sort field: " + order);
+      }
+
+      const direction =
+        String(sortDir || "asc").toLowerCase() === "desc" ? -1 : 1;
+
+      matching.sort(function (a, b) {
+        const x = a.raw[col];
+        const y = b.raw[col];
+
+        const emptyX = x === "" || x === null;
+        const emptyY = y === "" || y === null;
+
+        if (emptyX || emptyY) {
+          return emptyX === emptyY ? 0 : (emptyX ? 1 : -1);
+        }
+
+        let result;
+
+        if (x instanceof Date && y instanceof Date) {
+          result = x.getTime() - y.getTime();
+        } else if (typeof x === "number" && typeof y === "number") {
+          result = x - y;
+        } else {
+          result = String(x).localeCompare(
+            String(y), undefined,
+            { numeric: true, sensitivity: "base" }
+          );
+        }
+
+        return result * direction;
+      });
+    }
+
+    const total = matching.length;
+    const offset = (currentPage - 1) * pageSize;
+
+    let pageRows;
+
+    if (order) {
+      // Il Viewer inverte le righe ricevute: preserviamo
+      // l'ordinamento globale richiesto.
+      pageRows = matching.slice(offset, offset + pageSize).reverse();
+    } else {
+      // Senza ordinamento: record più recenti per primi.
+      const end = Math.max(0, total - offset);
+      pageRows = matching.slice(Math.max(0, end - pageSize), end);
+    }
+
+    const formattedRows = pageRows.map(function (entry) {
+      return djungoViewFormatRow_(entry.raw, entry.shown);
+    });
+
+    return {
+      ok: true,
+      headers: headers,
+      rows: formattedRows,
+      page: currentPage,
+      pageSize: pageSize,
+      totalRows: total,
+      totalPages: Math.ceil(total / pageSize)
+    };
   }
 
-  requestedLimit = Math.min(requestedLimit, 500);
+  // Leggiamo solo la prima colonna per identificare i record validi.
+  // La condizione è identica a quella del precedente djungoView_().
+  const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const validRowNumbers = [];
 
-  // Legge tutte le righe successive all'intestazione.
-  const allRows = sheet
-    .getRange(2, 1, lastRow - 1, lastCol)
-    .getValues();
-
-  // Conserva soltanto le righe con un ID intero positivo.
-  const validRows = allRows.filter(function (row) {
+  idValues.forEach(function (row, index) {
     const rawId = row[0];
     const id = Number(rawId);
-
-    return rawId !== "" &&
-      rawId !== null &&
-      String(rawId).trim() !== "" &&
-      Number.isInteger(id) &&
-      id > 0;
+    if (rawId !== "" && rawId !== null &&
+        String(rawId).trim() !== "" &&
+        Number.isInteger(id) && id > 0) {
+      validRowNumbers.push(index + 2);
+    }
   });
 
-  // Applica il limite ai record validi, non alle righe fisiche.
-  const rows = validRows.slice(-requestedLimit);
+  const totalRows = validRowNumbers.length;
+  const totalPages = Math.ceil(totalRows / pageSize);
+  const end = Math.max(0, totalRows - (currentPage - 1) * pageSize);
+  const start = Math.max(0, end - pageSize);
+  const selectedRows = validRowNumbers.slice(start, end);
+  let rows = [];
 
+  if (selectedRows.length) {
+    // Recupera solo il blocco fisico che contiene i record della pagina.
+    const firstRow = selectedRows[0];
+    const lastSelectedRow = selectedRows[selectedRows.length - 1];
+    const blockRange = sheet.getRange(
+      firstRow, 1, lastSelectedRow - firstRow + 1, lastCol
+    );
+    const block = blockRange.getValues();
+    const blockDisplay = blockRange.getDisplayValues();
+
+    rows = selectedRows.map(function (rowNumber) {
+      const index = rowNumber - firstRow;
+      return djungoViewFormatRow_(
+        block[index], blockDisplay[index]
+      );
+    });
+  }
+
+  // Righe in ordine fisico crescente, come nel vecchio contratto:
+  // il Viewer attuale continua a usare rows.slice().reverse().
   return {
     ok: true,
     headers: headers,
-    rows: rows
+    rows: rows,
+    page: currentPage,
+    pageSize: pageSize,
+    totalRows: totalRows,
+    totalPages: totalPages
   };
 }
 
+/**
+ * Converte soltanto le Date nella rappresentazione mostrata
+ * dal foglio. Conserva numeri, stringhe e booleani originali.
+ */
+function djungoViewFormatRow_(raw, display) {
+  return raw.map(function (value, index) {
+    return value instanceof Date ? display[index] : value;
+  });
+}
 
 
 /*********************************
@@ -361,9 +490,11 @@ function djungoGetById_(sheet, id) {
       return String(value || "").trim();
     });
 
-  const values = sheet
-    .getRange(row, 1, 1, lastCol)
-    .getValues()[0];
+  const recordRange = sheet.getRange(row, 1, 1, lastCol);
+  const values = djungoViewFormatRow_(
+    recordRange.getValues()[0],
+    recordRange.getDisplayValues()[0]
+  );
 
   const record = {};
 
@@ -569,6 +700,21 @@ function djungoUpdate_(sheet, id, data) {
       throw new Error(
         "UPDATE blocked: formula protected in column " + header
       );
+    }
+
+    // Evita di riscrivere celle rimaste invariate.
+    // Confronta valori originali e rappresentazioni visualizzate.
+    const incomingText = String(newValue == null ? "" : newValue);
+    const storedValue = cell.getValue();
+    const storedText = storedValue instanceof Date
+      ? null
+      : String(storedValue == null ? "" : storedValue);
+
+    if (
+      incomingText === cell.getDisplayValue() ||
+      (storedText !== null && incomingText === storedText)
+    ) {
+      continue;
     }
 
     const rule = cell.getDataValidation();

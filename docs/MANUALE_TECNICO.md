@@ -27,6 +27,28 @@ Il progetto integra Python/Flask, generatori HTML/JavaScript, Tabulator e Google
 
 La produzione è separata e non deve essere modificata durante lo sviluppo.
 
+### 2.1 Accessibilità dei Google Sheets sorgente e API esterne
+
+Djungo privilegia gli endpoint nativi di esportazione di Google Sheets
+senza dipendere dalle Google Drive API o Google Sheets API con OAuth.
+
+**Requisito operativo:** il documento sorgente deve essere condiviso
+con l'impostazione "Chiunque abbia il link — Visualizzatore",
+con esportazione consentita.
+
+**Avvertenza sulla riservatezza:** chiunque ottenga il collegamento
+può accedere ai contenuti del documento. La mancata indicizzazione
+nei motori di ricerca non costituisce una protezione.
+Non utilizzare questa modalità per informazioni riservate o dati
+personali che richiedono accesso controllato.
+
+L'autorizzazione necessaria a Google Apps Script per il backend
+CRUD persistente è prevista e rimane distinta dall'importazione
+dei dati sorgente.
+
+L'automazione dell'importazione XLSX e il recupero degli stili
+HTML sono attività progettuali ancora da completare.
+
 ## 3. Componenti applicativi
 
 ### Builder
@@ -264,3 +286,163 @@ merge e percorsi non autorizzati.
 La produzione Hetzner rimane esclusa.
 La promozione staging → produzione richiederà una
 procedura separata, con backup e approvazione.
+
+## Ricerca sperimentale Google Sheets - 05/11/2026
+
+### Obiettivo
+
+Automatizzare il recupero dei metadati delle schede Google Sheets accessibili pubblicamente, senza OAuth e senza esportazioni manuali.
+
+### Principio di manutenzione
+
+Conservare nella documentazione tutto il codice Python consolidato durante gli esperimenti, insieme a:
+
+- Selettori HTML ed endpoint utilizzati.
+- Risultati delle verifiche.
+- Limiti conosciuti.
+- Data dell'ultima verifica.
+- Test di regressione e metodi alternativi.
+
+La struttura HTML di Google Sheets non costituisce un'API stabile. Google potrebbe modificarla in futuro.
+
+### GS-01 - Recupero dei nomi delle schede
+
+Codice verificato:
+
+```python
+import requests
+from bs4 import BeautifulSoup
+
+url = "https://docs.google.com/spreadsheets/d/1W9GWokNp6PSsPNCU35lMx2AAVeFvBqirw22ABT7_cUU/edit?gid=843771997"
+
+response = requests.get(url, timeout=20)
+response.raise_for_status()
+
+soup = BeautifulSoup(response.text, "html.parser")
+
+sheet_names = [
+    element.get_text(" ", strip=True)
+    for element in soup.select(".docs-sheet-tab-caption")
+]
+
+for name in sheet_names:
+    print(name)
+```
+
+Risultato: individuati correttamente 11 nomi di schede.
+
+Dipendenza HTML: classe CSS `.docs-sheet-tab-caption`.
+
+### GS-02 - Ricerca degli identificativi gid
+
+Codice verificato:
+
+```python
+import requests
+import re
+
+url = "https://docs.google.com/spreadsheets/d/1W9GWokNp6PSsPNCU35lMx2AAVeFvBqirw22ABT7_cUU/edit?gid=843771997"
+
+html = requests.get(url, timeout=20).text
+
+gids = sorted(set(
+    re.findall(r'id="(\d+)-grid-container"', html)
+))
+
+print(gids)
+```
+
+Risultato: identificato soltanto il gid della scheda attiva, 843771997.
+
+La mappatura completa tra nomi delle schede e relativi gid non è ancora disponibile.
+
+### Prossime attività
+
+1. Individuare tutti i gid e associarli ai nomi.
+2. Esaminare i metadati JavaScript incorporati nella pagina.
+3. Verificare il recupero automatico delle formattazioni.
+4. Integrare il metodo nel backend Djungo.
+5. Introdurre test di regressione e fallback.
+
+Stato: ricerca sperimentale, nessuna modifica al codice applicativo.
+
+## CHECKPOINT GS-125 — 16/11/2026
+
+### Importazione Google Sheets
+
+La sorgente può essere acquisita tramite URL pubblico di Google
+Sheets e gli endpoint nativi di esportazione, senza OAuth.
+Il codice interessato comprende `server.py`,
+`generators/google_sheet_source.py` e `docs/generate.html`.
+La precedente ricerca GS-01/GS-02 rimane documentazione storica.
+
+### Backend persistente e Viewer
+
+Il backend GAS condiviso implementa `meta`, `view`, `getById`,
+`insert`, `update` e `delete`. Il routing persistente è gestito
+dal proxy Flask mediante identificativi di applicazione e foglio.
+
+La paginazione considera i record con ID valido, non le righe
+fisiche. La ricerca e l'ordinamento globali sono eseguiti
+dal backend prima della selezione della pagina.
+
+Il Viewer Tabulator utilizza la paginazione remota quando
+riconosce i metadati restituiti dal backend; il generatore
+mantiene la compatibilità con il percorso legacy.
+
+### Tipi di dato e rappresentazione
+
+Google Sheets può interpretare celle formattate `h.mm` come
+orari. Il backend utilizza `getValues()` per conservare i
+valori tipizzati e `getDisplayValues()` per rappresentare
+gli oggetti Date nelle risposte `view` e `getById`.
+
+La ricerca confronta i valori visualizzati; l'ordinamento
+utilizza i valori tipizzati. La correzione non modifica
+il formato né il tipo originale delle celle.
+
+### Aggiornamento e compatibilità
+
+Nel backend persistente, `djungoUpdate_()` controlla formule
+e convalide e ignora le celle ricevute con valori invariati.
+Il frontend generato continua a poter inviare il modulo intero.
+Il backend GAS legacy generato separatamente mantiene
+il proprio contratto di aggiornamento.
+
+Il confronto con il valore visualizzato non equivale a una
+conversione tipizzata esplicita: tale funzionalità, se richiesta,
+dovrà avere un contratto distinto.
+
+### Collaudi e rilascio
+
+- GAS v15: pubblicato sul deployment persistente esistente.
+- GS-101, GS-112, GS-120: test JavaScript con simulazioni.
+- GS-105 e GS-115: verifiche reali delle letture.
+- GS-110: test CRUD reale.
+- GS-122: verifica reale della preservazione della cella.
+- Dataset di collaudo: 1571 record prima delle prove CRUD,
+  32 pagine con dimensione 50.
+
+La trisincronia Ubuntu → GitHub → Hetzner staging deve ancora
+essere completata e verificata. La produzione è esclusa.
+
+### GS-138 — Autorità del backend GAS e snapshot Git (16/11/2026)
+
+La fonte autorevole del backend persistente condiviso è il progetto
+Google Apps Script. Il comportamento effettivo dell'endpoint /exec
+dipende dalla versione associata al deployment GAS attivo.
+
+Il file google/DjungoBackend.gs è uno snapshot locale versionato
+per documentazione, confronto e recupero. La sua presenza su Ubuntu,
+GitHub o Hetzner non costituisce pubblicazione su Google Apps Script.
+
+Il deployment Git/Hetzner aggiorna Djungo Builder (Flask, generatori,
+interfaccia Builder e documentazione), ma non modifica il deployment
+GAS né la sua versione pubblicata.
+
+La corrispondenza esatta tra snapshot locale e versione GAS pubblicata
+deve essere verificata separatamente; il collaudo funzionale non
+dimostra da solo l'identità dei sorgenti.
+
+Le applicazioni HTML generate e le configurazioni persistenti devono
+essere gestite separatamente dai sorgenti universali del Builder.
