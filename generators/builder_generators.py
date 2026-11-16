@@ -752,7 +752,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     .actions {{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }}
     .ok {{ color:#0a6; font-weight:800; }}
     .err {{ color:#b00; font-weight:800; }}
-    iframe {{ width:100%; height:560px; border:1px solid #ddd; border-radius:10px; background:#fff; }}
+    iframe {{ width:100%; height:720px; border:1px solid #ddd; border-radius:10px; background:#fff; }}
     small {{ display:block; margin-top:8px; color:#666; }}
     pre {{ background:#0b0b0b; color:#d6ffd6; border-radius:10px; padding:12px; overflow:auto; }}
   </style>
@@ -1261,7 +1261,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   <style>
     body {{ font-family: Arial, sans-serif; margin: 12px; }}
     .muted {{ color:#666; }}
-    .toolbar {{ display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin: 8px 0 12px; }}
+    .toolbar {{ display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin:8px 0 12px; position:sticky; top:0; z-index:20; padding:8px 0; background:#fff; }}
     .toolbar label {{ display:block; font-size:12px; font-weight:700; color:#444; margin-bottom:4px; }}
     .toolbar input, .toolbar select {{
       padding:8px;
@@ -1575,7 +1575,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         return {{
           title: LABELS[resolveFieldKey(h)] || h,
           field: h,
-          headerFilter: REMOTE_PAGINATION ? false : "input",
+          headerFilter: "input",
           sorter: getColumnSorter(h),
           resizable: true,
           formatter: function(cell) {{
@@ -1636,6 +1636,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         pagination: true,
         paginationMode: "remote",
         sortMode: "remote",
+        filterMode: "remote",
         paginationSize: Number(URL_LIMIT) || 50,
         paginationSizeSelector: [10, 25, 50, 100],
         paginationCounter: "rows",
@@ -1657,8 +1658,17 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
           const sortDir = sorter?.dir === "desc" ? "desc" : "asc";
           const search = document.getElementById("searchBox").value.trim();
 
+          // Tabulator 6.x: filtri remoti delle intestazioni.
+          // Compatibilità con i nomi dei parametri Ajax.
+          const filters = Array.isArray(params.filter)
+            ? params.filter
+            : Array.isArray(params.filters)
+              ? params.filters
+              : (DATA_TABLE ? DATA_TABLE.getFilters(true) : []);
+
           const response = await apiCall_("view", {{
-            page, limit, search, sortField, sortDir
+            page, limit, search, sortField, sortDir,
+            filters: JSON.stringify(filters)
           }});
           if (!response || response.ok !== true) {{
             throw new Error(response?.error || "GAS view request failed");

@@ -153,7 +153,7 @@ function djungoPersistentRequest_(p) {
    * Restituisce un insieme di record del foglio.
    */
   if (mode === "view") {
-    return djungoView_(sheet, p.limit, p.page, p.search, p.sortField, p.sortDir);
+    return djungoView_(sheet, p.limit, p.page, p.search, p.sortField, p.sortDir, p.filters);
   }
 
   /*
@@ -211,7 +211,7 @@ function djungoPersistentRequest_(p) {
 
 
 
-function djungoView_(sheet, limit, page, search, sortField, sortDir) {
+function djungoView_(sheet, limit, page, search, sortField, sortDir, filters) {
   // Paginazione sui record con ID valido, non sulle righe fisiche.
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
@@ -237,6 +237,65 @@ function djungoView_(sheet, limit, page, search, sortField, sortDir) {
       return String(value == null ? "" : value).trim();
     });
 
+  // GS-161: filtri Tabulator riferiti alle intestazioni reali.
+  let columnFilters = [];
+
+  if (filters != null && String(filters).trim() !== "") {
+    let parsed;
+
+    try {
+      parsed = typeof filters === "string"
+        ? JSON.parse(filters)
+        : filters;
+    } catch (error) {
+      throw new Error("Invalid filters JSON");
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new Error("Filters must be an array");
+    }
+
+    if (parsed.length > 100) {
+      throw new Error("Too many column filters");
+    }
+
+    columnFilters = parsed.map(function (filter) {
+      if (!filter || typeof filter !== "object" ||
+          Array.isArray(filter)) {
+        throw new Error("Invalid column filter");
+      }
+
+      const field = String(filter.field == null
+        ? "" : filter.field).trim();
+
+      const operator = String(filter.type == null
+        ? "like" : filter.type).toLowerCase();
+
+      const value = String(filter.value == null
+        ? "" : filter.value).trim().toLocaleLowerCase();
+
+      const column = headers.findIndex(function (header) {
+        return header === field;
+      });
+
+      if (column < 0) {
+        throw new Error("Unknown filter field: " + field);
+      }
+
+      if (operator !== "like" && operator !== "=") {
+        throw new Error("Unsupported filter operator: " + operator);
+      }
+
+      return {
+        column: column,
+        operator: operator,
+        value: value
+      };
+    }).filter(function (filter) {
+      return filter.value !== "";
+    });
+  }
+
   if (lastRow < 2) {
     return {
       ok: true, headers: headers, rows: [], page: currentPage,
@@ -251,7 +310,7 @@ function djungoView_(sheet, limit, page, search, sortField, sortDir) {
     .trim().toLocaleLowerCase();
   const order = String(sortField == null ? "" : sortField).trim();
 
-  if (needle || order) {
+  if (needle || order || columnFilters.length) {
     const fullRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
     const all = fullRange.getValues();
     const allDisplay = fullRange.getDisplayValues();
@@ -267,7 +326,17 @@ function djungoView_(sheet, limit, page, search, sortField, sortDir) {
         Number.isInteger(id) && id > 0 &&
         (!needle || entry.shown.some(function (value) {
           return String(value).toLocaleLowerCase().includes(needle);
-        }));
+        })) &&
+        columnFilters.every(function (filter) {
+          const value = String(
+            entry.shown[filter.column] == null
+              ? "" : entry.shown[filter.column]
+          ).toLocaleLowerCase();
+
+          return filter.operator === "="
+            ? value === filter.value
+            : value.includes(filter.value);
+        });
     });
 
     if (order) {
