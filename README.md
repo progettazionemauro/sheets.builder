@@ -300,3 +300,27 @@ and post-deployment verification. Production is out of scope.
 
 Historical sections above describe earlier project states and
 should not be interpreted as the latest release checkpoint.
+
+## Remote column filtering — GS-178 (2026-11-17)
+
+The generated Viewer supports per-column Tabulator header filters
+with server-side filtering across the complete Google Sheet,
+not only the currently loaded page.
+
+Global search, remote sorting and remote pagination remain available.
+Column definitions derive dynamically from the spreadsheet headers;
+no dataset-specific column names are hardcoded.
+
+Architecture: Tabulator 6.4 -> Flask proxy -> persistent Google
+Apps Script backend -> Google Sheets.
+
+Release checkpoint:
+- GAS existing web-app deployment: version 16.
+- Source commit: `7468f9e`.
+- GitHub and Hetzner staging synchronized.
+- Staging runtime Viewer updated and browser-tested.
+- Production unchanged.
+
+Generated runtime HTML files are protected artifacts:
+deploying the generator does not automatically replace an
+already generated Viewer. GAS deployment is managed separately.

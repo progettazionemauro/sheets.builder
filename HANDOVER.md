@@ -314,3 +314,36 @@ con GitHub e Hetzner staging. Il deployment GAS versione 15
 
 Escludere dal commit backup, anteprime `_gs*_preview`, dati
 temporanei e configurazioni contenenti eventuali credenziali.
+
+## CHECKPOINT GS-178 — 17/11/2026 — Filtri remoti universali
+
+### Stato consolidato
+- Backend persistente Google Apps Script: deployment esistente aggiornato alla versione 16; URL `/exec` invariato.
+- Branch: `level-b-persistent-backend`.
+- Commit sorgenti: `7468f9e` — `Viewer: remote column filters and sticky search toolbar`.
+- Commit sincronizzato tra Ubuntu, GitHub e Hetzner staging.
+- Viewer operativo staging aggiornato con GS-175.
+- Backup Viewer staging: `/var/backups/djungo/GS175-20261116-221456`.
+- Produzione non modificata.
+
+### Funzionalità collaudate
+- Filtri testuali sotto le intestazioni Tabulator.
+- Filtraggio remoto sull'intero Google Sheet, indipendente dalla pagina corrente.
+- Ricerca globale conservata.
+- Compatibilità con paginazione e ordinamento remoti.
+- Collaudo positivo nel browser comunicato dall'utente dopo GS-175.
+
+### Distinzione tra sorgenti e artefatti
+`generators/builder_generators.py` è il sorgente versionato del Viewer.
+`docs/index.html` e `docs/viewer.html` operativi sono artefatti generati
+e protetti. Il deployment Git non li rigenera automaticamente.
+
+Il backend GAS pubblicato è la fonte autorevole del codice eseguito.
+`google/DjungoBackend.gs` è lo snapshot versionato, non un meccanismo
+di pubblicazione automatica GAS.
+
+### Attività residue
+- Verificare separatamente il comportamento della barra sticky durante
+  lo scorrimento dell'intera pagina contenente l'iframe.
+- Consolidare la procedura ripetibile di aggiornamento degli HTML operativi.
+- Conservare la separazione staging/produzione e il rollback GAS v15.

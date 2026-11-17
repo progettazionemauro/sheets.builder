@@ -446,3 +446,69 @@ dimostra da solo l'identità dei sorgenti.
 
 Le applicazioni HTML generate e le configurazioni persistenti devono
 essere gestite separatamente dai sorgenti universali del Builder.
+
+## GS-178 — Filtraggio remoto universale Tabulator (17/11/2026)
+
+### Architettura
+Il Viewer utilizza Tabulator 6.4.0 con `paginationMode: "remote"`,
+`sortMode: "remote"` e `filterMode: "remote"`.
+
+Ogni colonna deriva dalle intestazioni effettive del foglio e presenta
+`headerFilter: "input"`. Non esistono nomi di colonne codificati per
+uno specifico database.
+
+Il callback `ajaxRequestFunc` acquisisce i filtri da `params.filter`,
+in alternativa `params.filters` o `DATA_TABLE.getFilters(true)`,
+e li trasmette come `filters: JSON.stringify(filters)`.
+
+Il proxy Flask inoltra i parametri al backend GAS persistente.
+Non applica localmente il filtraggio.
+
+### Contratto GAS
+`djungoPersistentRequest_(p)` inoltra `p.filters` a
+`djungoView_(sheet, limit, page, search, sortField, sortDir, filters)`.
+
+Il parametro `filters` è un array JSON di oggetti contenenti:
+- `field`: intestazione reale del foglio;
+- `type`: operatore `like` oppure `=`;
+- `value`: valore da cercare.
+
+GAS valida la struttura, il limite di 100 filtri, l'esistenza delle
+colonne e gli operatori ammessi. I filtri testuali sono confrontati
+senza distinzione tra maiuscole e minuscole: `like` ricerca una
+sottostringa, `=` richiede uguaglianza.
+
+La ricerca globale verifica tutte le colonne; i filtri specifici
+sono combinati tra loro con AND e con l'eventuale ricerca globale.
+
+Il filtraggio avviene sull'intero insieme dei record con ID valido,
+prima dell'ordinamento e della paginazione. I confronti testuali
+utilizzano i valori visualizzati dal foglio; l'ordinamento conserva
+la gestione dei valori grezzi, inclusi numeri e date.
+
+La risposta continua a restituire `totalRows` e `totalPages`
+calcolati sui record corrispondenti.
+
+### Versioni e rilascio
+- GAS persistente: deployment esistente, versione 16.
+- Snapshot sorgenti Git: commit `7468f9e`.
+- Hetzner staging: medesimo commit.
+- Viewer HTML operativo aggiornato separatamente con GS-175.
+- Backup: `/var/backups/djungo/GS175-20261116-221456`.
+
+La pubblicazione Git/Hetzner non aggiorna il deployment GAS
+né necessariamente gli HTML operativi già generati. Ogni livello
+richiede una procedura di aggiornamento e rollback distinta.
+
+### Layout e collaudo
+La toolbar del Viewer utilizza `position: sticky; top: 0`.
+L'iframe generato ha altezza di 720 px e Tabulator mantiene
+un'altezza di 520 px. Il comportamento sticky nello scorrimento
+della pagina esterna resta da verificare separatamente.
+
+I test GS-162, GS-164 e GS-165 hanno verificato rispettivamente
+la logica GAS, la generazione universale e il trasporto Flask.
+Il collaudo browser dei filtri remoti è stato confermato dopo GS-175.
+
+Le precedenti indicazioni relative a GAS v15 descrivono
+checkpoint storici e sono superate da questo rilascio.
