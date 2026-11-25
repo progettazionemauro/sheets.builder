@@ -162,27 +162,27 @@ a.button.secondary {
 </head>
 <body>
 
-  <h1>Review Your Generated App <span class="badge">customer flow</span></h1>
-  <p class="muted hero-note">
+  <h1><span data-i18n="review.title">Customize</span><span id="reviewAppTitle"></span> <span class="badge" data-i18n="review.badge">customer flow</span></h1>
+  <p class="muted hero-note" data-i18n="review.intro">
     In questa pagina puoi controllare la struttura rilevata dal sistema prima della generazione finale
     della tua interfaccia CRUD. Puoi verificare campi, nomi visualizzati e colori dei valori speciali.
   </p>
 
   <div class="card">
-  <h2>1. App summary</h2>
+  <h2 data-i18n="review.section_summary">1. App summary</h2>
 
-  <p class="muted">
+  <p class="muted" data-i18n="review.summary_help">
     Review the detected spreadsheet structure before generating the final app.
   </p>
 
   <div class="grid">
     <div>
-      <label for="sheetName">Sheet name</label>
+      <label for="sheetName" data-i18n="review.sheet_name">Sheet name</label>
       <input id="sheetName" readonly />
     </div>
 
     <div>
-      <label for="projectName">App name</label>
+      <label for="projectName" data-i18n="review.app_name">App name</label>
       <input id="projectName" readonly />
     </div>
   </div>
@@ -195,13 +195,13 @@ a.button.secondary {
   <input id="adminPassword" type="hidden" />
   <input id="fileInput" type="file" accept=".json,application/json" style="display:none;" />
   <textarea id="rawJsonInput" style="display:none;"></textarea>
-  <button id="loadSampleBtn" type="button" style="display:none;">Load</button>
+  <button id="loadSampleBtn" type="button" style="display:none;" data-i18n="review.load">Load</button>
   <span id="loadStatus" style="display:none;"></span>
 </div>
 
   <div class="card">
-    <h2>2. Detected fields</h2>
-    <p class="muted">
+    <h2 data-i18n="review.section_fields">2. Detected fields</h2>
+    <p class="muted" data-i18n="review.fields_help">
       Qui puoi controllare i nomi visualizzati dei campi e decidere se devono comparire nel form o nel viewer finale.
       I tipi rilevati dal parser restano non modificabili in questa fase.
     </p>
@@ -209,15 +209,15 @@ a.button.secondary {
     <table id="fieldsTable">
       <thead>
         <tr>
-          <th>field name</th>
-          <th>display label</th>
-          <th>type</th>
-          <th>sorting</th>
-          <th>visualizzazione</th>
-          <th>required</th>
-          <th>show in form</th>
-          <th>show in viewer</th>
-          <th>system field</th>
+          <th data-i18n="review.table_field_name">field name</th>
+          <th data-i18n="review.table_display_label">display label</th>
+          <th data-i18n="review.table_type">type</th>
+          <th data-i18n="review.table_sorting">sorting</th>
+          <th data-i18n="review.table_display">visualizzazione</th>
+          <th data-i18n="review.table_required">required</th>
+          <th data-i18n="review.table_show_form">show in form</th>
+          <th data-i18n="review.table_show_viewer">show in viewer</th>
+          <th data-i18n="review.table_system">system field</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -225,8 +225,8 @@ a.button.secondary {
   </div>
 
   <div class="card">
-    <h2>3. Special value colors</h2>
-    <p class="muted">
+    <h2 data-i18n="review.section_colors">3. Special value colors</h2>
+    <p class="muted" data-i18n="review.colors_help">
       Per i campi con valori predefiniti puoi controllare i colori visualizzati nel viewer finale.
     </p>
 
@@ -236,32 +236,34 @@ a.button.secondary {
   
 
  <div class="card">
-  <h2>4. Generate final app</h2>
+  <h2 data-i18n="review.section_save">4. Save configuration</h2>
 
-  <p class="muted">
-    Review fields, labels and colors. When everything is correct, generate the final CRUD app.
+  <p class="muted" data-i18n="review.save_help">
+    Review fields, labels and colors, then save your configuration. For manual exports, generate the application files.
   </p>
 
-  <div id="idWarning" class="card" style="display:none; border-color:#f0b429; background:#fff8e1;">
-    <h3 style="margin-top:0;">No ID column detected</h3>
+  <p id="reviewReturnHint" class="muted" aria-live="polite"></p>
 
-    <p class="muted">
+  <div id="idWarning" class="card" style="display:none; border-color:#f0b429; background:#fff8e1;">
+    <h3 style="margin-top:0;" data-i18n="review.warning_no_id">No ID column detected</h3>
+
+    <p class="muted" data-i18n="review.warning_id_help">
       The generated CRUD app needs a unique record identifier to load, update and delete existing rows safely.
     </p>
 
     <p class="muted">
-      Add an <code>id</code> column to the spreadsheet, then export the source files again and restart the parser flow.
+      <span data-i18n="review.warning_id_before">Add an </span><code>id</code><span data-i18n="review.warning_id_after"> column to the spreadsheet and import it again.</span>
     </p>
 
     <div class="actions">
-      <button id="restartForIdBtn" type="button" class="secondary">
-        Restart from source files
+      <button id="restartForIdBtn" type="button" class="secondary" data-i18n="review.reimport">
+        Reimport spreadsheet
       </button>
     </div>
   </div>
 
   <div class="actions">
-    <button id="downloadBtn" type="button">
+    <button id="downloadBtn" type="button" data-i18n="review.generate_final">
       Generate final app
     </button>
 
@@ -274,11 +276,71 @@ a.button.secondary {
 <script>
   let builderState = null;
 
+  // UAT-F48D: Review navigation — preserve unsaved editor values.
+  let reviewBaseline = null;
+
+  function reviewHasUnsavedChanges() {
+    return builderState !== null && reviewBaseline !== null &&
+      JSON.stringify(builderState) !== reviewBaseline;
+  }
+
+  function reviewConfirmLeave() {
+    return !reviewHasUnsavedChanges() ||
+      window.confirm(reviewT("review.confirm_discard", "Discard unsaved configuration changes?"));
+  }
+
+  function reviewSetReturnHint(key, fallback, isManual = false) {
+    const note = document.getElementById("reviewReturnHint");
+    if (note) {
+      note.dataset.i18n = key;
+      note.textContent = reviewT(key, fallback);
+    }
+    if (isManual) {
+      const heading = document.querySelector('h2[data-i18n="review.section_save"]');
+      if (heading) {
+        heading.dataset.i18n = "review.section_generate";
+        heading.textContent = reviewT("review.section_generate", "4. Generate the application");
+      }
+    }
+  }
+
+
   function setStatus(id, msg, cls = "muted") {
     const el = document.getElementById(id);
+    delete el.dataset.reviewStatusKey;
+    delete el.dataset.reviewStatusFallback;
+    delete el.dataset.reviewStatusDetail;
     el.textContent = msg;
     el.className = cls;
   }
+
+  // UAT-F48C: Review dynamic i18n. Do not rebuild data editors on language changes.
+  function reviewT(key, fallback) {
+    const api = window.DjungoI18n;
+    if (!api || typeof api.t !== "function") return fallback;
+    const result = api.t(key);
+    return result && result !== key ? result : fallback;
+  }
+
+  function setStatusI18n(id, key, fallback, cls = "muted", detail = "") {
+    const el = document.getElementById(id);
+    if (!el) return;
+    setStatus(id, reviewT(key, fallback) + (detail ? ": " + detail : ""), cls);
+    el.dataset.reviewStatusKey = key;
+    el.dataset.reviewStatusFallback = fallback;
+    el.dataset.reviewStatusDetail = detail;
+  }
+
+  document.addEventListener("djungo-language-changed", () => {
+    document.querySelectorAll("[data-review-status-key]").forEach(el => {
+      el.textContent = reviewT(el.dataset.reviewStatusKey, el.dataset.reviewStatusFallback)
+        + (el.dataset.reviewStatusDetail ? ": " + el.dataset.reviewStatusDetail : "");
+    });
+    document.querySelectorAll('[data-review-color-invalid="1"]').forEach(el => {
+      el.setCustomValidity(reviewT("review.hex_invalid", "Enter a valid HEX color, for example #336699."));
+    });
+  });
+
 
   function normalizeBool(value) {
     return value === true;
@@ -294,7 +356,7 @@ a.button.secondary {
 
   function ensureBuilderStateShape(state) {
     if (!state || typeof state !== "object") {
-      throw new Error("Parsed configuration non valida: root non oggetto");
+      throw new Error(reviewT("review.invalid_configuration", "Invalid parsed configuration: expected an object."));
     }
 
     if (!state.project || typeof state.project !== "object") {
@@ -410,6 +472,11 @@ a.button.secondary {
     document.getElementById("sheetName").value = p.sheetName || "";
     document.getElementById("buildMarker").value = p.buildMarker || "";
     document.getElementById("adminPassword").value = p.adminPassword || "";
+    const reviewAppTitle = document.getElementById("reviewAppTitle");
+    if (reviewAppTitle) {
+      const name = String(p.projectName || p.sheetName || "").trim();
+      reviewAppTitle.textContent = name ? " " + name : "";
+    }
   }
 
   function renderFieldsTable() {
@@ -421,57 +488,57 @@ a.button.secondary {
 
       tr.innerHTML = `
         <td class="readonly-cell">
-          <input data-key="name" data-index="${idx}" value="${escapeHtml(field.name)}" readonly />
+          <span title="Detected from spreadsheet" data-i18n-title="review.detected_from_sheet">${escapeHtml(field.name)}</span>
         </td>
         <td>
           <input data-key="label" data-index="${idx}" value="${escapeHtml(field.label || "")}" />
         </td>
         <td class="readonly-cell">
-          <input data-key="type" data-index="${idx}" value="${escapeHtml(field.type)}" readonly />
+          <span title="Detected from spreadsheet" data-i18n-title="review.detected_from_sheet">${escapeHtml(field.type)}</span>
         </td>
         <td>
           <select data-key="sortType" data-index="${idx}">
             ${[
-              ["auto", "Automatico"],
-              ["string", "Testo"],
-              ["number", "Numero"],
-              ["date_it", "Data italiana"],
-              ["datetime_it", "Data/ora"]
-            ].map(([value, label]) =>
-              `<option value="${value}" ${field.sortType === value ? "selected" : ""}>${label}</option>`
+              ["auto", "Automatic", "review.sort_auto"],
+              ["string", "Text", "review.sort_text"],
+              ["number", "Number", "review.sort_number"],
+              ["date_it", "Italian date", "review.sort_italian_date"],
+              ["datetime_it", "Date/time", "review.sort_datetime"]
+            ].map(([value, label, key]) =>
+              `<option value="${value}" ${field.sortType === value ? "selected" : ""} data-i18n="${key}">${label}</option>`
             ).join("")}
           </select>
         </td>
         <td>
           <select data-key="displayType" data-index="${idx}">
             ${[
-              ["text", "Testo"],
-              ["link", "Link"],
-              ["image", "Immagine"]
-            ].map(([value, label]) =>
-              `<option value="${value}" ${field.displayType === value ? "selected" : ""}>${label}</option>`
+              ["text", "Text", "review.display_text"],
+              ["link", "Link", "review.display_link"],
+              ["image", "Image", "review.display_image"]
+            ].map(([value, label, key]) =>
+              `<option value="${value}" ${field.displayType === value ? "selected" : ""} data-i18n="${key}">${label}</option>`
             ).join("")}
           </select>
         </td>
         <td>
           <select data-key="required" data-index="${idx}" ${field.computed ? "disabled" : ""}>
-            <option value="false" ${field.required ? "" : "selected"}>NO</option>
-            <option value="true" ${field.required ? "selected" : ""}>YES</option>
+            <option value="false" ${field.required ? "" : "selected"} data-i18n="review.no">No</option>
+            <option value="true" ${field.required ? "selected" : ""} data-i18n="review.yes">Yes</option>
           </select>
         </td>
         <td>
           <select data-key="visibleInForm" data-index="${idx}" ${field.computed ? "disabled" : ""}>
-            <option value="false" ${field.visibleInForm ? "" : "selected"}>NO</option>
-            <option value="true" ${field.visibleInForm ? "selected" : ""}>YES</option>
+            <option value="false" ${field.visibleInForm ? "" : "selected"} data-i18n="review.no">No</option>
+            <option value="true" ${field.visibleInForm ? "selected" : ""} data-i18n="review.yes">Yes</option>
           </select>
         </td>
         <td>
           <select data-key="visibleInViewer" data-index="${idx}">
-            <option value="false" ${field.visibleInViewer ? "" : "selected"}>NO</option>
-            <option value="true" ${field.visibleInViewer ? "selected" : ""}>YES</option>
+            <option value="false" ${field.visibleInViewer ? "" : "selected"} data-i18n="review.no">No</option>
+            <option value="true" ${field.visibleInViewer ? "selected" : ""} data-i18n="review.yes">Yes</option>
           </select>
         </td>
-        <td class="readonly-cell">${field.locked ? "YES" : "NO"}</td>
+        <td class="readonly-cell"><span data-i18n="${field.locked ? 'review.yes' : 'review.no'}">${field.locked ? "Yes" : "No"}</span></td>
       `;
 
       tbody.appendChild(tr);
@@ -518,25 +585,24 @@ a.button.secondary {
     if (!enumFields.length) {
   wrap.innerHTML = `
     <div class="card">
-      <h3>No dropdown colors detected</h3>
+      <h3 data-i18n="review.no_dropdown_heading">No dropdown colors detected</h3>
 
       <p class="muted">
-        This spreadsheet does not currently contain dropdown fields or selectable colored values.
+        <span data-i18n="review.no_dropdown_description">This spreadsheet does not currently contain dropdown fields or selectable colored values.</span>
       </p>
 
       <p class="muted">
-        If you want to use colored selectable values, go back to Google Sheets and configure a column using
-        <b>Data → Data validation</b>. Then create dropdown values and assign colors to them.
+        <span data-i18n="review.no_dropdown_before">If you want to use colored selectable values, go back to Google Sheets and configure a column using </span>
+        <b data-i18n="review.data_validation">Data → Data validation</b><span data-i18n="review.no_dropdown_after">. Then create dropdown values and assign colors to them.</span>
       </p>
 
       <p class="muted">
-        After changing the spreadsheet structure, export the source files again as <code>.xlsx</code> and
-        <code>.html</code>, then restart the parser flow.
+        <span data-i18n="review.reimport_instructions">After changing the spreadsheet structure, import the spreadsheet again. For manual imports, export the updated source files first.</span>
       </p>
 
       <div class="actions">
-        <button id="restartParserBtn" type="button" class="secondary">
-          Restart from source files
+        <button id="restartParserBtn" type="button" class="secondary" data-i18n="review.reimport">
+          Reimport spreadsheet
         </button>
       </div>
     </div>
@@ -559,7 +625,7 @@ a.button.secondary {
       box.style.padding = "12px";
 
       let html = `<h3 style="margin:0 0 10px;">${escapeHtml(field.label || field.name)} <span class="muted">(${escapeHtml(field.name)})</span></h3>`;
-      html += `<table><thead><tr><th>value</th><th>background</th><th>foreground</th><th>preview</th></tr></thead><tbody>`;
+      html += `<table><thead><tr><th data-i18n="review.color_value">Value</th><th data-i18n="review.color_background">Background</th><th data-i18n="review.color_foreground">Foreground</th><th data-i18n="review.color_preview">Preview</th></tr></thead><tbody>`;
 
       (field.enumValues || []).forEach(value => {
         const styleObj = builderState.enumStyles[field.name][value] || { bg: "", fg: "" };
@@ -729,17 +795,62 @@ a.button.secondary {
           builderState.enumStyles[fieldName][valueName] = { bg: "", fg: "" };
         }
 
-        let val = el.value.trim();
+        const val = el.value.trim().toLowerCase();
 
-        if (role === "picker") {
-          val = val.toLowerCase();
+        // Consente la digitazione progressiva di un colore HEX.
+        if (val !== "" && !/^#[0-9a-f]{6}$/.test(val)) {
+          el.dataset.reviewColorInvalid = "1";
+          el.setCustomValidity(reviewT("review.hex_invalid", "Enter a valid HEX color, for example #336699."));
+          return;
         }
+
+        delete el.dataset.reviewColorInvalid;
+        el.setCustomValidity("");
 
         builderState.enumStyles[fieldName][valueName][prop] = val;
 
-        syncEnumStyleInputs(fieldName, valueName, prop, val);
+        const row = el.closest("tr");
+
+        if (row) {
+          row.querySelectorAll("[data-enum-prop]").forEach(other => {
+            if (other === el) return;
+            if (other.dataset.enumProp !== prop) return;
+
+            const next = other.type === "color"
+              ? (val || (prop === "bg" ? "#ffffff" : "#000000"))
+              : val;
+
+            if (other.value !== next) {
+              other.value = next;
+            }
+
+            other.setCustomValidity("");
+          });
+
+          // Aggiorna solo il campione cromatico della riga.
+          const cell = row.lastElementChild;
+          const sample = cell?.firstElementChild || cell;
+
+          if (sample) {
+            if (prop === "bg") {
+              sample.style.backgroundColor = val || "#ffffff";
+            } else if (prop === "fg") {
+              sample.style.color = val || "#000000";
+            }
+          }
+        }
+
+        const field = builderState.fields.find(
+          f => f.name === fieldName
+        );
+
+        if (field) {
+          field.enumStyles = builderState.enumStyles[fieldName];
+        }
+
         renderPreviewOnly();
-        renderEnumStylesEditor();
+
+        // Non ricostruire l'editor mentre l'utente lo utilizza.
       });
     });
   }
@@ -780,9 +891,130 @@ a.button.secondary {
     renderEnumStyles();
     renderPreviewOnly();
     renderIdWarning();
+    reviewBaseline = JSON.stringify(builderState);
   }
-  function autoloadFromLocalStorageIfRequested() {
+  async function autoloadFromLocalStorageIfRequested() {
   const qs = new URLSearchParams(window.location.search);
+  const previewSession = qs.get("previewSession");
+
+  if (previewSession) {
+    reviewSetReturnHint("review.return_preview", "After saving, you will return to the preview.");
+    try {
+      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(previewSession)) {
+        throw new Error(reviewT("review.invalid_preview_session", "Invalid preview session"));
+      }
+
+      const raw = sessionStorage.getItem(
+        "DJUNGO_PREVIEW_" + previewSession
+      );
+
+      if (!raw) {
+        throw new Error(reviewT("review.preview_session_unavailable", "Preview session unavailable"));
+      }
+
+      builderState = ensureBuilderStateShape(JSON.parse(raw));
+      renderAll();
+
+      const applyBtn = document.getElementById("downloadBtn");
+      applyBtn.dataset.i18n = "review.save_changes";
+      applyBtn.textContent = reviewT("review.save_changes", "Save changes");
+
+      const backBtn = document.createElement("button");
+      backBtn.type = "button";
+      backBtn.className = "secondary";
+      backBtn.dataset.i18n = "review.exit_without_saving";
+      backBtn.textContent = reviewT("review.exit_without_saving", "Exit without saving");
+
+      backBtn.addEventListener("click", () => {
+        if (!reviewConfirmLeave()) return;
+        window.location.href =
+          "/preview/" +
+          encodeURIComponent(previewSession) +
+          "/index.html";
+      });
+
+      applyBtn.after(backBtn);
+
+      setStatusI18n("loadStatus", "review.preview_loaded", "Preview configuration loaded", "ok");
+
+    } catch (err) {
+      setStatus("loadStatus", err.message, "err");
+      document.getElementById("downloadBtn").disabled = true;
+    }
+
+    return;
+  }
+
+  const persistentApp = qs.get("persistentApp");
+
+  if (persistentApp) {
+    reviewSetReturnHint("review.return_app", "After saving, your application will reopen.");
+    const btn = document.getElementById("downloadBtn");
+    btn.disabled = true;
+
+    try {
+      const response = await fetch(
+        "/api/configuration/" +
+        encodeURIComponent(persistentApp),
+        {cache: "no-store"}
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || reviewT("review.cannot_load_configuration", "Cannot load configuration"));
+      }
+
+      builderState = ensureBuilderStateShape(data.builder_state);
+      renderAll();
+
+      btn.dataset.i18n = "review.save_changes";
+      btn.textContent = reviewT("review.save_changes", "Save changes");
+
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "secondary";
+      cancel.dataset.i18n = "review.exit_without_saving";
+      cancel.textContent = reviewT("review.exit_without_saving", "Exit without saving");
+
+      cancel.addEventListener("click", () => {
+        if (!reviewConfirmLeave()) return;
+
+        window.location.href =
+          "/application/" +
+          encodeURIComponent(persistentApp) +
+          "/index.html";
+      });
+
+      btn.after(cancel);
+      btn.disabled = false;
+
+      setStatusI18n(
+        "loadStatus", "review.app_configuration_loaded",
+        "Saved application configuration loaded", "ok"
+      );
+
+    } catch (err) {
+      setStatus("loadStatus", err.message, "err");
+    }
+
+    return;
+  }
+
+  reviewSetReturnHint("review.return_manual", "After generating the files, you will continue to the application or delivery page.", true);
+
+  const manualExit = document.createElement("button");
+  manualExit.id = "reviewManualExit";
+  manualExit.type = "button";
+  manualExit.className = "secondary";
+  manualExit.dataset.i18n = "review.exit_without_saving";
+  manualExit.textContent = reviewT("review.exit_without_saving", "Exit without saving");
+  manualExit.addEventListener("click", () => {
+    if (!reviewConfirmLeave()) return;
+    window.location.href = "generate.html";
+  });
+  document.getElementById("downloadBtn").after(manualExit);
+
   const shouldAutoload = qs.get("autoload") === "1";
 
   if (!shouldAutoload) {
@@ -792,7 +1024,7 @@ a.button.secondary {
   try {
     const raw = localStorage.getItem("DJUNGO_BUILDER_STATE");
     if (!raw) {
-      setStatus("loadStatus", "Errore: nessun builder state trovato in localStorage", "err");
+      setStatusI18n("loadStatus", "review.no_builder_state", "No builder state found in localStorage", "err");
       return;
     }
 
@@ -801,9 +1033,9 @@ a.button.secondary {
 
     renderAll();
 
-    setStatus("loadStatus", "Builder state loaded automatically from parser result", "ok");
+    setStatusI18n("loadStatus", "review.builder_state_loaded", "Builder state loaded automatically from parser result", "ok");
   } catch (err) {
-    setStatus("loadStatus", "Errore autoload: " + err.message, "err");
+    setStatusI18n("loadStatus", "review.error_autoload", "Automatic load error", "err", err.message);
     console.error(err);
   }
 }
@@ -813,7 +1045,7 @@ a.button.secondary {
     const parsed = JSON.parse(text);
     builderState = ensureBuilderStateShape(parsed);
     renderAll();
-    setStatus("loadStatus", "Configuration loaded successfully", "ok");
+    setStatusI18n("loadStatus", "review.configuration_loaded", "Configuration loaded successfully", "ok");
   }
 
   document.getElementById("fileInput").addEventListener("change", async (e) => {
@@ -823,7 +1055,7 @@ a.button.secondary {
     try {
       await loadFromFile(file);
     } catch (err) {
-      setStatus("loadStatus", "Errore: " + err.message, "err");
+      setStatusI18n("loadStatus", "review.error_prefix", "Error", "err", err.message);
       console.error(err);
     }
   });
@@ -839,14 +1071,14 @@ if (restartForIdBtn) {
   document.getElementById("loadSampleBtn").addEventListener("click", () => {
     try {
       const raw = document.getElementById("rawJsonInput").value.trim();
-      if (!raw) throw new Error("Area parsed configuration vuota");
+      if (!raw) throw new Error(reviewT("review.pasted_configuration_empty", "Pasted configuration is empty"));
 
       const parsed = JSON.parse(raw);
       builderState = ensureBuilderStateShape(parsed);
       renderAll();
-      setStatus("loadStatus", "Configuration loaded from pasted content", "ok");
+      setStatusI18n("loadStatus", "review.configuration_loaded_pasted", "Configuration loaded from pasted content", "ok");
     } catch (err) {
-      setStatus("loadStatus", "Errore: " + err.message, "err");
+      setStatusI18n("loadStatus", "review.error_prefix", "Error", "err", err.message);
       console.error(err);
     }
   });
@@ -854,7 +1086,16 @@ if (restartForIdBtn) {
   document.getElementById("downloadBtn").addEventListener("click", async () => {
   try {
     if (!builderState) {
-      throw new Error("No parsed configuration loaded");
+      throw new Error(reviewT("review.no_configuration", "No parsed configuration loaded"));
+    }
+
+    const invalidColor = Array.from(
+      document.querySelectorAll("[data-enum-field]")
+    ).find(el => !el.checkValidity());
+
+    if (invalidColor) {
+      invalidColor.reportValidity();
+      throw new Error(reviewT("review.correct_invalid_colors", "Correct invalid colors before saving."));
     }
 
     {{/*  const hasIdField =
@@ -869,13 +1110,133 @@ if (restartForIdBtn) {
       return;
     }  */}}
 
+    const previewSession =
+      new URLSearchParams(window.location.search)
+        .get("previewSession");
+
+    if (previewSession) {
+      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(previewSession)) {
+        throw new Error(reviewT("review.invalid_preview_session", "Invalid preview session"));
+      }
+
+      const key = "DJUNGO_PREVIEW_" + previewSession;
+
+      if (!sessionStorage.getItem(key)) {
+        throw new Error(reviewT("review.preview_session_unavailable", "Preview session unavailable"));
+      }
+
+      const btn = document.getElementById("downloadBtn");
+
+      try {
+        btn.disabled = true;
+
+        setStatusI18n(
+          "downloadStatus", "review.saving_preview",
+          "Saving configuration and updating preview...", "muted"
+        );
+
+        const response = await fetch(
+          "/api/preview/" +
+          encodeURIComponent(previewSession) +
+          "/generate",
+          {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              builder_state: builderState,
+              save_preferences: true
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || reviewT("review.preview_update_failed", "Preview update failed"));
+        }
+
+        const expectedUrl =
+          "/preview/" +
+          encodeURIComponent(previewSession) +
+          "/index.html";
+
+        if (data.preview_url !== expectedUrl) {
+          throw new Error(reviewT("review.invalid_preview_url", "Invalid preview URL"));
+        }
+
+        if (!data.preferences_saved || !data.builder_state) {
+          throw new Error(reviewT("review.configuration_not_saved", "Configuration was not saved"));
+        }
+
+        builderState = ensureBuilderStateShape(
+          data.builder_state
+        );
+
+        sessionStorage.setItem(
+          key, JSON.stringify(builderState)
+        );
+
+        window.location.href = expectedUrl;
+
+      } finally {
+        btn.disabled = false;
+      }
+
+      return;
+    }
+
+    const persistentApp =
+      new URLSearchParams(window.location.search)
+        .get("persistentApp");
+
+    if (persistentApp) {
+      const btn = document.getElementById("downloadBtn");
+
+      try {
+        btn.disabled = true;
+
+        setStatusI18n(
+          "downloadStatus", "review.saving_configuration",
+          "Saving configuration...", "muted"
+        );
+
+        const response = await fetch(
+          "/api/configuration/" +
+          encodeURIComponent(persistentApp),
+          {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              builder_state: builderState
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || reviewT("review.configuration_save_failed", "Configuration save failed"));
+        }
+
+        window.location.href =
+          "/application/" +
+          encodeURIComponent(persistentApp) +
+          "/index.html";
+
+      } finally {
+        btn.disabled = false;
+      }
+
+      return;
+    }
+
     const sessionId = localStorage.getItem("DJUNGO_SESSION_ID");
 
     if (!sessionId) {
-      throw new Error("Missing parser session_id. Return to generate.html and run parser again.");
+      throw new Error(reviewT("review.missing_parser_session", "Missing parser session_id. Return to generate.html and run parser again."));
     }
 
-    setStatus("downloadStatus", "Generating final files...", "muted");
+    setStatusI18n("downloadStatus", "review.generating_files", "Generating final files...", "muted");
 
     localStorage.setItem(
       "DJUNGO_BUILDER_STATE",
@@ -896,7 +1257,7 @@ if (restartForIdBtn) {
     const data = await resp.json();
 
     if (!resp.ok || !data.ok) {
-      throw new Error(data.error || "Generation failed");
+      throw new Error(data.error || reviewT("review.generation_failed", "Generation failed"));
     }
 
     if (data.downloads) {
@@ -921,13 +1282,15 @@ if (restartForIdBtn) {
       localStorage.setItem("DJUNGO_LAST_APP", targetApp);
 
       window.location.href =
-        `index.html?app=${encodeURIComponent(targetApp)}&_=${Date.now()}`;
+        sourceType === "google_sheet"
+          ? `/application/${encodeURIComponent(targetApp)}/index.html`
+          : `index.html?app=${encodeURIComponent(targetApp)}&_=${Date.now()}`;
     } else {
       window.location.href = "app_ready.html";
     }
 
   } catch (err) {
-    setStatus("downloadStatus", "Errore: " + err.message, "err");
+    setStatusI18n("downloadStatus", "review.error_prefix", "Error", "err", err.message);
     console.error(err);
   }
 });
@@ -935,6 +1298,65 @@ if (restartForIdBtn) {
 
   bindProjectEvents();
   autoloadFromLocalStorageIfRequested();
+</script>
+
+
+<!-- UAT-F48B: Review i18n static UI -->
+<!-- UAT-F48D: Review navigation -->
+<script src="/i18n/i18n.js"></script>
+<script>
+(function () {
+  "use strict";
+  const i18n = window.DjungoI18n;
+  if (!i18n) {
+    console.error("Djungo i18n engine unavailable in Review");
+    return;
+  }
+  i18n.ready.then(function () {
+    if (document.getElementById("djungoLanguageControl")) return;
+    const host = document.createElement("div");
+    host.id = "djungoLanguageControl";
+    host.style.cssText = [
+      "display:flex", "justify-content:space-between", "align-items:center",
+      "gap:8px", "margin:8px 0 14px", "padding:0 8px"
+    ].join(";");
+    document.body.prepend(host);
+    const home = document.createElement("a");
+    home.id = "reviewHomeLink";
+    home.href = "generate.html";
+    home.className = "button secondary";
+    home.style.cssText = "font-size:13px;white-space:nowrap;";
+    home.dataset.i18n = "review.home_djungo";
+    home.textContent = i18n.t("review.home_djungo");
+    home.addEventListener("click", function (event) {
+      if (!reviewConfirmLeave()) event.preventDefault();
+    });
+    host.appendChild(home);
+    i18n.mountSelector(host);
+    i18n.apply();
+
+    // The second reimport button is created later by the existing Review code.
+    // Only newly inserted data-i18n elements trigger a translation refresh.
+    const observer = new MutationObserver(function (records) {
+      const found = records.some(function (record) {
+        return Array.from(record.addedNodes).some(function (node) {
+          return node.nodeType === 1 && (
+            node.hasAttribute("data-i18n") ||
+            (typeof node.querySelector === "function" &&
+             node.querySelector("[data-i18n]"))
+          );
+        });
+      });
+      if (!found) return;
+      observer.disconnect();
+      i18n.apply();
+      observer.observe(document.body, {childList: true, subtree: true});
+    });
+    observer.observe(document.body, {childList: true, subtree: true});
+  }).catch(function (error) {
+    console.error("Djungo Review language initialization failed", error);
+  });
+})();
 </script>
 
 </body>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Generate App — Djungo Builder</title>
+  <title data-i18n="generate.browser_title">Generate App — Djungo Builder</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -43,7 +43,7 @@
       font-weight: bold;
     }
 
-    input[type="file"], input[type="text"], textarea {
+    input[type="file"], input[type="text"], input[type="url"], textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 10px;
@@ -121,183 +121,203 @@
 
 <body>
 
-  <h1>Generate your app</h1>
-  <p class="muted">
+  <h1 data-i18n="generate.title">Generate your app</h1>
+  <p class="muted" data-i18n="generate.intro">
     Choose the safest path for your current situation. Djungo can reopen the last app,
     connect an existing Apps Script backend, or build a new app from Google Sheets exports.
   </p>
 
   <div class="card">
-    <h2>Start here</h2>
-    <p class="muted">
-      Select one option. Only the controls needed for that path will be shown.
+    <h2 data-i18n="generate.create_title">Create your application</h2>
+    <p class="muted" data-i18n="generate.create_description">
+      Follow these steps to turn your spreadsheet into an application.
     </p>
 
 
     <div class="card" style="margin-bottom:16px;">
-      <h3>Import from Google Sheets URL</h3>
-      <p class="muted">
-        Paste a public Google Sheets URL. No file download required.
+      <h3 data-i18n="generate.step1">Step 1 — Prepare your spreadsheet</h3>
+
+      <p data-i18n="generate.before_import">Before importing your data:</p>
+      <ol>
+        <li data-i18n="generate.id_header">Make sure the first column is named ID.</li>
+        <li data-i18n="generate.id_fill_start">If IDs are missing, enter 1 and 2 in the first two data rows.</li>
+        <li data-i18n="generate.id_fill_handle">Select both cells and double-click the fill handle
+            to extend the numeric series.</li>
+        <li data-i18n="generate.id_unique">Check that every record has a unique positive integer ID.
+            Keep existing valid IDs unchanged.</li>
+      </ol>
+
+      <h3 data-i18n="generate.step2">Step 2 — Connect your Google Sheet</h3>
+      <p class="muted" data-i18n="generate.sheet_instructions">
+        Copy the URL from your Google Sheets browser address bar
+        and paste it below. The spreadsheet must be accessible
+        for import. Do not make confidential data public.
       </p>
 
-      <label for="gsUrlInput">Google Sheets URL</label>
+      <label for="gsUrlInput" data-i18n="generate.sheet_url">Google Sheets URL</label>
       <input id="gsUrlInput" type="url"
              placeholder="https://docs.google.com/spreadsheets/d/.../edit">
 
       <div class="actions">
-        <button id="gsFindBtn" type="button">Find sheets</button>
+        <button id="gsFindBtn" type="button" data-i18n="generate.find_sheets">Find available sheets</button>
         <span id="gsStatus" class="muted"></span>
       </div>
 
       <div id="gsSelectPanel" class="hidden">
-        <label for="gsSelect">Select a sheet</label>
+        <label for="gsSelect" data-i18n="generate.select_sheet">Select a sheet</label>
         <select id="gsSelect"></select>
       </div>
     </div>
 
     <div id="googleSheetPanel" class="hidden" style="margin-bottom:16px;">
-      <p class="ok">Google Sheet detected</p>
+      <p class="ok" data-i18n="generate.sheet_detected">Google Sheet detected</p>
       <p>
-        <strong>Spreadsheet:</strong> <span id="googleSpreadsheetName"></span><br>
-        <strong>Selected sheet:</strong> <span id="googleSheetName"></span><br>
-        <strong>Sheet ID:</strong> <span id="googleSheetId"></span>
+        <strong data-i18n="generate.spreadsheet_label">Spreadsheet:</strong> <span id="googleSpreadsheetName"></span><br>
+        <strong data-i18n="generate.selected_sheet_label">Selected sheet:</strong> <span id="googleSheetName"></span><br>
+        <strong data-i18n="generate.sheet_id_label">Sheet ID:</strong> <span id="googleSheetId"></span>
       </p>
       <div class="actions">
-        <button id="chooseGoogleSheetBtn" type="button">Continue from Google Sheet</button>
+        <button id="chooseGoogleSheetBtn" type="button" data-i18n="generate.preview_button">Generate app preview</button>
         <span id="googleImportStatus" class="muted"></span>
       </div>
     </div>
 
-    <div class="actions">
-      <button id="chooseResumeBtn" type="button">1A. Continue last app</button>
-      <button id="chooseNewBtn" type="button" class="secondary">1B. Build new app from exports</button>
-    </div>
+    <details style="margin-top:18px;">
+      <summary style="cursor:pointer;" data-i18n="generate.other_ways">Other ways to start</summary>
+      <p class="muted" data-i18n="generate.other_ways_help">
+        Resume your previous application or import exported spreadsheet files.
+      </p>
+      <div class="actions">
+        <button id="chooseResumeBtn" type="button" data-i18n="generate.resume">Continue previous app</button>
+        <button id="chooseNewBtn" type="button" class="secondary" data-i18n="generate.import_files">Import from files</button>
+      </div>
+    </details>
   </div>
 
   <div id="newAppPanel" class="hidden">
     <div class="card">
-      <h2>1B. Build a new app from Google Sheets exports</h2>
+      <h2 data-i18n="generate.export_title">1B. Build a new app from Google Sheets exports</h2>
       <p class="muted">
-        Use this option when you are starting from source files. Required inputs are:
-        <code>.xlsx</code>, <code>.html</code>, and <code>sheet name</code>.
+        <span data-i18n="generate.export_intro">Use this option when you are starting from source files. Required inputs are:</span>
+        <code>.xlsx</code>, <code>.html</code>, <span data-i18n="generate.export_and">and</span> <code data-i18n="generate.sheet_name_code">sheet name</code>.
       </p>
 
       <div class="grid">
         <div>
-          <label for="xlsxFile">Google Sheets export (.xlsx) *</label>
+          <label for="xlsxFile" data-i18n="generate.xlsx_file">Google Sheets export (.xlsx) *</label>
           <input id="xlsxFile" type="file" accept=".xlsx" />
         </div>
         <div>
-          <label for="htmlFile">Google Sheets export (.html) *</label>
+          <label for="htmlFile" data-i18n="generate.html_file">Google Sheets export (.html) *</label>
           <input id="htmlFile" type="file" accept=".html,text/html" />
         </div>
       </div>
 
-      <label for="sheetName">Sheet name *</label>
-      <input id="sheetName" type="text" placeholder="Es. HorrorMovie" />
+      <label for="sheetName" data-i18n="generate.sheet_name">Sheet name *</label>
+      <input id="sheetName" type="text" placeholder="E.g. HorrorMovie" data-i18n-placeholder="generate.sheet_name_example" />
 
-      <p class="muted">
+      <p class="muted" data-i18n="generate.persistent_backend">
         Google Sheets persistent backend (optional).
         Enter both identifiers to connect this app to the shared GAS.
       </p>
-      <label for="spreadsheetIdInput">Spreadsheet ID</label>
+      <label for="spreadsheetIdInput" data-i18n="generate.spreadsheet_id">Spreadsheet ID</label>
       <input id="spreadsheetIdInput" type="text"
-             placeholder="Google document ID" />
+             placeholder="Google document ID" data-i18n-placeholder="generate.spreadsheet_id_hint" />
 
-      <label for="sheetIdInput">Sheet ID</label>
+      <label for="sheetIdInput" data-i18n="generate.gid">Sheet ID</label>
       <input id="sheetIdInput" type="text"
-             placeholder="Numeric sheet ID (gid)" />
+             placeholder="Numeric sheet ID (gid)" data-i18n-placeholder="generate.sheet_id_hint" />
 
       <div class="actions">
-        <button id="parserBtn" type="button">Start parser</button>
+        <button id="parserBtn" type="button" data-i18n="generate.start_parser">Start parser</button>
         <span id="parserStatus" class="muted"></span>
       </div>
     </div>
 
     <div id="parserPanel" class="card hidden">
-      <h2>Parser status</h2>
-      <p class="muted">
+      <h2 data-i18n="generate.parser_status">Parser status</h2>
+      <p class="muted" data-i18n="generate.parser_description">
         The parser reads database structure, fields, formulas, enums and visual colors.
       </p>
 
       <ul>
-        <li>Campi rilevati dal foglio</li>
-        <li>Formule trovate nei campi calcolati</li>
-        <li>Enum e colori visuali</li>
-        <li>Configurazione di base del frontend</li>
+        <li data-i18n="generate.parser_fields">Campi rilevati dal foglio</li>
+        <li data-i18n="generate.parser_formulas">Formule trovate nei campi calcolati</li>
+        <li data-i18n="generate.parser_enums">Enum e colori visuali</li>
+        <li data-i18n="generate.parser_frontend">Configurazione di base del frontend</li>
       </ul>
 
       <div class="actions">
-        <button id="openReviewBtn" type="button" class="secondary">Open internal review page</button>
+        <button id="openReviewBtn" type="button" class="secondary" data-i18n="generate.open_review">Open internal review page</button>
       </div>
     </div>
 
     <div id="generatePanel" class="card hidden">
-      <h2>Prepare Apps Script backend</h2>
+      <h2 data-i18n="generate.prepare_gas">Prepare Apps Script backend</h2>
       <p class="muted">
-        Hosted mode only requires <code>codice.gs</code>.
-        Frontend files are already managed by builder.sgbh.org.
+        <span data-i18n="generate.hosted_prefix">Hosted mode only requires</span> <code>codice.gs</code>.
+        <span data-i18n="generate.hosted_suffix">Frontend files are already managed by builder.sgbh.org.</span>
       </p>
 
       <div class="actions">
-        <button id="generateBtn" type="button">Generate index.html, viewer.html and codice.gs</button>
+        <button id="generateBtn" type="button" data-i18n="generate.generate_files">Generate index.html, viewer.html and codice.gs</button>
         <span id="generateStatus" class="muted"></span>
       </div>
 
       <div id="generatedFilesBox" class="hidden" style="margin-top:14px;">
-        <p class="ok">Final package prepared</p>
+        <p class="ok" data-i18n="generate.package_ready">Final package prepared</p>
         <ul>
-          <li><code>index.html</code> — home page del database e CRUD finale</li>
-          <li><code>viewer.html</code> — viewer tabellare</li>
-          <li><code>codice.gs</code> — backend Google Apps Script</li>
+          <li><code>index.html</code> — <span data-i18n="generate.package_index">home page del database e CRUD finale</span></li>
+          <li><code>viewer.html</code> — <span data-i18n="generate.package_viewer">viewer tabellare</span></li>
+          <li><code>codice.gs</code> — <span data-i18n="generate.package_gas">backend Google Apps Script</span></li>
         </ul>
 
         <div class="actions">
-          <a id="downloadIndex" class="button secondary hidden" href="#">Download index.html</a>
-          <a id="downloadViewer" class="button secondary hidden" href="#">Download viewer.html</a>
-          <a id="downloadGas" class="button secondary hidden" href="#">Download codice.gs</a>
+          <a id="downloadIndex" class="button secondary hidden" href="#" data-i18n="generate.download_index">Download index.html</a>
+          <a id="downloadViewer" class="button secondary hidden" href="#" data-i18n="generate.download_viewer">Download viewer.html</a>
+          <a id="downloadGas" class="button secondary hidden" href="#" data-i18n="generate.download_gas">Download codice.gs</a>
         </div>
       </div>
     </div>
 
     <div id="deployPanel" class="card hidden">
-      <h2>Deployment data</h2>
-      <p class="muted">
+      <h2 data-i18n="generate.deployment_data">Deployment data</h2>
+      <p class="muted" data-i18n="generate.deployment_description">
         After publishing the generated backend, enter the data needed to open the final database page.
       </p>
 
-      <label for="webAppUrl">Apps Script Web App URL *</label>
+      <label for="webAppUrl" data-i18n="generate.web_app_url">Apps Script Web App URL *</label>
       <input id="webAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
 
-      <label for="apiKey">API key *</label>
+      <label for="apiKey" data-i18n="generate.api_key">API key *</label>
       <input id="apiKey" type="text" placeholder="CHANGE_ME_WRITE_KEY_2026" />
 
-      <label for="crudEndpoint">CRUD endpoint</label>
+      <label for="crudEndpoint" data-i18n="generate.crud_endpoint">CRUD endpoint</label>
       <input id="crudEndpoint" type="text" readonly />
 
       <div class="actions">
-        <button id="buildEndpointBtn" type="button">Build CRUD endpoint</button>
-        <button id="openCrudBtn" type="button" class="secondary">Open database</button>
+        <button id="buildEndpointBtn" type="button" data-i18n="generate.build_endpoint">Build CRUD endpoint</button>
+        <button id="openCrudBtn" type="button" class="secondary" data-i18n="generate.open_database">Open database</button>
         <span id="deployStatus" class="muted"></span>
       </div>
     </div>
 
     <div id="nextPanel" class="card hidden">
-      <h2>Continue</h2>
-      <p class="muted">
+      <h2 data-i18n="generate.continue">Continue</h2>
+      <p class="muted" data-i18n="generate.continue_help">
         Once the final files are ready and deployment is configured, use the final delivery page.
       </p>
 
       <div class="actions">
-        <a class="button" href="app_ready.html" target="_blank" rel="noopener">Open app ready page</a>
+        <a class="button" href="app_ready.html" target="_blank" rel="noopener" data-i18n="generate.open_ready">Open app ready page</a>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>Current stage</h2>
-    <pre id="debugOut">Choose one option to start…</pre>
-  </div>
+  <details class="card">
+    <summary style="cursor:pointer;" data-i18n="generate.technical">Technical details</summary>
+    <pre id="debugOut" data-i18n="generate.waiting">Waiting for an action…</pre>
+  </details>
 
   <script>
 const xlsxFile = document.getElementById("xlsxFile");
@@ -511,8 +531,48 @@ const xlsxFile = document.getElementById("xlsxFile");
         JSON.stringify(currentBuilderState)
       );
 
-      setStatus(status, "Import completed.", "ok");
-      window.location.href = "review.html?autoload=1";
+      setStatus(
+        status,
+        "Import completed. Generating your application...",
+        "muted"
+      );
+
+      const previewResponse = await fetch(
+        `/api/preview/${encodeURIComponent(currentSessionId)}/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            builder_state: currentBuilderState
+          })
+        }
+      );
+
+      const previewData = await previewResponse.json();
+
+      if (!previewResponse.ok || !previewData.ok) {
+        throw new Error(
+          previewData.error || "Preview generation failed"
+        );
+      }
+
+      const expectedUrl =
+        `/preview/${encodeURIComponent(currentSessionId)}/index.html`;
+
+      if (previewData.preview_url !== expectedUrl) {
+        throw new Error("Invalid preview URL");
+      }
+
+      setStatus(status, "Application preview ready.", "ok");
+
+      sessionStorage.setItem(
+        "DJUNGO_PREVIEW_" + currentSessionId,
+        JSON.stringify(currentBuilderState)
+      );
+
+      window.location.href = expectedUrl;
 
     } catch (err) {
       setStatus(status, "ERR: " + err.message, "err");
@@ -833,6 +893,100 @@ chooseNewBtn.addEventListener("click", () => {
     window.location.href = endpoint;
   });
   </script>
+
+
+<!-- UAT-F45: generate language selector -->
+<script src="/i18n/i18n.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const i18n = window.DjungoI18n;
+
+  if (!i18n) {
+    console.error("Djungo i18n engine unavailable");
+    return;
+  }
+
+  const textKeys = {"Language": "language", "Lingua": "language", "Import spreadsheet": "import", "Importa foglio di calcolo": "import", "Import another spreadsheet": "import_another", "Importa un altro foglio": "import_another", "Preview": "preview", "Anteprima": "preview", "Preview mode — Read-only": "preview_readonly", "Anteprima — Sola lettura": "preview_readonly", "Customize application": "customize", "Personalizza applicazione": "customize", "Activate application": "activate", "Attiva applicazione": "activate", "Open application": "open_application", "Apri applicazione": "open_application", "Save configuration": "save_configuration", "Salva configurazione": "save_configuration", "Save and return to preview": "save_preview", "Salva e torna all'anteprima": "save_preview", "Return to preview without saving": "return_preview", "Torna all'anteprima senza salvare": "return_preview", "Save and return to app": "save_application", "Salva e torna all'applicazione": "save_application", "Cancel": "cancel", "Annulla": "cancel", "Insert": "insert", "Inserisci": "insert", "Save changes": "save_changes", "Salva modifiche": "save_changes", "Delete": "delete", "Elimina": "delete", "Cancel editing": "cancel_edit", "Annulla modifica": "cancel_edit", "Data viewer": "data_viewer", "Visualizzazione dati": "data_viewer", "Search...": "search", "Cerca...": "search", "Search all records": "search_all", "Cerca in tutti i record": "search_all", "Rows per page": "rows_per_page", "Righe per pagina": "rows_per_page", "Configuration": "configuration", "Configurazione": "configuration", "Reimport spreadsheet": "reimport", "Reimporta foglio": "reimport", "Special value colors": "special_colors", "Colori dei valori speciali": "special_colors", "No dropdown colors detected": "no_colors", "Nessun colore di elenco rilevato": "no_colors", "Loading...": "loading", "Caricamento...": "loading", "Saving...": "saving", "Salvataggio...": "saving", "Error": "error", "Errore": "error", "Completed successfully": "success", "Operazione completata": "success", "Start from Google Sheet": "start_google", "Inizia da Google Sheets": "start_google", "Google Sheet URL": "google_sheet_url", "URL del foglio Google": "google_sheet_url", "Find available sheets": "find_sheets", "Trova i fogli disponibili": "find_sheets", "Generate app preview": "generate_preview", "Genera anteprima applicazione": "generate_preview", "Other ways to start": "other_ways", "Altre modalità per iniziare": "other_ways", "Technical details": "technical_details", "Dettagli tecnici": "technical_details", "Choose sheet": "choose_sheet", "Scegli la scheda": "choose_sheet", "Select sheet": "select_sheet", "Seleziona la scheda": "select_sheet"};
+
+  function normalize(text) {
+    return String(text || "")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function markTranslatableElements() {
+    // Solo controlli e titoli dell'interfaccia.
+    // Non vengono esaminati i record del database.
+    const selectors = [
+      "button",
+      "summary",
+      "h1",
+      "h2",
+      "h3",
+      "label"
+    ];
+
+    document.querySelectorAll(
+      selectors.join(",")
+    ).forEach(element => {
+
+      if (element.hasAttribute("data-i18n")) {
+        return;
+      }
+
+      // Non sostituire elementi con HTML interno.
+      if (element.children.length > 0) {
+        return;
+      }
+
+      const caption = normalize(element.textContent);
+      const key = textKeys[caption];
+
+      if (!key) return;
+
+      element.dataset.i18n = key;
+    });
+  }
+
+  function initializeLanguageSelector() {
+    if (document.getElementById(
+      "djungoLanguageControl"
+    )) return;
+
+    const host = document.createElement("div");
+
+    host.id = "djungoLanguageControl";
+
+    host.style.cssText = [
+      "display:flex",
+      "justify-content:flex-end",
+      "align-items:center",
+      "margin:8px 0 14px",
+      "padding:0 8px",
+      "gap:8px"
+    ].join(";");
+
+    document.body.prepend(host);
+
+    i18n.mountSelector(host);
+
+    markTranslatableElements();
+    i18n.apply();
+  }
+
+  i18n.ready
+    .then(initializeLanguageSelector)
+    .catch(error => {
+      console.error(
+        "Djungo language initialization failed",
+        error
+      );
+    });
+
+})();
+</script>
 
 </body>
 </html>

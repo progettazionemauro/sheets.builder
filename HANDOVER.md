@@ -347,3 +347,89 @@ di pubblicazione automatica GAS.
   lo scorrimento dell'intera pagina contenente l'iframe.
 - Consolidare la procedura ripetibile di aggiornamento degli HTML operativi.
 - Conservare la separazione staging/produzione e il rollback GAS v15.
+
+## CHECKPOINT F44-F48E — 25/11/2026
+
+### Internazionalizzazione Djungo
+
+F44: motore i18n.js e dizionari en.json e it.json
+implementati e verificati.
+
+F45-F46B: selettore lingua e traduzioni statiche
+Generate implementati e collaudati nel browser.
+
+F48B-F48C: traduzioni statiche e dinamiche Review
+implementate; verificato il cambio lingua senza
+perdita delle modifiche non salvate nella tabella.
+
+La preferenza lingua è conservata nel localStorage.
+Dati, intestazioni originali ed etichette personalizzate
+non devono essere tradotti.
+
+Restano da completare i messaggi dinamici di Generate
+e il multilingua integrato di Preview, CRUD e Viewer.
+
+### Navigazione
+
+F48D: nuova navigazione Review implementata:
+Home Djungo, Salva modifiche, Esci senza salvare.
+Il percorso manuale mantiene Genera applicazione.
+
+F48E.A: Home Djungo inserita nel generatore CRUD/Preview.
+Patch applicata, controlli Python e JavaScript superati.
+
+Il pulsante Home è stato visualizzato correttamente
+nell'applicazione persistente volcano_db.
+
+Da completare: collaudo funzionale delle conferme
+per modifiche CRUD non salvate e dei restanti
+percorsi di navigazione Review.
+
+### Architettura applicazioni persistenti
+
+La route Flask /application/<slug>/<filename>
+recupera lo stato persistente e genera dinamicamente
+index.html o viewer.html tramite builder_generators.py.
+
+Pertanto le modifiche al generatore sono disponibili
+anche nelle applicazioni persistenti esistenti al
+successivo caricamento della pagina.
+
+Non è necessario rigenerare manualmente volcano_db.
+
+### Google Apps Script
+
+Il progetto GAS effettivamente pubblicato rimane
+la fonte autorevole del backend.
+
+Gli snapshot locali non devono essere considerati
+automaticamente allineati al codice pubblicato.
+
+Nessuna modifica GAS è prevista nella presente
+sincronizzazione.
+
+### Stato della distribuzione
+
+Branch locale: level-b-persistent-backend.
+
+Le modifiche F44-F48E sono presenti localmente.
+Non sono ancora dichiarate sincronizzate con
+GitHub e Hetzner staging.
+
+Produzione esclusa da ogni intervento.
+
+Proteggere registri persistenti, file generati,
+backup, sessioni e dati runtime.
+
+### Prossimo passo operativo
+
+Completare la documentazione 3+3:
+HANDOVER, MANUALE_TECNICO e README.
+
+Eseguire commit selettivo delle modifiche approvate,
+sincronizzazione GitHub e deployment controllato
+sul solo Hetzner staging.
+
+Verificare commit e funzionamento remoto.
+
+Non utilizzare git add . o git reset --hard.

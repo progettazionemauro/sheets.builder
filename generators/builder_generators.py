@@ -718,6 +718,10 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     body {{ font-family: Arial, sans-serif; max-width: 1100px; margin: 28px auto; padding: 0 16px; }}
     h1 {{ margin: 0 0 6px; }}
     .muted {{ color:#666; }}
+    /* UAT-F48E.A — barra Home delle applicazioni generate */
+    .djungo-topnav {{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }}
+    .djungo-topnav a {{ display:inline-block; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; color:#111; background:#f8fafc; text-decoration:none; font-weight:700; }}
+    .djungo-topnav a:hover {{ background:#e5e7eb; }}
     .card {{ border:1px solid #e5e5e5; border-radius:10px; padding:14px; background:#fafafa; margin:12px 0; }}
     label {{ display:block; margin:10px 0 6px; font-weight:700; }}
     input, select {{ width:100%; padding:9px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box; background:#fff; }}
@@ -759,11 +763,41 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 </head>
 <body>
 
+  <!-- UAT-F48E.A: Home Djungo, anche in modalità Preview -->
+  <nav class="djungo-topnav" aria-label="Navigazione Djungo">
+    <a id="djungoHomeLink" href="/generate.html">&#8962; Home Djungo</a>
+    <span id="djungoTopnavRight"></span>
+  </nav>
+
   <h1>{escape_html(project_name)} database</h1>
 
-<p class="muted">
+<p id="appDescription" class="muted">
   Manage records, update data and browse the current spreadsheet table.
 </p>
+
+<div id="previewModeNotice" class="card" hidden
+     style="background:#fff8e1; border-color:#e5c76b;">
+  <strong>Preview mode — Read-only</strong>
+  <p>
+    This is a preview of your application using imported spreadsheet data.
+    No changes are made to your original spreadsheet.
+  </p>
+  <small>
+    Editing and data persistence require an operational backend.
+  </small>
+  <div id="previewActions" class="actions">
+    <button id="previewBackBtn" class="secondary" type="button">
+      Import another spreadsheet
+    </button>
+    <button id="previewCustomizeBtn" class="secondary" type="button">
+      Customize application
+    </button>
+    <button id="previewPublishBtn" type="button">
+      Activate application
+    </button>
+    <span id="previewActionStatus" class="muted"></span>
+  </div>
+</div>
 
     <div id="debugPanel" class="card" style="display:none;">
     <h3 style="margin:0 0 10px;">Developer tools</h3>
@@ -781,7 +815,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
     <small>Slug app: <code>{escape_html(project_slug)}</code></small>
   </div>
 
-  <div class="card">
+  <div id="crudPanel" class="card">
     <h3 style="margin:0 0 10px;">Insert ({escape_html(entity_name)})</h3>
 
 {form_html}
@@ -806,19 +840,20 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 
   <div class="card">
  <h3 style="margin:0 0 10px;">Data viewer</h3>
-<p class="muted">
-  Browse the current records stored in the connected spreadsheet.
+<p id="viewerDescription" class="muted">
+  Click a record in the table to load it into the form above.
+  You can then edit, save or delete the selected record.
 </p>
 
 
 
 <iframe id="viewer" loading="lazy"></iframe>
     <div class="actions">
-      <span class="muted">Il viewer si aggiorna automaticamente dopo insert/update/delete.</span>
+      <span id="viewerCrudHint" class="muted">The viewer refreshes automatically after insert, update or delete.</span>
     </div>
   </div>
   
-<div class="card">
+<div id="configurationPanel" class="card">
   <h3 style="margin:0 0 10px;">Configuration</h3>
 
   <p class="muted">
@@ -827,7 +862,7 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 
   <div class="actions">
     <button id="customizeConfigBtn" type="button" class="secondary">
-      Customize app configuration
+      Customize application
     </button>
   </div>
 </div>
@@ -839,9 +874,65 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 
 <script>
   
+  // UAT-F48E.A: Home Djungo e controllo modifiche CRUD.
+  // Lo snapshot esclude gli elementi di sola lettura, in particolare l'ID record.
+  function djungoFormSnapshot_() {{
+    const elements = document.querySelectorAll(
+      "#crudPanel input, #crudPanel select, #crudPanel textarea"
+    );
+    return JSON.stringify(Array.from(elements)
+      .filter(el => !el.disabled && !el.readOnly &&
+        !["hidden", "button", "submit", "reset"].includes(el.type))
+      .map((el, index) => [
+        index, el.type,
+        el.type === "checkbox" || el.type === "radio" ? el.checked : el.value
+      ]));
+  }}
+
+  let djungoHomeBaseline_ = djungoFormSnapshot_();
+  function djungoMarkFormClean_() {{
+    djungoHomeBaseline_ = djungoFormSnapshot_();
+  }}
+  function djungoFormIsDirty_() {{
+    return djungoFormSnapshot_() !== djungoHomeBaseline_;
+  }}
+  function djungoHomeLanguage_() {{
+    const saved = window.DjungoI18n?.getLanguage?.() ||
+      localStorage.getItem("DJUNGO_LANGUAGE") || navigator.language || "en";
+    return String(saved).toLowerCase().startsWith("it") ? "it" : "en";
+  }}
+  function djungoConfirmLeave_() {{
+    const italian = djungoHomeLanguage_() === "it";
+    if (typeof IS_BUSY !== "undefined" && IS_BUSY) {{
+      alert(italian ? "Operazione in corso: attendi prima di uscire." :
+        "An operation is in progress. Please wait before leaving.");
+      return false;
+    }}
+    if (!djungoFormIsDirty_()) return true;
+    return confirm(italian ?
+      "Ci sono modifiche non salvate. Vuoi uscire senza salvarle?" :
+      "You have unsaved changes. Leave without saving them?");
+  }}
+  document.getElementById("djungoHomeLink").addEventListener("click", event => {{
+    if (!djungoConfirmLeave_()) event.preventDefault();
+  }});
+
   const qs = new URLSearchParams(window.location.search);
-  const DEBUG_MODE = qs.get("debug") === "1";
-  const APP_SLUG = qs.get("app") || {js_string(project_slug)};
+  const previewParts = window.location.pathname.split("/");
+  const PREVIEW_SESSION_ID =
+    previewParts.length === 4 &&
+    previewParts[1] === "preview" &&
+    previewParts[3] === "index.html"
+      ? previewParts[2] : "";
+
+  const DEBUG_MODE =
+    !PREVIEW_SESSION_ID && qs.get("debug") === "1";
+  const PERSISTENT_APP =
+    location.pathname.startsWith("/application/");
+
+  const APP_SLUG = PERSISTENT_APP
+    ? {js_string(project_slug)}
+    : (qs.get("app") || {js_string(project_slug)});
 
   function setMsg(el, msg, cls) {{
     el.className = cls || "muted";
@@ -850,6 +941,9 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
 
 
     async function apiCall_(mode, params = {{}}) {{
+    if (PREVIEW_SESSION_ID) {{
+      throw new Error("Preview is read-only");
+    }}
     let url = `/api/apps/${{APP_SLUG}}/${{mode}}`;
 
     const qs = new URLSearchParams();
@@ -871,10 +965,16 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   }}
 
     function apiUrl_(mode) {{
+    if (PREVIEW_SESSION_ID) {{
+      throw new Error("Preview is read-only");
+    }}
     return `/api/apps/${{APP_SLUG}}/${{mode}}`;
   }}
 
   async function apiCall_(mode, params = {{}}, method = "GET") {{
+    if (PREVIEW_SESSION_ID) {{
+      throw new Error("Preview is read-only");
+    }}
     let url = apiUrl_(mode);
 
     const options = {{
@@ -910,6 +1010,17 @@ def generate_index_html(project_config: Dict[str, Any], fields_schema: Dict[str,
   function viewerUrl_(cacheBust) {{
   const basePath = window.location.pathname.replace(/[^\\/]*$/, "");
   const u = new URL(basePath + "viewer.html", window.location.origin);
+  if (PREVIEW_SESSION_ID) {{
+    u.searchParams.set("limit", "50");
+    u.searchParams.set("embedded", "1");
+
+    if (cacheBust) {{
+      u.searchParams.set("_", Date.now().toString());
+    }}
+
+    return u.toString();
+  }}
+
   u.searchParams.set("app", APP_SLUG);
   u.searchParams.set("limit", "50");
   u.searchParams.set("embedded", "1");
@@ -942,6 +1053,7 @@ const formControls = Array.from(document.querySelectorAll("input, select, button
 let IS_BUSY = false;
 
 function setBusy(isBusy, message = "") {{
+  if (PREVIEW_SESSION_ID) return;
   IS_BUSY = Boolean(isBusy);
 
   formControls.forEach(el => {{
@@ -1011,6 +1123,7 @@ async function call_(mode, params = {{}}, needsKey = false) {{
 
     if (r.ok) {{
       setMsg(st, `OK inserted id=${{r.id}}`, "ok");
+      djungoMarkFormClean_();
       refreshViewerSoon();
     }} else {{
       setMsg(st, "ERR: " + (r.error || "Unknown error"), "err");
@@ -1042,6 +1155,8 @@ async function call_(mode, params = {{}}, needsKey = false) {{
       if (!r.ok) throw new Error(r.error || "Unknown error");
 
       clearEditForm();
+      djungoMarkFormClean_();
+
       setMsg(st, `OK updated id=${{id}}`, "ok");
       refreshViewerSoon();
 
@@ -1054,11 +1169,22 @@ async function call_(mode, params = {{}}, needsKey = false) {{
 
   document.getElementById("cancelEditBtn").addEventListener("click", () => {{
     clearEditForm();
+    djungoMarkFormClean_();
+
     setMsg(document.getElementById("crudStatus"), "");
     setMsg(document.getElementById("insertStatus"), "");
   }});
 
   document.getElementById("customizeConfigBtn").addEventListener("click", () => {{
+  if (!djungoConfirmLeave_()) return;
+
+  if (PERSISTENT_APP) {{
+    window.location.href =
+      "/review.html?persistentApp=" +
+      encodeURIComponent(APP_SLUG);
+    return;
+  }}
+
   window.location.href =
     `review.html?autoload=1&returnApp=${{encodeURIComponent(APP_SLUG)}}`;
 }});
@@ -1083,6 +1209,8 @@ async function call_(mode, params = {{}}, needsKey = false) {{
       if (!r.ok) throw new Error(r.error || "Unknown error");
 
       clearEditForm();
+      djungoMarkFormClean_();
+
       setMsg(st, `OK deleted id=${{id}}`, "ok");
       refreshViewerSoon();
 
@@ -1103,6 +1231,22 @@ async function call_(mode, params = {{}}, needsKey = false) {{
 
 let FORM_MODE = "insert";
 
+function syncViewerSelection_() {{
+  if (PREVIEW_SESSION_ID) return;
+
+  const id = FORM_MODE === "edit"
+    ? String(document.getElementById("crud_id").value).trim()
+    : "";
+
+  viewer.contentWindow?.postMessage(
+    {{type: "DJUNGO_EDIT_SELECTION", id}},
+    window.location.origin
+  );
+}}
+
+viewer.addEventListener("load", syncViewerSelection_);
+
+
 function setFormMode(mode) {{
   FORM_MODE = mode === "edit" ? "edit" : "insert";
   const editing = FORM_MODE === "edit";
@@ -1111,6 +1255,8 @@ function setFormMode(mode) {{
   document.getElementById("saveChangesBtn").hidden = !editing;
   document.getElementById("deleteBtn").hidden = !editing;
   document.getElementById("cancelEditBtn").hidden = !editing;
+
+  syncViewerSelection_();
 }}
 
 function imageUrlFromValue(value) {{
@@ -1168,12 +1314,15 @@ function populateForm(record) {{
   if (!record || typeof record !== "object" || Array.isArray(record)) return false;
 
   clearEditForm();
+  djungoMarkFormClean_();
+
 {record_fill_js}
   refreshImagePreviews();
   return true;
 }}
 
 window.addEventListener("message", event => {{
+  if (PREVIEW_SESSION_ID) return;
   if (event.origin !== window.location.origin) return;
   if (event.source !== viewer.contentWindow) return;
   if (IS_BUSY) return;
@@ -1187,6 +1336,7 @@ window.addEventListener("message", event => {{
 
   document.getElementById("crud_id").value = id;
   setFormMode("edit");
+  djungoMarkFormClean_();
 
   setMsg(document.getElementById("crudStatus"), "");
   setMsg(document.getElementById("insertStatus"), "");
@@ -1194,6 +1344,154 @@ window.addEventListener("message", event => {{
   const formCard = document.getElementById("insertBtn").closest(".card");
   formCard?.scrollIntoView({{ behavior: "smooth", block: "start" }});
 }});
+
+if (PREVIEW_SESSION_ID) {{
+
+  const previewKey = "DJUNGO_PREVIEW_" + PREVIEW_SESSION_ID;
+  const previewStatus =
+    document.getElementById("previewActionStatus");
+
+  document.getElementById("previewBackBtn")
+    .addEventListener("click", () => {{
+      window.location.href = "/generate.html";
+    }});
+
+  document.getElementById("previewCustomizeBtn")
+    .addEventListener("click", () => {{
+      if (!sessionStorage.getItem(previewKey)) {{
+        setMsg(previewStatus,
+          "Preview session unavailable. Import the sheet again.",
+          "err");
+        return;
+      }}
+
+      window.location.href =
+        "/review.html?autoload=1&previewSession=" +
+        encodeURIComponent(PREVIEW_SESSION_ID);
+    }});
+
+  // UAT-F41: server-controlled activation.
+
+  const publishBtn =
+    document.getElementById("previewPublishBtn");
+
+  const activationUrl =
+    "/api/preview/" +
+    encodeURIComponent(PREVIEW_SESSION_ID) +
+    "/activation";
+
+  let previewRegistered = false;
+  let activationReady = false;
+
+  publishBtn.disabled = true;
+
+  async function loadActivationStatus_() {{
+    try {{
+      const response = await fetch(
+        activationUrl,
+        {{cache: "no-store"}}
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {{
+        throw new Error(
+          data.error || "Cannot check application status"
+        );
+      }}
+
+      previewRegistered = data.registered === true;
+
+      publishBtn.textContent = previewRegistered
+        ? "Open application"
+        : "Activate application";
+
+      activationReady = true;
+      publishBtn.disabled = false;
+
+    }} catch (err) {{
+      setMsg(previewStatus, err.message, "err");
+    }}
+  }}
+
+  publishBtn.addEventListener("click", async () => {{
+    if (!activationReady) return;
+
+    if (
+      !previewRegistered &&
+      !confirm("Activate the application and enable CRUD operations?")
+    ) return;
+
+    const buttons = document.querySelectorAll(
+      "#previewActions button"
+    );
+
+    buttons.forEach(b => b.disabled = true);
+
+    try {{
+      setMsg(
+        previewStatus,
+        previewRegistered
+          ? "Opening application..."
+          : "Checking backend and activating..."
+      );
+
+      const response = await fetch(
+        activationUrl,
+        {{method: "POST"}}
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok || !data.app_slug) {{
+        throw new Error(
+          data.error || "Application activation failed"
+        );
+      }}
+
+      sessionStorage.setItem(
+        "DJUNGO_APP_SLUG", data.app_slug
+      );
+
+      localStorage.setItem(
+        "DJUNGO_LAST_APP", data.app_slug
+      );
+
+      window.location.href =
+        "/application/" +
+        encodeURIComponent(data.app_slug) +
+        "/index.html";
+
+    }} catch (err) {{
+      setMsg(previewStatus, err.message, "err");
+
+    }} finally {{
+      buttons.forEach(b => b.disabled = false);
+    }}
+  }});
+
+  loadActivationStatus_();
+
+  const crudPanel = document.getElementById("crudPanel");
+
+  crudPanel.hidden = true;
+
+  crudPanel.querySelectorAll(
+    "input, select, textarea, button"
+  ).forEach(el => {{
+    el.disabled = true;
+  }});
+
+  document.getElementById("configurationPanel").hidden = true;
+  document.getElementById("viewerCrudHint").hidden = true;
+  document.getElementById("previewModeNotice").hidden = false;
+
+  document.getElementById("appDescription").textContent =
+    "Your generated application is ready to preview.";
+
+  document.getElementById("viewerDescription").textContent =
+    "Browse, search and filter your imported preview records.";
+}}
 
 loadViewer(false);
 </script>
@@ -1338,6 +1636,15 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     .detail-field {{ margin-bottom: 14px; }}
     .detail-field-label {{ font-size: 12px; font-weight: bold; color: #555; }}
     .detail-field-value {{ margin-top: 4px; overflow-wrap: anywhere; white-space: pre-wrap; }}
+
+    /* UAT-F34: record currently being edited */
+    .tabulator .tabulator-row.djungo-editing-row,
+    .tabulator .tabulator-row.djungo-editing-row:hover {{
+      background-color: #f8d7da !important;
+      box-shadow: inset 4px 0 0 #bb3545;
+      outline: 1px solid #d48a93;
+      outline-offset: -1px;
+    }}
   </style>
 </head>
 <body>
@@ -1360,16 +1667,34 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     </div>
   </div>
 
+  <div id="previewNotice" hidden
+       style="padding:10px; margin:8px 0;
+              background:#fff8e1; border:1px solid #e5c76b;
+              border-radius:8px; font-size:13px;">
+  </div>
   <div id="status" class="muted" style="margin:6px 0;">Caricamento…</div>
   <div id="dataTable"></div>
 
 <script>
   const qs = new URLSearchParams(location.search);
-  const APP_SLUG = qs.get("app") || {js_string(project_slug)};
+  const PERSISTENT_APP =
+    location.pathname.startsWith("/application/");
+
+  const APP_SLUG = PERSISTENT_APP
+    ? {js_string(project_slug)}
+    : (qs.get("app") || {js_string(project_slug)});
   const URL_LIMIT = qs.get("limit") || "50";
   const EMBEDDED_MODE = qs.get("embedded") === "1";
   const REMOTE_OVERRIDE = qs.get("remote");
-  let REMOTE_PAGINATION = REMOTE_OVERRIDE === "1";
+  const previewParts = location.pathname.split("/");
+  const PREVIEW_SESSION_ID =
+    previewParts.length === 4 &&
+    previewParts[1] === "preview" &&
+    previewParts[3] === "viewer.html"
+      ? previewParts[2] : "";
+
+  let REMOTE_PAGINATION =
+    !PREVIEW_SESSION_ID && REMOTE_OVERRIDE === "1";
 
   const HAS_RECORD_ID = {has_record_id_js};
   const VISIBLE_HEADERS = {visible_cols_js};
@@ -1380,6 +1705,25 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
   const DISPLAY_CONFIG = {display_config_js};
 
     async function apiCall_(mode, params = {{}}) {{
+    if (PREVIEW_SESSION_ID) {{
+      if (mode !== "view") {{
+        throw new Error("Preview is read-only");
+      }}
+
+      const response = await fetch(
+        `/api/preview/${{encodeURIComponent(PREVIEW_SESSION_ID)}}/data`,
+        {{cache: "no-store"}}
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {{
+        throw new Error(data.error || "Preview unavailable");
+      }}
+
+      return data;
+    }}
+
     let url = `/api/apps/${{APP_SLUG}}/${{mode}}`;
 
     const qs = new URLSearchParams();
@@ -1602,6 +1946,103 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
 
   let REMOTE_REFRESH_TIMER = null;
 
+
+  // UAT-F25: sorting helpers begin
+
+  function defaultIdHeader_(headers) {{
+    if (!HAS_RECORD_ID) return "";
+
+    return headers.find(
+      h => String(h).trim().toLowerCase() === "id"
+    ) || "";
+  }}
+
+  function requestedSort_(sorter, headers) {{
+    const field = sorter?.field || "";
+
+    if (field) {{
+      const header =
+        headers.find(h => h === field) ||
+        headers.find(h => resolveFieldKey(h) === field) ||
+        field;
+
+      return {{
+        sortField: header,
+        sortDir: sorter.dir === "desc" ? "desc" : "asc"
+      }};
+    }}
+
+    return {{
+      sortField: defaultIdHeader_(headers),
+      sortDir: "asc"
+    }};
+  }}
+
+  function rowsInDefaultIdOrder_(headers, rows) {{
+    const result = rows.slice();
+    const header = defaultIdHeader_(headers);
+
+    if (!header) return result;
+
+    const index = headers.indexOf(header);
+
+    function numericId(row) {{
+      const id = Number(row[index]);
+
+      return Number.isSafeInteger(id) && id > 0
+        ? id : Infinity;
+    }}
+
+    result.sort((a, b) => {{
+      const x = numericId(a);
+      const y = numericId(b);
+
+      return x === y ? 0 : (x < y ? -1 : 1);
+    }});
+
+    return result;
+  }}
+
+  // UAT-F25: sorting helpers end
+
+
+  // UAT-F34: selection helpers begin
+
+  let ACTIVE_EDIT_ID = "";
+
+  function formatEditingRow_(row) {{
+    const record = normalizeRecord(row.getData());
+    const id = String(record.id ?? "").trim();
+
+    row.getElement().classList.toggle(
+      "djungo-editing-row",
+      Boolean(ACTIVE_EDIT_ID) && id === ACTIVE_EDIT_ID
+    );
+  }}
+
+  function refreshEditingRows_() {{
+    if (!DATA_TABLE) return;
+    DATA_TABLE.getRows().forEach(formatEditingRow_);
+  }}
+
+  window.addEventListener("message", event => {{
+    if (PREVIEW_SESSION_ID) return;
+    if (window.parent === window) return;
+    if (event.origin !== window.location.origin) return;
+    if (event.source !== window.parent) return;
+
+    if (event.data?.type !== "DJUNGO_EDIT_SELECTION") return;
+
+    const id = String(event.data.id ?? "").trim();
+
+    if (id !== "" && !/^[1-9][0-9]*$/.test(id)) return;
+
+    ACTIVE_EDIT_ID = id;
+    refreshEditingRows_();
+  }});
+
+  // UAT-F34: selection helpers end
+
   function renderTable() {{
     const status = document.getElementById("status");
 
@@ -1628,8 +2069,22 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         return;
       }}
 
+      const remoteColumns = buildColumns(LAST_HEADERS);
+
+      const idHeader = defaultIdHeader_(LAST_HEADERS);
+
+      const idColumn = idHeader
+        ? remoteColumns.find(
+            c => c.field === idHeader ||
+                 resolveFieldKey(c.field) === "id"
+          )
+        : null;
+
       DATA_TABLE = new Tabulator("#dataTable", {{
-        columns: buildColumns(LAST_HEADERS),
+        columns: remoteColumns,
+        initialSort: idColumn
+          ? [{{column: idColumn.field, dir: "asc"}}]
+          : [],
         layout: "fitDataStretch",
         height: "520px",
         movableColumns: true,
@@ -1654,8 +2109,8 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
             (DATA_TABLE ? DATA_TABLE.getSorters() : []);
           const sorter = sorters.length ? sorters[0] : null;
 
-          const sortField = sorter?.field || "";
-          const sortDir = sorter?.dir === "desc" ? "desc" : "asc";
+          const {{sortField, sortDir}} =
+            requestedSort_(sorter, LAST_HEADERS);
           const search = document.getElementById("searchBox").value.trim();
 
           // Tabulator 6.x: filtri remoti delle intestazioni.
@@ -1678,6 +2133,8 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
             throw new Error("GAS pagination not deployed: missing totals");
           }}
           LAST_HEADERS = response.headers || LAST_HEADERS;
+          // UAT-F31: GAS v16 returns each sorted page reversed.
+          // Restore the requested order without changing pagination.
           LAST_ROWS = (response.rows || []).slice().reverse();
           const total = Number(response.totalRows);
           status.textContent = `${{total}} total records — page ${{page}} of ${{Math.max(1, Number(response.totalPages))}}`;
@@ -1687,6 +2144,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
             data: rowsToObjects(LAST_HEADERS, LAST_ROWS)
           }};
         }},
+        rowFormatter: formatEditingRow_,
         placeholder: "No records found"
       }});
 
@@ -1742,6 +2200,7 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
         pagination: "local",
         paginationSize: 25,
         paginationSizeSelector: [10, 25, 50, 100],
+        rowFormatter: formatEditingRow_,
         placeholder: "No records found"
       }});
       DATA_TABLE.on("rowClick", function(event, row) {{
@@ -1768,6 +2227,27 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
     const status = document.getElementById("status");
 
     try {{
+      if (PREVIEW_SESSION_ID) {{
+        REMOTE_PAGINATION = false;
+
+        const resp = await apiCall_("view");
+
+        LAST_HEADERS = resp.headers || [];
+        LAST_ROWS = rowsInDefaultIdOrder_(
+          LAST_HEADERS, resp.rows || []
+        );
+
+        const notice = document.getElementById("previewNotice");
+        notice.hidden = false;
+        notice.textContent =
+          `Read-only preview: ${{LAST_ROWS.length}} of ` +
+          `${{resp.totalRows}} records. ` +
+          "Search and filters apply to preview records only.";
+
+        renderTable();
+        return;
+      }}
+
       const limit = document.getElementById("limitBox").value || URL_LIMIT;
       const probe = REMOTE_OVERRIDE === "0"
         ? null
@@ -1812,7 +2292,9 @@ def generate_viewer_html(project_config: Dict[str, Any], fields_schema: Dict[str
       }}
 
       LAST_HEADERS = resp.headers || [];
-      LAST_ROWS = (resp.rows || []).slice().reverse();
+      LAST_ROWS = rowsInDefaultIdOrder_(
+        LAST_HEADERS, resp.rows || []
+      );
 
       renderTable();
 

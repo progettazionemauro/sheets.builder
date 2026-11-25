@@ -1,6 +1,6 @@
 # Sheet Builder / Djungo Builder
 
-Build reusable CRUD web applications starting from spreadsheet exports.
+Build reusable CRUD web applications from Google Sheets URLs or exported spreadsheets.
 
 The project generates a portable mini application composed of:
 
@@ -324,3 +324,66 @@ Release checkpoint:
 Generated runtime HTML files are protected artifacts:
 deploying the generator does not automatically replace an
 already generated Viewer. GAS deployment is managed separately.
+
+## Current development status — 2026-11-25
+
+### Google Sheets workflow
+
+Djungo supports Google Sheets URL import and an alternative
+file-based import workflow.
+
+The intended experience is:
+
+Google Sheet -> Import -> Read-only Preview ->
+Customize -> Activate -> Persistent CRUD application.
+
+The spreadsheet remains the primary data source.
+
+### Internationalization
+
+English and Italian localization is implemented through
+a shared JavaScript engine and JSON dictionaries:
+
+- `docs/i18n/i18n.js`
+- `docs/i18n/en.json`
+- `docs/i18n/it.json`
+
+The selected language is stored in browser localStorage.
+
+Generate and Review have been localized and browser-tested.
+Review also supports dynamically generated translations.
+
+Localization of the generated Preview, CRUD interface and
+Viewer remains under development.
+
+Spreadsheet values, original column names and user-defined
+labels are not translated.
+
+### Navigation and persistent applications
+
+Review provides simplified navigation with Home Djungo,
+Save changes and Exit without saving.
+
+The CRUD/Preview generator now includes Home Djungo.
+Its presence has been verified in a persistent application.
+
+Full browser testing of unsaved-change navigation safeguards
+and all Review entry paths remains open.
+
+Persistent application HTML is generated dynamically by
+Flask using the current Python generator and the saved
+application configuration.
+
+### Release status
+
+F44-F48E changes are implemented locally and have not yet
+been declared synchronized with GitHub and Hetzner staging.
+
+The deployed Google Apps Script project remains the
+authoritative backend source. GAS deployment is separate
+from the Flask/Git release process.
+
+Protected runtime data and generated artifacts must not
+be overwritten by deployment.
+
+Production is excluded from the current release.

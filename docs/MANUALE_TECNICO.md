@@ -512,3 +512,123 @@ Il collaudo browser dei filtri remoti è stato confermato dopo GS-175.
 
 Le precedenti indicazioni relative a GAS v15 descrivono
 checkpoint storici e sono superate da questo rilascio.
+
+## F44-F48E — Internazionalizzazione e navigazione (25/11/2026)
+
+### Architettura i18n
+
+Il motore condiviso si trova in `docs/i18n/i18n.js`.
+I dizionari sono `docs/i18n/en.json` e `docs/i18n/it.json`.
+
+Flask espone questi asset tramite `/i18n/<filename>`.
+
+L'inglese è la lingua predefinita, salvo browser italiano.
+La scelta esplicita viene conservata nel localStorage
+con chiave `DJUNGO_LANGUAGE`.
+
+L'API JavaScript comprende:
+- `DjungoI18n.t(key)` per recuperare un testo;
+- `DjungoI18n.apply()` per applicare le traduzioni;
+- `DjungoI18n.setLanguage(lang)` per cambiare lingua;
+- `DjungoI18n.mountSelector(host)` per creare il selettore;
+- `DjungoI18n.ready` per attendere i dizionari.
+
+Gli elementi HTML utilizzano attributi `data-i18n`,
+`data-i18n-placeholder` e `data-i18n-title`.
+
+Non tradurre dati importati, intestazioni originali,
+etichette personalizzate, valori enum o identificatori.
+
+### Generate — F44-F46B
+
+F44 introduce il motore e i dizionari condivisi.
+F45 introduce il selettore lingua nella pagina Generate.
+F46B collega esplicitamente 69 elementi statici ai dizionari.
+
+Cambio lingua e persistenza sono stati collaudati nel browser.
+Resta da completare la traduzione dei messaggi dinamici
+JavaScript della pagina Generate.
+
+### Review — F48B-F48C
+
+F48B collega 30 elementi statici a 29 chiavi bilingui.
+F48C aggiunge 47 chiavi per menu e messaggi dinamici.
+
+Le traduzioni comprendono ordinamento, rappresentazione,
+valori Sì/No, colori, notifiche e pulsanti dinamici.
+
+I valori tecnici delle option restano invariati:
+per esempio `auto`, `number`, `image`, `true` e `false`.
+
+Il cambio lingua non deve ricostruire indiscriminatamente
+la tabella dei campi né perdere modifiche non salvate.
+
+Il collaudo del cambio lingua durante la modifica
+di un'etichetta è stato superato nel browser.
+
+### Navigazione Review — F48D
+
+La Review utilizza una navigazione semplificata:
+Home Djungo, Salva modifiche, Esci senza salvare.
+
+Il percorso di importazione manuale conserva
+il comando Genera applicazione.
+
+La destinazione dipende dal contesto:
+Preview o applicazione persistente.
+
+La logica di uscita prevede una conferma in presenza
+di modifiche alla configurazione non salvate.
+
+### Navigazione CRUD/Preview — F48E
+
+La barra Home Djungo è inserita nel template prodotto
+da `generators/builder_generators.py`.
+
+Il controllo delle modifiche confronta lo stato
+iniziale del modulo con i valori correnti.
+La sola selezione di un record non deve
+essere considerata una modifica.
+
+La navigazione verso la personalizzazione deve
+rispettare lo stesso controllo.
+
+La presenza del collegamento Home è stata verificata
+nel browser nell'applicazione persistente `volcano_db`.
+Resta da collaudare completamente il comportamento
+delle conferme e delle uscite.
+
+### Generazione dinamica delle applicazioni persistenti
+
+La route Flask `/application/<slug>/<filename>`
+recupera la configurazione mediante
+`get_persistent_builder_state(slug)`.
+
+La converte tramite `builder_state_to_runtime_data()`
+e genera la risposta HTML utilizzando
+`generate_index_html()` o `generate_viewer_html()`.
+
+La risposta HTTP imposta `Cache-Control: no-store`.
+
+Le applicazioni persistenti ricevono quindi
+il template aggiornato al caricamento della pagina,
+senza dover sovrascrivere manualmente gli HTML generati.
+
+Il backend Google Apps Script pubblicato rimane
+la fonte autorevole del codice GAS eseguito.
+
+### Test residui e distribuzione
+
+Completare il collaudo della navigazione Review
+nei diversi percorsi e della protezione dei dati
+non salvati nelle applicazioni CRUD.
+
+Completare il multilingua di Preview, CRUD e Viewer.
+
+Le modifiche locali F44-F48E non sono ancora
+considerate distribuite su Hetzner staging.
+Il rilascio richiede checkpoint Git, push e
+deployment controllato sul solo staging.
+
+Non modificare GAS remoto o produzione durante
+la presente sincronizzazione.
